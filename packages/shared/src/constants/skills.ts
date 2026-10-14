@@ -11,6 +11,11 @@ export interface SkillDefinition {
   aliases: readonly string[];
   /** Matched case-sensitively; used for short or ambiguous words such as "Go" or "REST". */
   exact?: readonly string[];
+  /**
+   * A broader skill this one belongs to ("AWS Lambda" belongs to "AWS"). Matching
+   * gives partial credit across a family, never full credit.
+   */
+  family?: string;
 }
 
 export const SKILL_TAXONOMY: readonly SkillDefinition[] = [
@@ -41,23 +46,29 @@ export const SKILL_TAXONOMY: readonly SkillDefinition[] = [
   { name: 'AWS', category: 'cloud', aliases: ['aws', 'amazon web services'] },
   { name: 'Azure', category: 'cloud', aliases: ['azure', 'microsoft azure'] },
   { name: 'Google Cloud', category: 'cloud', aliases: ['gcp', 'google cloud'] },
-  { name: 'AWS Lambda', category: 'cloud', aliases: ['aws lambda'], exact: ['Lambda'] },
-  { name: 'Amazon EC2', category: 'cloud', aliases: ['amazon ec2'], exact: ['EC2'] },
-  { name: 'Amazon S3', category: 'cloud', aliases: ['amazon s3'], exact: ['S3'] },
-  { name: 'DynamoDB', category: 'cloud', aliases: ['dynamodb'] },
+  {
+    name: 'AWS Lambda',
+    category: 'cloud',
+    aliases: ['aws lambda'],
+    exact: ['Lambda'],
+    family: 'AWS',
+  },
+  { name: 'Amazon EC2', category: 'cloud', aliases: ['amazon ec2'], exact: ['EC2'], family: 'AWS' },
+  { name: 'Amazon S3', category: 'cloud', aliases: ['amazon s3'], exact: ['S3'], family: 'AWS' },
+  { name: 'DynamoDB', category: 'cloud', aliases: ['dynamodb'], family: 'AWS' },
   { name: 'Docker', category: 'devops', aliases: ['docker', 'containerization'] },
   { name: 'Kubernetes', category: 'devops', aliases: ['kubernetes', 'k8s'] },
   { name: 'Terraform', category: 'devops', aliases: ['terraform'] },
-  { name: 'AWS CDK', category: 'devops', aliases: ['aws cdk'], exact: ['CDK'] },
-  { name: 'CloudFormation', category: 'devops', aliases: ['cloudformation'] },
+  { name: 'AWS CDK', category: 'devops', aliases: ['aws cdk'], exact: ['CDK'], family: 'AWS' },
+  { name: 'CloudFormation', category: 'devops', aliases: ['cloudformation'], family: 'AWS' },
   { name: 'Ansible', category: 'devops', aliases: ['ansible'] },
   {
     name: 'CI/CD',
     category: 'devops',
     aliases: ['ci/cd', 'continuous integration', 'continuous delivery'],
   },
-  { name: 'GitHub Actions', category: 'devops', aliases: ['github actions'] },
-  { name: 'Jenkins', category: 'devops', aliases: ['jenkins'] },
+  { name: 'GitHub Actions', category: 'devops', aliases: ['github actions'], family: 'CI/CD' },
+  { name: 'Jenkins', category: 'devops', aliases: ['jenkins'], family: 'CI/CD' },
   { name: 'Linux', category: 'devops', aliases: ['linux', 'unix'] },
   {
     name: 'Networking',

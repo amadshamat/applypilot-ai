@@ -1,0 +1,20 @@
+{
+  "name": "@applypilot/matching",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Explainable, deterministic job-to-profile matching and truthful resume suggestions.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@applypilot/job-extraction": "workspace:*",
+    "@applypilot/resume-parser": "workspace:*"
+  }
+}

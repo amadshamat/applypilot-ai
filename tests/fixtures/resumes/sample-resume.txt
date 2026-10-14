@@ -1,0 +1,35 @@
+JORDAN RIVERA
+Toronto, ON | jordan.rivera@example.com | (416) 555-0142 | linkedin.com/in/jordan-rivera-dev | github.com/jrivera-dev
+
+SUMMARY
+Computer science student focused on cloud infrastructure and backend development.
+
+EDUCATION
+University of Toronto | Sep 2022 – Expected May 2026
+Bachelor of Science in Computer Science | GPA: 3.7/4.0
+Relevant Coursework: Data Structures, Operating Systems, Computer Networks, Databases
+
+EXPERIENCE
+Cloud Engineering Intern | Northwind Logistics | Toronto, ON | May 2025 – Aug 2025
+• Automated deployment of three internal services to AWS Lambda using Terraform and GitHub Actions
+• Wrote Python scripts to clean up unused Amazon S3 buckets, cutting storage costs
+IT Support Assistant | University of Toronto Libraries | Sep 2023 – Apr 2025
+• Resolved hardware and software tickets for students and staff on Windows and Linux
+• Documented common fixes in the internal knowledge base
+
+PROJECTS
+Serverless Job Tracker | TypeScript, React, DynamoDB | github.com/jrivera-dev/job-tracker
+• Built a REST API with AWS Lambda and API Gateway to store job applications
+• Added unit tests with Vitest and a CI pipeline with GitHub Actions
+Home Lab Kubernetes Cluster | Docker, Kubernetes, Linux
+• Ran a three-node cluster on Raspberry Pi devices to practise container orchestration
+
+SKILLS
+Languages: Python, TypeScript, JavaScript, SQL, Bash
+Cloud & DevOps: AWS, Terraform, Docker, Kubernetes, GitHub Actions
+Tools: Git, Linux, Jira
+Spoken Languages: English, Spanish
+
+CERTIFICATIONS
+AWS Certified Cloud Practitioner | Amazon Web Services | Mar 2024
+CompTIA A+ | 2023

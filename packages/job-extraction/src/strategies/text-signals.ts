@@ -1,5 +1,5 @@
 import {
-  SKILL_TAXONOMY,
+  findSkills as sharedFindSkills,
   type EmploymentType,
   type SalaryRange,
   type WorkArrangement,
@@ -12,32 +12,8 @@ import type { Found } from '../types';
  * guesses.
  */
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-}
-
-/** Token boundary that treats "+", "#" and "." inside names (C++, C#, .NET) correctly. */
-function tokenPattern(alias: string, flags: string): RegExp {
-  return new RegExp(
-    `(?<![A-Za-z0-9+#])${escapeRegExp(alias)}(?![A-Za-z0-9+#]|\\.[A-Za-z0-9])`,
-    flags,
-  );
-}
-
-const compiledSkills = SKILL_TAXONOMY.map((skill) => ({
-  name: skill.name,
-  patterns: [
-    ...skill.aliases.map((alias) => tokenPattern(alias, 'i')),
-    ...(skill.exact ?? []).map((alias) => tokenPattern(alias, '')),
-  ],
-}));
-
 /** Skills from the shared taxonomy mentioned in the text, in taxonomy order. */
-export function findSkills(text: string): string[] {
-  return compiledSkills
-    .filter((skill) => skill.patterns.some((pattern) => pattern.test(text)))
-    .map((skill) => skill.name);
-}
+export const findSkills = sharedFindSkills;
 
 const NUMBER_WORDS: Record<string, number> = {
   one: 1,

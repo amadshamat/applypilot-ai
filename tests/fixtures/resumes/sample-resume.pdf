@@ -1,0 +1,80 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1886 >>
+stream
+BT /F1 9 Tf 11 TL 40 760 Td
+(JORDAN RIVERA) Tj T*
+(Toronto, ON | jordan.rivera@example.com | \(416\) 555-0142 | linkedin.com/in/jordan-rivera-dev | github.com/jrivera-dev) Tj T*
+() Tj T*
+(SUMMARY) Tj T*
+(Computer science student focused on cloud infrastructure and backend development.) Tj T*
+() Tj T*
+(EDUCATION) Tj T*
+(University of Toronto | Sep 2022 – Expected May 2026) Tj T*
+(Bachelor of Science in Computer Science | GPA: 3.7/4.0) Tj T*
+(Relevant Coursework: Data Structures, Operating Systems, Computer Networks, Databases) Tj T*
+() Tj T*
+(EXPERIENCE) Tj T*
+(Cloud Engineering Intern | Northwind Logistics | Toronto, ON | May 2025 – Aug 2025) Tj T*
+(• Automated deployment of three internal services to AWS Lambda using Terraform and GitHub Actions) Tj T*
+(• Wrote Python scripts to clean up unused Amazon S3 buckets, cutting storage costs) Tj T*
+(IT Support Assistant | University of Toronto Libraries | Sep 2023 – Apr 2025) Tj T*
+(• Resolved hardware and software tickets for students and staff on Windows and Linux) Tj T*
+(• Documented common fixes in the internal knowledge base) Tj T*
+() Tj T*
+(PROJECTS) Tj T*
+(Serverless Job Tracker | TypeScript, React, DynamoDB | github.com/jrivera-dev/job-tracker) Tj T*
+(• Built a REST API with AWS Lambda and API Gateway to store job applications) Tj T*
+(• Added unit tests with Vitest and a CI pipeline with GitHub Actions) Tj T*
+(Home Lab Kubernetes Cluster | Docker, Kubernetes, Linux) Tj T*
+(• Ran a three-node cluster on Raspberry Pi devices to practise container orchestration) Tj T*
+() Tj T*
+(SKILLS) Tj T*
+(Languages: Python, TypeScript, JavaScript, SQL, Bash) Tj T*
+(Cloud & DevOps: AWS, Terraform, Docker, Kubernetes, GitHub Actions) Tj T*
+(Tools: Git, Linux, Jira) Tj T*
+(Spoken Languages: English, Spanish) Tj T*
+() Tj T*
+(CERTIFICATIONS) Tj T*
+(AWS Certified Cloud Practitioner | Amazon Web Services | Mar 2024) Tj T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 56 >>
+stream
+BT /F1 9 Tf 11 TL 40 760 Td
+(CompTIA A+ | 2023) Tj T*
+ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000002282 00000 n 
+0000002408 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+2514
+%%EOF

@@ -1,0 +1,19 @@
+{
+  "name": "@applypilot/resume-parser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Resume text extraction (PDF, DOCX) and deterministic parsing into a reviewable profile draft.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./files": "./src/files.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/shared": "workspace:*",
+    "mammoth": "1.13.0",
+    "pdfjs-dist": "6.4.299"
+  }
+}
