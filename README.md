@@ -85,7 +85,7 @@ pnpm install
 pnpm build            # outputs apps/extension/dist
 ```
 
-Load it in Chrome:
+Load it in Chrome (step-by-step guide with a test checklist: [docs/INSTALL-CHROME.md](docs/INSTALL-CHROME.md)):
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and choose `apps/extension/dist`.

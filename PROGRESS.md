@@ -37,7 +37,7 @@ generic parser and one ATS adapter, is also complete. The rest of Phase 2 has no
 
 ## Not yet verified
 
-- Loading the extension in desktop Google Chrome by hand (tested only in Playwright's Chromium 141).
+- Loading the extension in desktop Google Chrome by hand (tested only in Playwright's Chromium 141). Guide and checklist: `docs/INSTALL-CHROME.md`.
 - The real side panel container: e2e tests open `sidepanel.html` as a tab because Playwright
   cannot click the toolbar icon. `chrome.sidePanel.open()` on toolbar click is untested.
 - The Greenhouse adapter against live Greenhouse pages (tested against a fixture modeled on
