@@ -7,6 +7,8 @@ export {
   findYearsOfExperience,
   findWorkArrangement,
   findEmploymentType,
+  findEmploymentTypeList,
+  parseEmploymentTypeLabels,
 } from './strategies/text-signals';
 export { parseSections, classifyHeading } from './strategies/sections';
 export type { SiteAdapter, PartialJob } from './types';

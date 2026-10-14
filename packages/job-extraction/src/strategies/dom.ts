@@ -56,9 +56,26 @@ function meta(doc: Document, property: string): string | null {
   return nonEmpty(el?.getAttribute('content'));
 }
 
+/**
+ * Site chrome (account menus, navigation) never describes the job. A <header>
+ * inside an article or main region is content ("article > header > h1"), so
+ * only page-level headers count.
+ */
+function isSiteChrome(el: Element): boolean {
+  if (el.closest('nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"]'))
+    return true;
+  const header = el.closest('header');
+  return header !== null && header.closest('article, main') === null;
+}
+
+/** Account greetings that some sites render as the page's first heading. */
+const GREETING = /^(hello|hi|hey|welcome( back)?|good (morning|afternoon|evening))\b/i;
+
 function firstText(doc: Document, selector: string, maxLength: number): string | null {
   for (const el of doc.querySelectorAll(selector)) {
+    if (isSiteChrome(el)) continue;
     const text = nonEmpty(el.textContent);
+    if (text && GREETING.test(text)) continue;
     if (text && text.length <= maxLength) return text;
   }
   return null;

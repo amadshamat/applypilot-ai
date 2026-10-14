@@ -23,6 +23,7 @@ export const CONFIDENCE_LABELS: Record<Confidence, string> = {
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
   greenhouse: 'Greenhouse',
+  indeed: 'Indeed',
   lever: 'Lever',
   workday: 'Workday',
   smartrecruiters: 'SmartRecruiters',
@@ -70,15 +71,22 @@ function formatAmount(value: number, currency: string | null): string {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
 }
 
-/** "$28 – $34 per hour", or "40 – 48 (currency not stated) per hour". */
+/** "$28 – $34 per hour", "From $20 per hour", "Up to $30 per hour". */
 export function formatSalary(salary: SalaryRange): string {
-  const parts = [salary.min, salary.max]
-    .filter((n): n is number => n !== null)
-    .map((n) => formatAmount(n, salary.currency));
-  const range = parts.length === 2 && parts[0] === parts[1] ? parts[0] : parts.join(' – ');
+  const { min, max } = salary;
+  const fmt = (n: number) => formatAmount(n, salary.currency);
+  let range: string;
+  if (min !== null && max !== null) range = min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
+  else if (min !== null) range = `From ${fmt(min)}`;
+  else if (max !== null) range = `Up to ${fmt(max)}`;
+  else range = '';
   const currency = salary.currency ? '' : ' (currency not stated)';
   const period = salary.period ? ` per ${PERIOD_LABELS[salary.period]}` : '';
   return `${range}${currency}${period}`;
+}
+
+export function formatEmploymentTypes(types: readonly EmploymentType[]): string {
+  return types.map((t) => EMPLOYMENT_LABELS[t]).join(', ');
 }
 
 export function formatExperience(value: { min: number; max: number | null }): string {

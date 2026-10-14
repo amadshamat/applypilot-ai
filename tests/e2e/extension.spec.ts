@@ -15,7 +15,12 @@ const test = base.extend<{ context: BrowserContext; extensionId: string }>({
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
       ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
-      args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
+      args: [
+        `--disable-extensions-except=${EXTENSION_PATH}`,
+        `--load-extension=${EXTENSION_PATH}`,
+        // Serve the Indeed fixture under Indeed's hostname so the adapter matches.
+        '--host-resolver-rules=MAP www.indeed.com 127.0.0.1',
+      ],
     });
     await use(context);
     await context.close();
@@ -37,7 +42,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.1.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.1.1' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -82,6 +87,27 @@ test('analyzes a job posting in the active tab', async ({ context, extensionId }
 
   // Extraction only reads the page.
   await expect(job.locator('h1')).toHaveText('Cloud Engineering Intern');
+});
+
+test('analyzes the selected job on an Indeed search page', async ({ context, extensionId }) => {
+  const panel = await openPanel(context, extensionId);
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const job = await context.newPage();
+  await job.goto(
+    `http://www.indeed.com:${port}/jobs/indeed-search-selected-job.html?vjk=7c1e5f0a2b3d4e6f`,
+  );
+  await job.bringToFront();
+
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(
+    panel.getByRole('heading', {
+      name: 'Fundraiser – $20/hr Guaranteed – Great for Students & Creatives',
+    }),
+  ).toBeVisible();
+  await expect(panel.getByText('Hello, Jordan')).toHaveCount(0);
+  await expect(panel.getByText('From $20 per hour')).toBeVisible();
+  await expect(panel.getByText('Part-time, Full-time').first()).toBeVisible();
+  await expect(panel.getByText('Arlington, VA', { exact: true })).toBeVisible();
 });
 
 test('asks for a toolbar click on pages it has no access to', async ({ context, extensionId }) => {

@@ -75,13 +75,17 @@ sequenceDiagram
 
 1. **JSON-LD** (`strategies/json-ld.ts`): schema.org `JobPosting`, including `@graph` containers,
    arrays of types, `MonetaryAmount` salaries and double-encoded HTML descriptions.
-2. **Site adapter** (`adapters/`): host-matched, platform-specific selectors. Greenhouse is
-   implemented; other platforms are detected and flagged.
+2. **Site adapter** (`adapters/`): host-matched, platform-specific selectors. Greenhouse and
+   Indeed are implemented. Indeed lookups are scoped to the selected job's pane so the account
+   header and other result cards are never read, and its values take precedence over JSON-LD
+   (`preferOverStructuredData`) because a results page can carry data about other jobs. Other platforms are detected and
+   flagged.
 3. **Description analysis** (`strategies/description.ts`, `sections.ts`, `text-signals.ts`): the
    description (from the adapter, JSON-LD or the page) is split into sections by headings and
    bold lead-ins, then mined for skills, experience, work arrangement, employment type, salary,
    education and deadline.
-4. **Generic page signals** (`strategies/dom.ts`, `url.ts`): `h1`, meta tags, location elements,
+4. **Generic page signals** (`strategies/dom.ts`, `url.ts`): `h1` (skipping site headers,
+   navigation and account greetings), meta tags, location elements,
    application form detection, canonical URL and job-ID query parameters.
 
 For each field the first strategy (in that order) that produced a **schema-valid** value wins.

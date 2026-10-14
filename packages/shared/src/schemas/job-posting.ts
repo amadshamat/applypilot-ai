@@ -69,7 +69,8 @@ export const jobPostingSchema = z.object({
   location: extractedFieldSchema(text),
   workArrangement: extractedFieldSchema(workArrangementSchema),
   salary: extractedFieldSchema(salaryRangeSchema),
-  employmentType: extractedFieldSchema(employmentTypeSchema),
+  /** Postings often offer several ("Part-time, Full-time"), so this is a list. */
+  employmentType: extractedFieldSchema(z.array(employmentTypeSchema).min(1)),
   requiredQualifications: extractedFieldSchema(textList),
   preferredQualifications: extractedFieldSchema(textList),
   skills: extractedFieldSchema(textList),
@@ -87,6 +88,7 @@ export type JobPostingField = keyof JobPosting;
 
 export const platformSchema = z.enum([
   'greenhouse',
+  'indeed',
   'lever',
   'workday',
   'smartrecruiters',

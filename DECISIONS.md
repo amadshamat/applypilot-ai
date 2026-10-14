@@ -87,3 +87,26 @@ one.
 
 These folders from the original plan will be created with their first real code. Empty
 scaffolding would imply progress that does not exist.
+
+## 014: Adapters can outrank structured data
+
+Normally JSON-LD wins over a site adapter. On a search results page, though, structured data
+(if any) may describe the site or another job, while the adapter reads exactly the job the user
+selected. Adapters for such pages set `preferOverStructuredData`; Indeed is the first.
+
+## 015: Employment type is a list
+
+Postings often offer several types ("Part-time, Full-time"), and JSON-LD allows an array.
+Keeping only one would silently drop what the employer stated.
+
+## 016: Indeed pay currency comes from the country site
+
+Indeed shows a bare "$" but localizes pay per country site (www → USD, ca → CAD). The adapter
+uses the subdomain to set the currency only when the text itself has no currency code or
+unambiguous symbol. Elsewhere a bare "$" still leaves the currency unknown.
+
+## 017: Re-injected content script replaces its listener
+
+Each analysis injects the content script again. The new copy removes the previous listener
+before adding its own, so a tab keeps working after the extension is updated and never answers
+twice.

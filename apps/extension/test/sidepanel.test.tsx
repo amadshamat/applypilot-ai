@@ -90,6 +90,22 @@ describe('analyze view', () => {
     expect(screen.getByText(/shows no score rather than a made-up one/)).toBeInTheDocument();
   });
 
+  it('shows Indeed results with a minimum-only salary and several job types', async () => {
+    const url = 'https://www.indeed.com/jobs?q=fundraiser&vjk=7c1e5f0a2b3d4e6f';
+    const result = fixtureResult('indeed-search-selected-job.html', url);
+    renderPanel((request) => (request.type === 'job/extract-active-tab' ? ok(result) : ok(null)));
+    await userEvent.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Fundraiser – $20/hr Guaranteed – Great for Students & Creatives',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Indeed')).toBeInTheDocument();
+    expect(screen.getByText('From $20 per hour')).toBeInTheDocument();
+    expect(screen.getAllByText('Part-time, Full-time').length).toBe(2);
+    expect(screen.queryByText(/Hello, Jordan/)).not.toBeInTheDocument();
+  });
+
   it('restores a cached analysis for the active tab', async () => {
     const result = fixtureResult(
       'greenhouse-software-intern.html',

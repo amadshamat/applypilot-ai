@@ -48,16 +48,24 @@ export function extractJob(
   const outputs: StrategyOutput[] = [];
 
   const jsonLd = extractFromJsonLd(doc);
-  if (jsonLd) {
-    strategies.push('json-ld');
-    outputs.push({ source: 'json-ld', fields: jsonLd });
-  }
-
   const adapter = adapters.find((a) => a.matches(url, doc));
   const adapterFields = adapter?.extract(doc, url) ?? null;
-  if (adapter && adapterFields) {
-    strategies.push('adapter');
-    outputs.push({ source: 'adapter', fields: adapterFields });
+
+  const jsonLdOutput: StrategyOutput | null = jsonLd ? { source: 'json-ld', fields: jsonLd } : null;
+  const adapterOutput: StrategyOutput | null = adapterFields
+    ? { source: 'adapter', fields: adapterFields }
+    : null;
+  const ordered = adapter?.preferOverStructuredData
+    ? [adapterOutput, jsonLdOutput]
+    : [jsonLdOutput, adapterOutput];
+  for (const output of ordered) {
+    if (!output) continue;
+    strategies.push(output.source === 'json-ld' ? 'json-ld' : 'adapter');
+    outputs.push(output);
+  }
+
+  if (adapter && !adapterFields && adapter.noJobMessage) {
+    warnings.push(adapter.noJobMessage);
   } else if (platform !== 'generic' && !adapter) {
     warnings.push(
       `This page is hosted on ${platform}, which does not have a dedicated adapter yet. Results come from general page analysis.`,
@@ -75,11 +83,13 @@ export function extractJob(
 
   const job = mergeFields(outputs, warnings);
   const isJobPosting = looksLikeJobPosting(job, jsonLd !== null, adapterFields !== null);
-  if (!isJobPosting) {
+  const adapterExplained =
+    adapter !== undefined && !adapterFields && adapter.noJobMessage !== undefined;
+  if (!isJobPosting && !adapterExplained) {
     warnings.push(
       'This page does not look like a single job posting. Open a specific job listing and try again.',
     );
-  } else if (!jsonLd && !adapterFields) {
+  } else if (isJobPosting && !jsonLd && !adapterFields) {
     warnings.push(
       'No structured job data was found, so values come from the page layout and may be incomplete.',
     );

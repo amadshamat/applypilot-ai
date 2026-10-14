@@ -29,7 +29,7 @@ describe('extractJob: JSON-LD careers page', () => {
     });
     expect(value(result.job.company)).toBe('Northwind Cloud');
     expect(value(result.job.location)).toBe('Seattle, WA, US');
-    expect(value(result.job.employmentType)).toBe('internship');
+    expect(value(result.job.employmentType)).toEqual(['internship', 'full-time']);
     expect(value(result.job.jobId)).toBe('NWC-2026-117');
     expect(value(result.job.applicationDeadline)).toBe('2026-11-15');
   });
@@ -121,7 +121,7 @@ describe('extractJob: Greenhouse adapter', () => {
   });
 
   it('derives employment type from the title and arrangement from the text', () => {
-    expect(result.job.employmentType).toMatchObject({ value: 'internship', confidence: 'high' });
+    expect(result.job.employmentType).toMatchObject({ value: ['internship'], confidence: 'high' });
     expect(value(result.job.workArrangement)).toBe('on-site');
   });
 
@@ -168,7 +168,7 @@ describe('extractJob: generic page without structured data', () => {
     expect(result.job.company).toMatchObject({ value: 'Harborline Health', confidence: 'low' });
     expect(value(result.job.location)).toBe('Remote (United States)');
     expect(value(result.job.workArrangement)).toBe('remote');
-    expect(value(result.job.employmentType)).toBe('full-time');
+    expect(value(result.job.employmentType)).toEqual(['full-time']);
   });
 
   it('reads experience, salary, education and deadline from the text', () => {

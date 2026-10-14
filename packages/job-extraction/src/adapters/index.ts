@@ -1,12 +1,14 @@
 import type { Platform } from '@applypilot/shared';
 import type { SiteAdapter } from '../types';
 import { greenhouseAdapter } from './greenhouse';
+import { indeedAdapter } from './indeed';
 
 /** Adapters with dedicated, fixture-tested extraction. */
-export const SITE_ADAPTERS: readonly SiteAdapter[] = [greenhouseAdapter];
+export const SITE_ADAPTERS: readonly SiteAdapter[] = [greenhouseAdapter, indeedAdapter];
 
 const PLATFORM_HOSTS: ReadonlyArray<[Exclude<Platform, 'generic'>, RegExp]> = [
   ['greenhouse', /(^|\.)greenhouse\.io$/],
+  ['indeed', /(^|\.)indeed\.com$/],
   ['lever', /^jobs\.(eu\.)?lever\.co$/],
   ['workday', /(^|\.)(myworkdayjobs|myworkdaysite)\.com$/],
   ['smartrecruiters', /^(jobs|careers)\.smartrecruiters\.com$/],

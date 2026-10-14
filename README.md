@@ -25,19 +25,19 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 
 ## Features
 
-| Feature                                                                                                | Status               |
-| ------------------------------------------------------------------------------------------------------ | -------------------- |
-| MV3 extension with React side panel, six-section navigation, light/dark themes                         | Done                 |
-| Settings page (theme, AI-processing consent, match weights) with validation                            | Done                 |
-| Local data export and deletion                                                                         | Done                 |
-| Typed, runtime-validated messaging between side panel, service worker and page                         | Done                 |
-| Job extraction: JSON-LD, Greenhouse adapter, generic page analysis, per-field source and confidence    | Done                 |
-| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI) | Done                 |
-| Resume profile, PDF/DOCX parsing, explainable match score                                              | Phase 2, not started |
-| Claude-powered tailoring, cover letters, screening answers                                             | Phase 3, not started |
-| Assisted autofill with per-field approval                                                              | Phase 4, not started |
-| Application tracking and analytics                                                                     | Phase 5, not started |
-| AWS backend (API Gateway, Lambda, DynamoDB, Cognito, CDK)                                              | Phase 6, not started |
+| Feature                                                                                                         | Status               |
+| --------------------------------------------------------------------------------------------------------------- | -------------------- |
+| MV3 extension with React side panel, six-section navigation, light/dark themes                                  | Done                 |
+| Settings page (theme, AI-processing consent, match weights) with validation                                     | Done                 |
+| Local data export and deletion                                                                                  | Done                 |
+| Typed, runtime-validated messaging between side panel, service worker and page                                  | Done                 |
+| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence | Done                 |
+| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)          | Done                 |
+| Resume profile, PDF/DOCX parsing, explainable match score                                                       | Phase 2, not started |
+| Claude-powered tailoring, cover letters, screening answers                                                      | Phase 3, not started |
+| Assisted autofill with per-field approval                                                                       | Phase 4, not started |
+| Application tracking and analytics                                                                              | Phase 5, not started |
+| AWS backend (API Gateway, Lambda, DynamoDB, Cognito, CDK)                                                       | Phase 6, not started |
 
 ## Technology
 
@@ -138,11 +138,13 @@ nothing will be deployed without explicit approval.
 
 ## Known limitations
 
-- Only Greenhouse-hosted boards have a dedicated adapter. Lever, Workday, SmartRecruiters and
-  Ashby pages are detected but use generic extraction, and their results may be incomplete.
+- Only Greenhouse boards and Indeed (search results with a selected job, and job pages) have
+  dedicated adapters. Lever, Workday, SmartRecruiters and Ashby pages are detected but use
+  generic extraction, and their results may be incomplete.
 - Greenhouse boards embedded in an employer's site run in a cross-origin iframe, which is not read.
-- The Greenhouse adapter was built against a fixture modeled on public Greenhouse markup and has
-  not yet been checked against live postings.
+- The Greenhouse and Indeed adapters were built against fixtures modeled on public markup. The
+  Indeed adapter fixes a bug reported from a live Indeed page but has not been re-checked there
+  yet.
 - Skill detection uses a fixed vocabulary of 53 technologies, so it can miss niche tools.
 - A bare `$` salary is reported with an unknown currency rather than assumed to be USD.
 - Analysis requires a toolbar click per tab because the extension does not request broad host

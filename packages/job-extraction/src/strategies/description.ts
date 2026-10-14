@@ -5,6 +5,7 @@ import {
   findDeadline,
   findEducationLines,
   findEmploymentType,
+  findEmploymentTypeList,
   findSalary,
   findSkills,
   findWorkArrangement,
@@ -50,11 +51,15 @@ export function analyzeDescription(root: Element, title: string | null): Partial
   const arrangement = findWorkArrangement(text);
   if (arrangement) out.workArrangement = arrangement;
 
+  // An explicit "Job Types: Part-time, Full-time" line beats the title, which
+  // beats a keyword found anywhere in the prose.
+  const listed = findEmploymentTypeList(text);
   const fromTitle = title ? findEmploymentType(title) : null;
-  const employmentType = fromTitle
-    ? { ...fromTitle, confidence: 'high' as const }
-    : findEmploymentType(text);
-  if (employmentType) out.employmentType = employmentType;
+  const fromProse = findEmploymentType(text);
+  if (listed) out.employmentType = listed;
+  else if (fromTitle) out.employmentType = { value: [fromTitle.value], confidence: 'high' };
+  else if (fromProse)
+    out.employmentType = { value: [fromProse.value], confidence: fromProse.confidence };
 
   const salary = findSalary(text);
   if (salary) out.salary = salary;

@@ -22,6 +22,9 @@ describe('manifest', () => {
   });
 
   it('limits the e2e build to the local fixture server', () => {
-    expect(createManifest({ e2e: true }).host_permissions).toEqual(['http://127.0.0.1/*']);
+    expect(createManifest({ e2e: true }).host_permissions).toEqual([
+      'http://127.0.0.1/*',
+      'http://www.indeed.com/*',
+    ]);
   });
 });

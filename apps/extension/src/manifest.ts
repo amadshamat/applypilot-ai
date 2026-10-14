@@ -2,7 +2,8 @@ import pkg from '../package.json' with { type: 'json' };
 
 export interface ManifestOptions {
   /**
-   * End-to-end test builds only: grants access to the local fixture server so
+   * End-to-end test builds only: grants access to the local fixture server
+   * (127.0.0.1, and www.indeed.com which the e2e browser maps to it) so
    * Playwright can exercise extraction without a toolbar click. Never set for
    * release builds.
    */
@@ -40,7 +41,7 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     options_ui: { page: 'options.html', open_in_tab: true },
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['activeTab', 'scripting', 'sidePanel', 'storage'],
-    ...(e2e ? { host_permissions: ['http://127.0.0.1/*'] } : {}),
+    ...(e2e ? { host_permissions: ['http://127.0.0.1/*', 'http://www.indeed.com/*'] } : {}),
     content_security_policy: {
       extension_pages:
         "script-src 'self'; object-src 'self'; base-uri 'self'; frame-ancestors 'none'",

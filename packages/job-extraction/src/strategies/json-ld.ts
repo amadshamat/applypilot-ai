@@ -62,7 +62,7 @@ const EMPLOYMENT_TYPES: Record<string, EmploymentType> = {
   OTHER: 'other',
 };
 
-function mapEmploymentType(value: Json | undefined): EmploymentType | null {
+function mapEmploymentTypes(value: Json | undefined): EmploymentType[] | null {
   const types = asArray(value)
     .map((v) =>
       typeof v === 'string'
@@ -70,9 +70,8 @@ function mapEmploymentType(value: Json | undefined): EmploymentType | null {
         : undefined,
     )
     .filter((v): v is EmploymentType => v !== undefined);
-  // Internship is the most specific signal for this product's audience.
-  if (types.includes('internship')) return 'internship';
-  return types[0] ?? null;
+  const unique = [...new Set(types)];
+  return unique.length > 0 ? unique : null;
 }
 
 function formatAddress(place: Json): string | null {
@@ -192,7 +191,7 @@ export function extractFromJsonLd(doc: Document): PartialJob | null {
       confidence: salary.currency && salary.period ? 'high' : 'medium',
     };
 
-  const employmentType = mapEmploymentType(node['employmentType']);
+  const employmentType = mapEmploymentTypes(node['employmentType']);
   if (employmentType) out.employmentType = { value: employmentType, confidence: 'high' };
 
   const qualifications = textList(node['qualifications'], doc);

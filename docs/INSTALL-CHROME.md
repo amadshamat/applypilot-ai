@@ -5,7 +5,7 @@ newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.1.0.zip` from the project files.
+Download `applypilot-ai-extension-0.1.1.zip` from the project files.
 
 ## 2. Extract
 
@@ -31,7 +31,7 @@ applypilot-ai-extension/
 └── icons/
 ```
 
-Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.1.0`). Open it and choose
+Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.1.1`). Open it and choose
 the `applypilot-ai-extension` folder inside.
 
 ## 4. Load it in Chrome
@@ -39,7 +39,7 @@ the `applypilot-ai-extension` folder inside.
 1. Go to `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select the `applypilot-ai-extension` folder from step 3.
-4. The **ApplyPilot AI** card appears with version 0.1.0 and no red **Errors** button.
+4. The **ApplyPilot AI** card appears with version 0.1.1 and no red **Errors** button.
 5. Click the puzzle-piece icon in the toolbar and pin **ApplyPilot AI**.
 
 ## 5. Manual test checklist
@@ -59,6 +59,22 @@ the `applypilot-ai-extension` folder inside.
 | 11  | Settings → **Export data**                                                                                                                                                         | A JSON file downloads                                                                                                     |
 | 12  | Settings → **Delete all local data** → **Yes, delete everything**                                                                                                                  | Confirmation message; settings return to defaults                                                                         |
 
+## Updating to a new build
+
+Chrome keeps running the files in the folder you loaded, so updating means replacing them.
+
+1. Download and extract the new zip.
+2. Open `chrome://extensions` and find the **ApplyPilot AI** card.
+3. Either click **Remove** and then **Load unpacked** with the new `applypilot-ai-extension`
+   folder, or copy the new folder's contents over the old folder's contents and click the
+   circular **Reload** arrow on the card.
+4. Check that the card shows the new version number.
+5. Reload any job tabs that were open before the update (Ctrl+R or Cmd+R), so nothing from the
+   old version is left on the page.
+6. Click the ApplyPilot toolbar icon on the job tab again before analyzing.
+
+Removing the extension also deletes its saved settings. Reloading keeps them.
+
 ## Troubleshooting
 
 | Problem                                                     | Fix                                                                                                                |
@@ -68,4 +84,4 @@ the `applypilot-ai-extension` folder inside.
 | "Permission needed for this page"                           | Click the ApplyPilot toolbar icon while that tab is open, then analyze again. Access is granted per tab, by design |
 | Wrong or missing values on a real posting                   | Expected sometimes; only Greenhouse has a dedicated adapter. Send the page URL and a screenshot                    |
 | "Disable developer mode extensions" popup at Chrome startup | Normal for unpacked extensions; choose to keep it                                                                  |
-| After a new build                                           | Replace the folder contents, then click the reload arrow on the ApplyPilot card                                    |
+| After a new build                                           | See "Updating to a new build" above                                                                                |

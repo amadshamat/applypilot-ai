@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyHeading,
   findEmploymentType,
+  findEmploymentTypeList,
+  parseEmploymentTypeLabels,
   findSalary,
   findSkills,
   findWorkArrangement,
@@ -87,5 +89,43 @@ describe('classifyHeading', () => {
     ['About us', 'other'],
   ])('%s → %s', (heading, kind) => {
     expect(classifyHeading(heading)).toBe(kind);
+  });
+});
+
+describe('single-amount salaries', () => {
+  it.each([
+    ['From $20 an hour', { min: 20, max: null, currency: null, period: 'hour' }],
+    ['Pay: From $20.00 per hour', { min: 20, max: null, currency: null, period: 'hour' }],
+    ['Up to $30/hr', { min: null, max: 30, currency: null, period: 'hour' }],
+    ['$22 an hour', { min: 22, max: 22, currency: null, period: 'hour' }],
+    ['Starting at €3,000 per month', { min: 3000, max: null, currency: 'EUR', period: 'month' }],
+  ])('%s', (text, expected) => {
+    expect(findSalary(text)?.value).toEqual(expected);
+  });
+
+  it('ignores single amounts without a pay period', () => {
+    expect(findSalary('Earn a $500 sign-on bonus')).toBeNull();
+  });
+
+  it('prefers a range over a single amount', () => {
+    expect(findSalary('$18 - $22 an hour')?.value).toMatchObject({ min: 18, max: 22 });
+  });
+});
+
+describe('employment type lists', () => {
+  it('maps site labels and drops unknown ones', () => {
+    expect(parseEmploymentTypeLabels(['Part-time', 'Full-time', 'Weekends'])).toEqual([
+      'part-time',
+      'full-time',
+    ]);
+    expect(parseEmploymentTypeLabels(['Contract, Temporary'])).toEqual(['contract', 'temporary']);
+  });
+
+  it('reads an explicit "Job Types:" line', () => {
+    expect(findEmploymentTypeList('Job Types: Part-time, Full-time\nPay: $20')?.value).toEqual([
+      'part-time',
+      'full-time',
+    ]);
+    expect(findEmploymentTypeList('We value full-time focus')).toBeNull();
   });
 });

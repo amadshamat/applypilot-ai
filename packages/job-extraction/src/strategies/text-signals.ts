@@ -103,6 +103,38 @@ export function findEmploymentType(text: string): Found<EmploymentType> | null {
   return null;
 }
 
+const EMPLOYMENT_LABELS: ReadonlyArray<[RegExp, EmploymentType]> = [
+  [/^full[- ]?time$/i, 'full-time'],
+  [/^part[- ]?time$/i, 'part-time'],
+  [/^(contract|contractor|freelance)$/i, 'contract'],
+  [/^(temporary|temp|seasonal)$/i, 'temporary'],
+  [/^(internship|intern|co-?op)$/i, 'internship'],
+  [/^volunteer$/i, 'volunteer'],
+  [/^(per diem|apprenticeship|fresher|permanent)$/i, 'other'],
+];
+
+/**
+ * Maps job-type labels as sites display them ("Part-time", "Full-time",
+ * "Contract") to the shared vocabulary. Unrecognised labels are skipped.
+ */
+export function parseEmploymentTypeLabels(labels: readonly string[]): EmploymentType[] {
+  const out: EmploymentType[] = [];
+  for (const raw of labels.flatMap((l) => l.split(/,|\/|·|\band\b/i))) {
+    const label = raw.trim();
+    const match = EMPLOYMENT_LABELS.find(([pattern]) => pattern.test(label));
+    if (match && !out.includes(match[1])) out.push(match[1]);
+  }
+  return out;
+}
+
+/** An explicit list such as "Job Types: Part-time, Full-time" or "Employment type: Contract". */
+export function findEmploymentTypeList(text: string): Found<EmploymentType[]> | null {
+  const m = /\b(?:job types?|employment types?)\s*:\s*([^\n]{2,120})/i.exec(text);
+  if (!m?.[1]) return null;
+  const types = parseEmploymentTypeLabels([m[1]]);
+  return types.length > 0 ? { value: types, confidence: 'high' } : null;
+}
+
 const CURRENCY_SYMBOLS: Record<string, string> = { '€': 'EUR', '£': 'GBP', '¥': 'JPY', '₹': 'INR' };
 const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)\s*([kK])?`;
 const SALARY_PATTERN = new RegExp(
@@ -126,12 +158,49 @@ const PERIODS: Record<string, SalaryRange['period']> = {
   annum: 'year',
 };
 
+const PERIOD = String.raw`(?:\s*(?:\/|per|an|a)\s*(hour|hr|day|week|month|year|yr|annum))`;
+const SINGLE_SALARY_PATTERN = new RegExp(
+  String.raw`(?:\b(from|starting at|starts at|up to|as much as)\s+)?(USD|CAD|AUD|EUR|GBP)?\s*([$€£¥₹])\s*${AMOUNT}\s*(USD|CAD|AUD|EUR|GBP)?${PERIOD}`,
+  'i',
+);
+
 /**
- * "$25 - $32 per hour", "$120K–$150K", "€45,000 to €55,000 a year".
- * A bare "$" is ambiguous (USD, CAD, AUD…), so currency stays null unless the
- * text names it explicitly or uses an unambiguous symbol.
+ * "$25 - $32 per hour", "$120K–$150K", "€45,000 to €55,000 a year", and single
+ * amounts with a pay period: "From $20 an hour", "Up to $30/hr", "$22 an hour".
+ * A single amount without a period ("$500 bonus") is ignored. A bare "$" is
+ * ambiguous (USD, CAD, AUD…), so currency stays null unless the text names it
+ * or uses an unambiguous symbol.
  */
 export function findSalary(text: string): Found<SalaryRange> | null {
+  // A range-shaped match that fails validation ("$90 - $50") means the text is
+  // unreliable; do not fall back to reading half of it as a single amount.
+  if (SALARY_PATTERN.test(text)) return findSalaryRange(text);
+  return findSingleSalary(text);
+}
+
+function findSingleSalary(text: string): Found<SalaryRange> | null {
+  const m = SINGLE_SALARY_PATTERN.exec(text);
+  if (!m) return null;
+  const [, qualifier, codeBefore, symbol, amountRaw, thousands, codeAfter, periodRaw] = m;
+  if (!amountRaw || !symbol || !periodRaw) return null;
+  const amount = parseAmount(amountRaw, thousands);
+  if (!(amount > 0)) return null;
+  const q = qualifier?.toLowerCase();
+  const isFloor = q === 'from' || q === 'starting at' || q === 'starts at';
+  const isCeiling = q === 'up to' || q === 'as much as';
+  const currency = (codeBefore ?? codeAfter)?.toUpperCase() ?? CURRENCY_SYMBOLS[symbol] ?? null;
+  return {
+    value: {
+      min: isCeiling ? null : amount,
+      max: isFloor ? null : amount,
+      currency,
+      period: PERIODS[periodRaw.toLowerCase()] ?? null,
+    },
+    confidence: 'medium',
+  };
+}
+
+function findSalaryRange(text: string): Found<SalaryRange> | null {
   const m = SALARY_PATTERN.exec(text);
   if (!m) return null;
   const [, codeBefore, symbol, minRaw, minK, maxRaw, maxK, codeAfter, periodRaw] = m;

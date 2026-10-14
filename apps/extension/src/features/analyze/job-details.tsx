@@ -15,7 +15,7 @@ import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { MissingBadge, Provenance } from './field-badges';
 import {
   ARRANGEMENT_LABELS,
-  EMPLOYMENT_LABELS,
+  formatEmploymentTypes,
   PLATFORM_LABELS,
   formatDate,
   formatExperience,
@@ -89,7 +89,7 @@ export function JobDetails({ result }: { result: JobExtractionResult }) {
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge tone="primary">{PLATFORM_LABELS[result.platform]}</Badge>
           {job.employmentType.status === 'found' ? (
-            <Badge>{EMPLOYMENT_LABELS[job.employmentType.value]}</Badge>
+            <Badge>{formatEmploymentTypes(job.employmentType.value)}</Badge>
           ) : null}
           {job.workArrangement.status === 'found' ? (
             <Badge>{ARRANGEMENT_LABELS[job.workArrangement.value]}</Badge>
@@ -114,7 +114,7 @@ export function JobDetails({ result }: { result: JobExtractionResult }) {
             icon={icon(Briefcase)}
             label="Type"
             field={job.employmentType}
-            render={(v) => EMPLOYMENT_LABELS[v]}
+            render={formatEmploymentTypes}
           />
           <FieldRow icon={icon(DollarSign)} label="Pay" field={job.salary} render={formatSalary} />
           <FieldRow
