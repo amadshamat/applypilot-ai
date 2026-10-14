@@ -161,7 +161,7 @@ function toBlocks(lines: readonly Line[]): Block[] {
         blocks.push(current);
       }
       if (continuesBullet) {
-        current.bullets[current.bullets.length - 1] = `${previousBullet ?? ''} ${line.text}`;
+        current.bullets[current.bullets.length - 1] = `${previousBullet} ${line.text}`;
       } else {
         current.bullets.push(line.text);
       }
@@ -207,8 +207,8 @@ const INSTITUTION =
 const DEGREE =
   /\b(bachelor'?s?|master'?s?|associate'?s?|doctor(?:ate)?|ph\.?\s?d\.?|diploma|certificate|b\.?\s?sc?\.?|m\.?\s?sc?\.?|b\.?\s?a\.?|m\.?\s?a\.?|b\.?\s?eng\.?|m\.?\s?eng\.?|mba|b\.?\s?tech|m\.?\s?tech|bba|high school diploma|ged)(?![a-z])/i;
 const GPA =
-  /\b(?:c?gpa|grade point average)\s*[:\-]?\s*(\d(?:\.\d{1,2})?(?:\s*\/\s*\d(?:\.\d{1,2})?)?)/i;
-const COURSEWORK = /^(?:relevant |selected |key )?(?:coursework|courses)\s*[:\-]\s*(.+)$/i;
+  /\b(?:c?gpa|grade point average)\s*[:-]?\s*(\d(?:\.\d{1,2})?(?:\s*\/\s*\d(?:\.\d{1,2})?)?)/i;
+const COURSEWORK = /^(?:relevant |selected |key )?(?:coursework|courses)\s*[:-]\s*(.+)$/i;
 
 function splitDegree(text: string): { degree: string; field: string } {
   const ofScience =

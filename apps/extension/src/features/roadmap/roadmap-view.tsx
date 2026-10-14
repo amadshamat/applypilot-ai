@@ -1,4 +1,4 @@
-import { Bot, FileText, ListChecks, Wand2, type LucideIcon } from 'lucide-react';
+import { Bot, ListChecks, Wand2, type LucideIcon } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 
@@ -10,18 +10,7 @@ interface PlannedFeature {
   points: string[];
 }
 
-const PLANNED: Record<'autofill' | 'resume' | 'applications' | 'copilot', PlannedFeature> = {
-  resume: {
-    icon: FileText,
-    title: 'Resume and profile',
-    phase: 'Phase 2',
-    summary: 'Build a verified profile and upload PDF or DOCX resumes to review before saving.',
-    points: [
-      'Parse resumes locally and review every field',
-      'Keep multiple resume versions',
-      'Explainable match scores against analyzed jobs',
-    ],
-  },
+const PLANNED: Record<'autofill' | 'applications' | 'copilot', PlannedFeature> = {
   autofill: {
     icon: Wand2,
     title: 'Assisted autofill',

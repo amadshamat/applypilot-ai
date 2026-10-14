@@ -41,7 +41,7 @@ describe('side panel navigation', () => {
     expect(tabs.map((t) => t.getAttribute('aria-label'))).toEqual([
       'Analyze',
       'Autofill',
-      'Resume',
+      'Profile',
       'Applications',
       'AI Copilot',
       'Settings',
@@ -87,7 +87,12 @@ describe('analyze view', () => {
     expect(within(skills).getByText('Terraform')).toBeInTheDocument();
     // Unknown values are labelled, not invented.
     expect(screen.getAllByText('Not found').length).toBeGreaterThan(0);
-    expect(screen.getByText(/shows no score rather than a made-up one/)).toBeInTheDocument();
+    // With no profile there is no score, only a way to build one.
+    const match = screen.getByRole('region', { name: 'Match score' });
+    expect(
+      await within(match).findByRole('button', { name: /Build your profile/ }),
+    ).toBeInTheDocument();
+    expect(within(match).queryByLabelText(/Match score \d+/)).not.toBeInTheDocument();
   });
 
   it('shows Indeed results with a minimum-only salary and several job types', async () => {
@@ -174,7 +179,11 @@ describe('settings view', () => {
     expect(await services.localStore.get('applypilot.example')).toEqual({ keep: 'me' });
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete everything' }));
 
-    expect(await screen.findByText(/All local ApplyPilot data was deleted/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /All local ApplyPilot data, including your profile and resumes, was deleted/,
+      ),
+    ).toBeInTheDocument();
     expect(await services.localStore.get('applypilot.example')).toBeUndefined();
   });
 });

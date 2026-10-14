@@ -1,8 +1,18 @@
 import { createContext, useContext } from 'react';
 import type { BackgroundRequest, ResponseFor } from '@applypilot/shared';
+import {
+  ResumeFileError,
+  detectResumeType,
+  extractResumeText,
+} from '@applypilot/resume-parser/files';
+import { ProfileRepository } from '../storage/profile-repository';
+import { indexedDbResumeStore, type ResumeStore } from '../storage/resume-store';
 import { SettingsRepository } from '../storage/settings-repository';
 import { chromeStore, type KeyValueStore } from '../storage/storage-area';
 import { sendToBackground } from './messaging';
+
+/** Reads the text out of an uploaded resume file. Swapped for a fake in tests. */
+export type ResumeTextReader = (file: File) => Promise<string>;
 
 /**
  * Browser-facing dependencies for the React tree. Production wires Chrome APIs;
@@ -10,16 +20,31 @@ import { sendToBackground } from './messaging';
  */
 export interface AppServices {
   settings: SettingsRepository;
+  profile: ProfileRepository;
+  resumes: ResumeStore;
+  readResumeText: ResumeTextReader;
   localStore: KeyValueStore;
   send: <R extends BackgroundRequest>(request: R) => Promise<ResponseFor<R['type']>>;
   getActiveTabId: () => Promise<number | null>;
   openOptionsPage: () => void;
 }
 
+/** pdf.js and mammoth are large; extractResumeText loads them only when a resume is uploaded. */
+const readResumeText: ResumeTextReader = async (file) => {
+  const type = detectResumeType(file.name, file.type);
+  if (!type) throw new ResumeFileError('Only PDF and Word (.docx) files are supported.');
+  return extractResumeText(await file.arrayBuffer(), type, {
+    pdfWorkerSrc: chrome.runtime.getURL('pdf.worker.min.mjs'),
+  });
+};
+
 export function createChromeServices(): AppServices {
   const localStore = chromeStore('local');
   return {
     settings: new SettingsRepository(localStore),
+    profile: new ProfileRepository(localStore),
+    resumes: indexedDbResumeStore(),
+    readResumeText,
     localStore,
     send: (request) => sendToBackground(request),
     async getActiveTabId() {

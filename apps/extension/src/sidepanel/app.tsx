@@ -6,6 +6,7 @@ import { AnalyzeView } from '../features/analyze/analyze-view';
 import { NavBar } from '../features/navigation/nav-bar';
 import { useNavigation } from '../features/navigation/store';
 import type { ViewId } from '../features/navigation/views';
+import { ProfileView } from '../features/profile/profile-view';
 import { RoadmapView } from '../features/roadmap/roadmap-view';
 import { SettingsView } from '../features/settings/settings-view';
 
@@ -13,6 +14,8 @@ function CurrentView({ view }: { view: ViewId }) {
   switch (view) {
     case 'analyze':
       return <AnalyzeView />;
+    case 'resume':
+      return <ProfileView />;
     case 'settings':
       return <SettingsView />;
     default:

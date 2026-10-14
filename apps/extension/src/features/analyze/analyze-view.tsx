@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import { RefreshCw, ScanSearch, Sparkles } from 'lucide-react';
+import { RefreshCw, ScanSearch } from 'lucide-react';
 import { Alert } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import { Card, CardDescription, CardTitle } from '../../components/ui/card';
+import { Card } from '../../components/ui/card';
 import { EmptyState } from '../../components/ui/empty-state';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useServices } from '../../services/app-services';
 import { JobDetails } from './job-details';
+import { MatchCard } from './match-card';
 import { useAnalysis } from './store';
 
 const ERROR_TITLES = {
@@ -111,16 +112,7 @@ export function AnalyzeView() {
             <p className="text-xs text-muted">Showing the earlier analysis of this tab.</p>
           ) : null}
           <JobDetails result={state.result} />
-          <Card className="flex gap-3">
-            <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <CardTitle>Match score</CardTitle>
-              <CardDescription>
-                Comparing this job with your profile arrives with the resume profile in Phase 2.
-                Until then ApplyPilot shows no score rather than a made-up one.
-              </CardDescription>
-            </div>
-          </Card>
+          <MatchCard job={state.result.job} />
         </>
       ) : null}
     </div>

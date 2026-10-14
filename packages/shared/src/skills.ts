@@ -67,8 +67,10 @@ export function lookupSkill(name: string): SkillDefinition | null {
   if (key.length === 0) return null;
   const direct = byLowerName.get(key);
   if (direct) return direct;
-  const found = findSkills(name);
-  return found.length === 1 ? (byLowerName.get(found[0]!.toLowerCase()) ?? null) : null;
+  const [only, ...rest] = findSkills(name);
+  return only !== undefined && rest.length === 0
+    ? (byLowerName.get(only.toLowerCase()) ?? null)
+    : null;
 }
 
 /** Canonical form used to compare free-text skill names that are not in the taxonomy. */

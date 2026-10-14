@@ -1,83 +1,98 @@
 # Progress
 
-_Last updated: 2026-10-14 (v0.1.1)_
+_Last updated: 2026-10-14 (v0.2.0)_
 
 ## Current phase
 
-**Phase 1 (Foundation): complete.** The first Phase 2 deliverable, job detection with a
-generic parser and one ATS adapter, is also complete. The rest of Phase 2 has not started.
+**Phase 2 (Profile, resume parsing and matching): built and tested here, waiting for Muhaid's
+manual test in Chrome.** Phase 3 will not start until Phase 2 is approved.
+
+Phase 1 (Foundation) and the v0.1.1 Indeed fix are complete and were confirmed in Chrome.
 
 ## Completed and verified
 
-| Feature                                                                                                                                                                                                                                  | Verified by                                                                    |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| pnpm monorepo (`apps/extension`, `packages/shared`, `packages/job-extraction`) with strict TypeScript                                                                                                                                    | `pnpm typecheck`                                                               |
-| MV3 manifest generated from typed source; minimal permissions; strict CSP                                                                                                                                                                | `manifest.test.ts`, loads in Chromium 141                                      |
-| Service worker: opens side panel on toolbar click, typed message router, per-tab session cache                                                                                                                                           | `router.test.ts`, e2e                                                          |
-| Side panel: six-section ARIA tab navigation (click and keyboard), error boundary, loading/empty/error states                                                                                                                             | `sidepanel.test.tsx`, e2e                                                      |
-| Design system: tokens for light/dark, Button, Card, Badge, Alert, Switch, Skeleton, EmptyState                                                                                                                                           | screenshots in `docs/screenshots`                                              |
-| Settings (side panel and options page): theme, AI consent (default off), analysis caching, match weights that must total 100                                                                                                             | `sidepanel.test.tsx`, e2e (persists across pages)                              |
-| Local data export (JSON) and confirmed deletion                                                                                                                                                                                          | `sidepanel.test.tsx`                                                           |
-| Runtime-validated messaging with timeouts and typed errors                                                                                                                                                                               | `messaging.test.ts`, `schemas.test.ts`                                         |
-| Job extraction: JSON-LD, Greenhouse and Indeed adapters, description section parsing, skills, experience, salary, arrangement, employment type, education, deadline, job ID, application-form detection, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `text-signals.test.ts` against 6 fixtures |
-| Bounded waiting for client-rendered pages (one throttled MutationObserver, hard timeout)                                                                                                                                                 | `wait.test.ts`                                                                 |
-| End-to-end: built extension analyzes a fixture job page in real Chromium                                                                                                                                                                 | `tests/e2e/extension.spec.ts`                                                  |
-| CI workflow: typecheck, lint, format, tests with coverage, build, e2e, dependency audit                                                                                                                                                  | `.github/workflows/ci.yml` (written, **not yet run on GitHub**)                |
+### Phase 2 (v0.2.0)
 
-## Test results (2026-10-14, v0.1.1, local container, Node 22.22, Chromium 141)
+| Feature                                                                                                                                                                                                                                                           | Verified by                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Profile model (Zod): personal details, summary, education, experience, skills, certifications, projects, job preferences; strict dates (`YYYY` / `YYYY-MM`) and `https` links                                                                                     | `packages/shared/test/profile.test.ts`                                                   |
+| Profile stored in `chrome.storage.local`, validated on every write; corrupt data is reported, never silently overwritten                                                                                                                                          | `profile-repository.test.ts`                                                             |
+| Profile editor: add, edit, reorder, delete entries in every section, field-level validation messages, explicit Save and Discard, follows saves from other pages without overwriting unsaved edits                                                                 | `test/profile.test.tsx`                                                                  |
+| Resume upload (PDF, DOCX; 5 MB; drag and drop or file picker), read locally with pdf.js (worker shipped in the extension, WASM off) and mammoth                                                                                                                   | `files.test.ts` with real PDF and DOCX fixtures; e2e in Chromium under the extension CSP |
+| Deterministic resume parser: sections, contact details, education (degree, field, dates, GPA, coursework), experience (role, employer, location, dates, bullets, technologies), skills with categories, projects, certifications; warnings for anything uncertain | `parse.test.ts`, `dates.test.ts` (includes a "never invents content" test)               |
+| Review screen: every parsed field is editable before saving; choose "Add what's new" (merge, de-duplicated, never overwrites typed data) or "Replace my profile" (keeps job preferences)                                                                          | `merge.test.ts`, `test/profile.test.tsx`                                                 |
+| Resume history in IndexedDB: original file kept unchanged, re-review, download, delete with confirmation                                                                                                                                                          | `resume-store.test.ts` (fake-indexeddb), `test/profile.test.tsx`, e2e                    |
+| Explainable 0–100 match score using the Settings weights; parts the posting does not state are left out and reported as coverage                                                                                                                                  | `packages/matching/test/match.test.ts`                                                   |
+| Skill evidence: every matched skill points to the profile entry that shows it; related skills (for example AWS for Amazon EC2) get half credit; "one of Python, Go or Java" counts as one requirement                                                             | `match.test.ts`, `integration.test.ts` (parsed resume against extracted fixture jobs)    |
+| Experience years from dated roles (overlaps counted once, year-only dates read conservatively); education level including degrees in progress; job preferences                                                                                                    | `match.test.ts`                                                                          |
+| Requirements that need a person (work authorization, soft skills) listed under "Check these yourself", never scored                                                                                                                                               | `match.test.ts`                                                                          |
+| Truthful suggestions: list skills your experience already shows, show listed skills in context, reorder skills, lead with the most relevant project, add real numbers only if you have them, missing skills framed as "only if true"                              | `suggestions.test.ts`                                                                    |
+| Match card in the Analyze view, with a "Build your profile" prompt when the profile is empty                                                                                                                                                                      | `test/profile.test.tsx`, `sidepanel.test.tsx`, e2e                                       |
+| Data export includes resume metadata and parsed text; "Delete all local data" also removes the profile and resumes                                                                                                                                                | `sidepanel.test.tsx`                                                                     |
 
-- `pnpm typecheck`: passes (4 projects)
-- `pnpm lint`: 0 errors, 0 warnings (typescript-eslint strict type-checked)
+### Phase 1 and v0.1.1
+
+| Feature                                                                                                    | Verified by                                                     |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| pnpm monorepo with strict TypeScript                                                                       | `pnpm typecheck`                                                |
+| MV3 manifest from typed source; minimal permissions; strict CSP                                            | `manifest.test.ts`, Chrome (Muhaid)                             |
+| Service worker, typed message router, per-tab session cache                                                | `router.test.ts`, e2e                                           |
+| Side panel navigation, error boundary, loading/empty/error states                                          | `sidepanel.test.tsx`, e2e                                       |
+| Settings (theme, AI consent off by default, analysis caching, match weights totalling 100)                 | `sidepanel.test.tsx`, e2e                                       |
+| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, Chrome on Indeed (Muhaid)  |
+| CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
+
+## Test results (2026-10-14, v0.2.0, local container, Node 22.22, Chromium 141)
+
+- `pnpm typecheck`: passes (6 projects)
+- `pnpm lint`: 0 errors, 0 warnings
 - `pnpm format:check`: passes
-- `pnpm test`: **112 passed** (extension 31, job-extraction 74, shared 7)
-- `pnpm test:coverage`: 83.5% statements, 77.4% branches, 82.5% functions, 86.3% lines
+- `pnpm test`: **210 passed** (extension 48, job-extraction 74, resume-parser 44, matching 30, shared 14)
+- `pnpm test:coverage`: 86.4% statements, 78.4% branches, 81.6% functions, 88.6% lines
 - `pnpm build`: passes
-- `pnpm test:e2e`: **6 passed** (1 screenshot-capture test skipped by default)
-- `pnpm audit --audit-level high`: no known vulnerabilities
+- `pnpm test:e2e`: **8 passed** (2 new: upload the real PDF and DOCX in the built extension, save, reload, analyze a job and see a score); screenshot test skipped by default
+- `pnpm audit --audit-level high`: passes. One **moderate** advisory (sprintf-js, via mammoth → argparse) is in mammoth's command-line tool only; it is not in the extension bundle (checked with `grep` on `dist`).
 
 ## Not yet verified
 
-- Loading the extension in desktop Google Chrome by hand (tested only in Playwright's Chromium 141). Guide and checklist: `docs/INSTALL-CHROME.md`.
-- The real side panel container: e2e tests open `sidepanel.html` as a tab because Playwright
-  cannot click the toolbar icon. `chrome.sidePanel.open()` on toolbar click is untested.
-- The Indeed adapter on live Indeed pages. It is tested against fixtures modeled on Indeed's
-  markup and in Chromium with the fixture served under Indeed's hostname; the environment that
-  builds the extension cannot reach indeed.com.
-- The Greenhouse adapter against live Greenhouse pages (tested against a fixture modeled on
-  public markup).
-- The GitHub Actions workflow (no repository exists yet).
+- Phase 2 in desktop Google Chrome by hand (checklist in `docs/INSTALL-CHROME.md`, section 6).
+- Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
+  layouts. Two-column PDFs, tables and image-only (scanned) PDFs are known weak spots (see below).
+- The real side panel container (e2e opens `sidepanel.html` as a tab).
+- The GitHub Actions workflow (no repository yet).
 
 ## Under development
 
-Nothing in progress.
+Nothing in progress. Waiting for Phase 2 approval.
 
 ## Known bugs and limitations
 
-- **Fixed in v0.1.1 (found in real-world testing on Indeed):** the analyzer showed the account
-  greeting ("Hello, …") as the job title, found no company, mixed company text into the location,
-  missed "From $20 an hour" pay and kept only one of "Part-time, Full-time". Causes: no Indeed
-  adapter, so the first `h1` on the page won; single-amount pay was not parsed; employment type
-  held one value. Fixes: an Indeed adapter scoped to the selected job, generic title and location
-  lookups that skip site headers and greetings, single-amount pay parsing, and employment type as
-  a list. Covered by `packages/job-extraction/test/indeed.test.ts`, a side panel test, and an e2e
-  test.
-
-- Fixed during this phase: Greenhouse-style markup on an unknown host produced no description
-  because generic selectors missed `job__description`. A low-confidence `[class*=description]`
-  selector and a densest-text fallback were added, with a regression test.
-- Lever, Workday, SmartRecruiters and Ashby are detected but have no adapter.
-- Skill vocabulary is fixed (53 entries).
-- Analysis needs a toolbar click on each tab (by design: no broad host permissions).
+- **Fixed during Phase 2:** the profile editor showed an empty form after reopening the side
+  panel, because a state updater read a "has unsaved edits" flag after it had changed. Found by
+  the new e2e test, fixed, and covered by a regression test.
+- Scanned (image-only) PDFs are rejected with an explanation; there is no OCR.
+- Two-column PDF layouts can interleave lines from both columns. The review screen is where the
+  user corrects this.
+- Old `.doc` files are not supported (the message suggests saving as `.docx` or PDF).
+- The resume parser recognises English section headings only.
+- When neither part of a job header names a role ("Blue Harbor | Northwind"), the first part is
+  taken as the role and a warning asks the user to check it.
+- Skill matching uses the shared 53-entry vocabulary plus exact names the user typed; niche tools
+  outside it are matched only by name.
+- Year-only dates count as little experience as possible (2022–2023 counts as two months) so the
+  score never inflates experience. Adding months gives an accurate number.
+- Location is compared only when you list preferred locations; where you live is not treated as
+  a preference.
+- Lever, Workday, SmartRecruiters and Ashby still use generic extraction.
 
 ## Next recommended steps
 
-1. **Phase 2:** profile schema and editor (React Hook Form + Zod), IndexedDB repository,
-   resume upload with PDF (pdf.js) and DOCX (mammoth) parsing reviewed before saving, resume
-   versions, deterministic explainable match score using the configured weights, Lever adapter.
-2. **Phase 3:** local API service with a provider-agnostic Claude client, prompt versioning,
-   schema-validated outputs, tailoring, cover letters and screening answers.
-3. **Phase 4:** field classification, autofill preview and approval, mock application forms.
-4. **Phase 5:** application tracker, analytics, CSV export, follow-ups.
-5. **Phase 6:** CDK stacks for API Gateway, Lambda, DynamoDB, Cognito, CloudWatch with cost
-   estimate. No deployment without approval.
+1. **Muhaid:** test v0.2.0 in Chrome with your own resume and approve Phase 2 (or report issues).
+2. **Phase 3:** server-side Claude integration with prompt versioning and schema-validated
+   outputs; AI-assisted resume tailoring and cover letters grounded only in the saved profile;
+   optional AI fallback for resumes the deterministic parser struggles with (off unless
+   **Allow AI processing** is on).
+3. **Phase 4:** autofill preview and per-field approval.
+4. **Phase 5:** application tracker and analytics.
+5. **Phase 6:** AWS CDK stacks with a cost estimate. No deployment without approval.
 6. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -22,12 +24,31 @@ function manifestPlugin(): Plugin {
 }
 
 /**
+ * Ships pdf.js's worker as a file at the extension root. The resume parser
+ * points pdf.js at it with chrome.runtime.getURL, which satisfies the
+ * extension's script-src 'self' policy (no blob: or remote workers).
+ */
+function pdfWorkerPlugin(): Plugin {
+  const require = createRequire(import.meta.url);
+  return {
+    name: 'applypilot-pdf-worker',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'pdf.worker.min.mjs',
+        source: readFileSync(require.resolve('pdfjs-dist/legacy/build/pdf.worker.min.mjs')),
+      });
+    },
+  };
+}
+
+/**
  * Extension pages (side panel, options) and the module service worker.
  * The content script is built separately as a single classic script
  * (see vite.content.config.ts) because injected scripts cannot import chunks.
  */
 export default defineConfig({
-  plugins: [react(), tailwindcss(), manifestPlugin()],
+  plugins: [react(), tailwindcss(), manifestPlugin(), pdfWorkerPlugin()],
   base: '',
   build: {
     outDir,

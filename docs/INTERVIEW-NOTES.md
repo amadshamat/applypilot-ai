@@ -39,3 +39,36 @@ Concepts you should be able to explain from this phase, with where they live in 
 - Set up a pnpm monorepo with strict TypeScript, type-aware ESLint, 83 Vitest tests and 5
   Playwright end-to-end tests that load the built extension into Chromium, plus a GitHub Actions
   pipeline with dependency auditing.
+
+# Interview notes: Phase 2
+
+## Concepts
+
+1. **Parsing untrusted documents locally.** pdf.js text items carry positions, so lines are
+   rebuilt from y coordinates and gaps (`packages/resume-parser/src/files.ts`); DOCX goes
+   through mammoth's HTML so Word list items become bullets.
+2. **Extension CSP and workers.** Why the pdf.js worker is a packaged file loaded by
+   `chrome.runtime.getURL`, and why WASM is turned off (DECISIONS 019).
+3. **Rule-based parsing with honest uncertainty.** Section headings, date ranges, role keywords;
+   ambiguous cases become warnings, and a test checks every parsed value exists in the source.
+4. **Human-in-the-loop data entry.** Parsed output is a draft; the user reviews, corrects and
+   chooses merge or replace (DECISIONS 020).
+5. **Storage choices.** chrome.storage for small, synced-across-pages state; IndexedDB for
+   binary files; validation on write, corruption reported rather than repaired silently.
+6. **Explainable scoring.** Weighted average over known components only, coverage reporting,
+   evidence per skill, partial credit for related skills (DECISIONS 022, 023).
+7. **Interval merging.** Total experience from overlapping date ranges (`experience.ts`).
+8. **Property-style tests.** Determinism, monotonicity (adding a skill never lowers the score),
+   and "unknown never counts as a match".
+9. **A real bug found by e2e.** A React state updater read a ref after an effect had changed it,
+   so a reopened profile looked empty; fixed by reading the ref before calling the updater.
+
+## Resume bullets (only what is built and verified)
+
+- Built on-device resume parsing for PDF (pdf.js) and DOCX (mammoth) in a Manifest V3 extension,
+  turning resumes into an editable, schema-validated profile that the user reviews before saving.
+- Designed an explainable job-match engine that scores a profile against extracted job
+  requirements, cites the profile entry behind every matched skill, and excludes requirements a
+  posting does not state instead of guessing.
+- Grew the test suite to 210 Vitest tests and 8 Playwright tests, including end-to-end upload of
+  real PDF and DOCX files inside the built extension.

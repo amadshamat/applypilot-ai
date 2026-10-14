@@ -36,5 +36,33 @@ test('capture side panel screenshots', async () => {
   await panel.getByRole('tab', { name: 'Settings' }).click();
   await panel.getByLabel('Theme').waitFor();
   await panel.screenshot({ path: `${OUT}/sidepanel-settings.png`, fullPage: true });
+
+  // Phase 2: resume review, profile and match.
+  await panel.getByRole('tab', { name: 'Profile' }).click();
+  await panel.screenshot({ path: `${OUT}/profile-empty.png` });
+  await panel.getByRole('button', { name: 'Upload a resume' }).click();
+  await panel
+    .getByLabel('Choose a file')
+    .setInputFiles(resolve(import.meta.dirname, '../fixtures/resumes/sample-resume.pdf'));
+  await panel.getByRole('heading', { name: /^Review/ }).waitFor();
+  await panel.screenshot({ path: `${OUT}/resume-review.png`, fullPage: true });
+  await panel.getByRole('button', { name: 'Save to profile' }).click();
+  await panel.getByText('Your profile was saved from this resume.').waitFor();
+  await panel.getByRole('button', { name: 'Edit Cloud Engineering Intern' }).click();
+  await panel.screenshot({ path: `${OUT}/profile-editor.png`, fullPage: true });
+
+  const cloudJob = await context.newPage();
+  await cloudJob.goto(`${FIXTURES}/jobs/json-ld-cloud-intern.html`);
+  await cloudJob.bringToFront();
+  await panel.getByRole('tab', { name: 'Analyze' }).click();
+  await panel.getByRole('button', { name: /Analyze this page|Re-analyze/ }).click();
+  await panel.getByLabel(/Match score \d+ out of 100/).waitFor();
+  await panel
+    .getByRole('region', { name: 'Match score' })
+    .screenshot({ path: `${OUT}/match-light.png` });
+  await panel.emulateMedia({ colorScheme: 'dark' });
+  await panel
+    .getByRole('region', { name: 'Match score' })
+    .screenshot({ path: `${OUT}/match-dark.png` });
   await context.close();
 });

@@ -7,14 +7,22 @@ import { useServices } from '../../services/app-services';
 
 /** Export and deletion of everything ApplyPilot stores in this browser. */
 export function DataControls() {
-  const { localStore, settings } = useServices();
+  const { localStore, settings, resumes } = useServices();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const exportData = async () => {
     const data = await localStore.getAll();
+    // Resume metadata, extracted text and parsed drafts. Original files stay downloadable from the Profile tab.
+    const resumeVersions = await resumes.list();
     const blob = new Blob(
-      [JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 2)],
+      [
+        JSON.stringify(
+          { exportedAt: new Date().toISOString(), data, resumes: resumeVersions },
+          null,
+          2,
+        ),
+      ],
       {
         type: 'application/json',
       },
@@ -30,9 +38,12 @@ export function DataControls() {
 
   const deleteData = async () => {
     await localStore.clear();
+    await resumes.clear();
     await settings.save(DEFAULT_SETTINGS);
     setConfirming(false);
-    setMessage('All local ApplyPilot data was deleted. Settings are back to defaults.');
+    setMessage(
+      'All local ApplyPilot data, including your profile and resumes, was deleted. Settings are back to defaults.',
+    );
   };
 
   return (
@@ -71,7 +82,8 @@ export function DataControls() {
       </div>
       {confirming ? (
         <p className="text-xs text-danger">
-          This permanently removes your settings and saved data from this browser.
+          This permanently removes your profile, uploaded resumes, settings and saved data from this
+          browser.
         </p>
       ) : null}
       {message ? (

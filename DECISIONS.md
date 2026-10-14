@@ -110,3 +110,56 @@ unambiguous symbol. Elsewhere a bare "$" still leaves the currency unknown.
 Each analysis injects the content script again. The new copy removes the previous listener
 before adding its own, so a tab keeps working after the extension is updated and never answers
 twice.
+
+## 018: Resumes are parsed on the device, deterministically
+
+PDF text comes from pdf.js and DOCX from mammoth, both inside the extension; a rule-based parser
+turns the text into a draft. Nothing leaves the browser, the result is the same every time, and
+every value can be traced to a line in the resume (a test checks that the parser never produces
+text that is not in the source). An AI fallback for hard layouts belongs to Phase 3 and will be
+opt-in.
+
+## 019: pdf.js legacy build, worker shipped as a file, WASM off
+
+The legacy build supports Chrome 116 (the manifest minimum). The worker is copied to the
+extension root and loaded by `chrome.runtime.getURL`, which the `script-src 'self'` policy
+allows; blob or remote workers would need a weaker CSP. WASM image decoders are disabled because
+they would need `'wasm-unsafe-eval'`, and resumes only need text.
+
+## 020: A parsed resume is a draft until the user saves it
+
+Uploading stores the file and its parsed draft as a resume version but never touches the
+profile. The review screen offers "Add what's new" (de-duplicated merge that never overwrites a
+field the user filled in) or "Replace my profile" (keeps job preferences).
+
+## 021: Profile in chrome.storage.local, resume files in IndexedDB
+
+The profile is small structured data that every extension page reads and subscribes to, which
+chrome.storage does well. Original files are binary and up to 5 MB each, so they go to
+IndexedDB, stored as ArrayBuffers (clonable everywhere, including the test fake).
+
+## 022: Unknown parts of a match are excluded, not scored as zero
+
+If a posting states no years of experience, that 25% of the weight is removed from both sides of
+the average and the card reports the coverage. Scoring it as 0 would punish the user for the
+posting's silence; scoring it as 100 would flatter them. A score is shown only when something
+could be compared.
+
+## 023: Skill credit follows evidence, with half credit for related skills
+
+A skill counts only when a profile entry shows it, and the card names the entry. A more
+specific skill satisfies a general one (AWS Lambda is AWS); a sibling earns half credit and is
+labelled "related", never "matched". Requirement lines with "one of" or an "or" after the first
+skill are treated as alternatives.
+
+## 024: Suggestions only point at facts the profile already holds
+
+Suggestions may tell the user to surface, reorder or explain what they already have, and to add
+real numbers if they know them. Missing skills are shown as "Not in your profile" with "add these
+only if you genuinely have them". No suggestion proposes a skill, number or wording the user has
+not stated.
+
+## 025: Year-only dates are read conservatively
+
+"2022 – 2023" could mean two months or two years. Counting from December to January means the
+experience total can be too low but never too high, and the editor encourages month precision.

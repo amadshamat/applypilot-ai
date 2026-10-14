@@ -8,6 +8,7 @@ import { test as base, chromium, expect, type BrowserContext, type Page } from '
  */
 const EXTENSION_PATH = resolve(import.meta.dirname, '../../apps/extension/dist-e2e');
 const FIXTURES = `http://127.0.0.1:${process.env.FIXTURE_PORT ?? 4173}`;
+const RESUMES = resolve(import.meta.dirname, '../fixtures/resumes');
 
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // eslint-disable-next-line no-empty-pattern
@@ -42,7 +43,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.1.1' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.2.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -52,8 +53,10 @@ test('service worker starts and answers typed messages', async ({ context, exten
 test('side panel renders and navigates', async ({ context, extensionId }) => {
   const panel = await openPanel(context, extensionId);
   await expect(panel.getByRole('tab')).toHaveCount(6);
-  await panel.getByRole('tab', { name: 'Resume' }).click();
+  await panel.getByRole('tab', { name: 'Applications' }).click();
   await expect(panel.getByRole('tabpanel')).toContainText('Not built yet');
+  await panel.getByRole('tab', { name: 'Profile' }).click();
+  await expect(panel.getByRole('heading', { name: 'Your profile' })).toBeVisible();
   await panel.getByRole('tab', { name: 'Settings' }).click();
   await expect(panel.getByRole('switch', { name: 'Allow AI processing' })).toHaveAttribute(
     'aria-checked',
@@ -118,3 +121,40 @@ test('asks for a toolbar click on pages it has no access to', async ({ context, 
   await panel.getByRole('button', { name: 'Analyze this page' }).click();
   await expect(panel.getByRole('alert')).toContainText('Permission needed for this page');
 });
+
+for (const file of ['sample-resume.pdf', 'sample-resume.docx']) {
+  test(`parses ${file} in the extension, saves it, and scores a job`, async ({
+    context,
+    extensionId,
+  }) => {
+    const panel = await openPanel(context, extensionId);
+    await panel.getByRole('tab', { name: 'Profile' }).click();
+    await panel.getByRole('button', { name: 'Upload a resume' }).click();
+    // Real pdf.js worker / mammoth, running under the extension's CSP.
+    await panel.getByLabel('Choose a file').setInputFiles(resolve(RESUMES, file));
+
+    await expect(panel.getByRole('heading', { name: `Review ${file}` })).toBeVisible();
+    await expect(panel.getByLabel('Full name')).toHaveValue('Jordan Rivera');
+    await expect(panel.getByRole('region', { name: 'Experience' })).toContainText(
+      'Cloud Engineering Intern',
+    );
+    await panel.getByRole('button', { name: 'Save to profile' }).click();
+    await expect(panel.getByText('Your profile was saved from this resume.')).toBeVisible();
+
+    // The profile survives a reload (chrome.storage.local + IndexedDB).
+    await panel.reload();
+    await panel.getByRole('tab', { name: 'Profile' }).click();
+    await expect(panel.getByLabel('Full name')).toHaveValue('Jordan Rivera');
+    await panel.getByRole('button', { name: 'Resumes' }).click();
+    await expect(panel.getByRole('region', { name: 'Saved resumes' })).toContainText(file);
+
+    const job = await context.newPage();
+    await job.goto(`${FIXTURES}/jobs/json-ld-cloud-intern.html`);
+    await job.bringToFront();
+    await panel.getByRole('tab', { name: 'Analyze' }).click();
+    await panel.getByRole('button', { name: 'Analyze this page' }).click();
+    const match = panel.getByRole('region', { name: 'Match score' });
+    await expect(match.getByLabel(/Match score \d+ out of 100/)).toBeVisible();
+    await expect(match).toContainText('Matching qualifications');
+  });
+}

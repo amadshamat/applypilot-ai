@@ -1,6 +1,6 @@
 {
   "name": "@applypilot/extension",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "ApplyPilot AI Chrome extension (Manifest V3).",
@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "@applypilot/job-extraction": "workspace:*",
+    "@applypilot/matching": "workspace:*",
+    "@applypilot/resume-parser": "workspace:*",
     "@applypilot/shared": "workspace:*",
     "@hookform/resolvers": "5.9.1",
     "clsx": "2.1.1",
     "lucide-react": "1.56.0",
+    "pdfjs-dist": "6.4.299",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "7.90.0",

@@ -1,9 +1,9 @@
 import {
   Bot,
-  FileText,
   ListChecks,
   ScanSearch,
   Settings,
+  UserRound,
   Wand2,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,7 +21,7 @@ export interface ViewDefinition {
 export const VIEWS: readonly ViewDefinition[] = [
   { id: 'analyze', label: 'Analyze', icon: ScanSearch },
   { id: 'autofill', label: 'Autofill', icon: Wand2 },
-  { id: 'resume', label: 'Resume', icon: FileText },
+  { id: 'resume', label: 'Profile', icon: UserRound },
   { id: 'applications', label: 'Applications', shortLabel: 'Tracker', icon: ListChecks },
   { id: 'copilot', label: 'AI Copilot', shortLabel: 'Copilot', icon: Bot },
   { id: 'settings', label: 'Settings', icon: Settings },

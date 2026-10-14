@@ -13,8 +13,8 @@ export interface Line {
 export function toLines(text: string): Line[] {
   return text
     .replace(/\r\n?/g, '\n')
-    .replace(/[   ]/g, ' ')
-    .replace(/[​﻿]/g, '')
+    .replace(/[\u00a0\u2007\u202f]/g, ' ')
+    .replace(/[\u200b\ufeff]/g, '')
     .split('\n')
     .map((raw) => {
       const bullet = BULLET_PREFIX.test(raw);

@@ -166,18 +166,19 @@ export function matchJob(
   const requirements = jobRequirements(job);
   const requiredSkills = requirements.required.map((r) => matchRequirement(r, evidence));
   const preferredSkills = requirements.preferred.map((r) => matchRequirement(r, evidence));
+  // Matched skills are shown with their evidence elsewhere; strengths and gaps summarise.
+  const matchedRequired = requiredSkills.filter((m) => m.status === 'matched');
+  if (requiredSkills.length > 0 && matchedRequired.length === requiredSkills.length) {
+    strengths.push('You show every required skill the posting lists');
+  }
   for (const match of requiredSkills) {
-    if (match.status === 'matched')
-      strengths.push(`${match.skill} (required): ${match.evidence[0] ?? ''}`);
-    else if (match.status === 'related')
+    if (match.status === 'related') {
       gaps.push(
         `${match.skill} is required; you show related ${match.relatedVia ?? ''} experience`,
       );
-    else gaps.push(`${match.skill} is required and not in your profile`);
-  }
-  for (const match of preferredSkills) {
-    if (match.status === 'matched')
-      strengths.push(`${match.skill} (preferred): ${match.evidence[0] ?? ''}`);
+    } else if (match.status === 'missing') {
+      gaps.push(`${match.skill} is required and not in your profile`);
+    }
   }
 
   // Experience
@@ -225,12 +226,12 @@ export function matchJob(
         educationScore = 0.8;
         gaps.push('Your degree is still in progress; the posting may expect it completed');
       } else {
-        educationScore = rank(best.level) === rank(needed ?? best.level) - 1 ? 0.5 : 0.25;
-        gaps.push(`Asks for a ${needed ?? 'higher'} degree; your highest is ${best.level}`);
+        educationScore = rank(best.level) === rank(needed) - 1 ? 0.5 : 0.25;
+        gaps.push(`Asks for a ${needed} degree; your highest is ${best.level}`);
       }
       educationDetail = meetsLevel
         ? `Your ${best.entry.degree || best.level}${best.entry.current ? ' (in progress)' : ''} meets the ${needed ?? 'student'} requirement.`
-        : `The posting asks for a ${needed ?? ''} degree; your highest is ${best.level}.`;
+        : `The posting asks for a ${needed} degree; your highest is ${best.level}.`;
     }
   } else if (educationLines.length > 0) {
     educationDetail =

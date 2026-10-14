@@ -66,8 +66,21 @@ sequenceDiagram
   including replies from the content script, which runs inside an untrusted page.
 - **Storage:** settings in `chrome.storage.local` behind `SettingsRepository`, which repairs
   corrupt data field by field; per-tab analyses in `chrome.storage.session`, cleared on
-  navigation and tab close. IndexedDB is planned for larger structured data (profiles, resume
-  versions, applications) in Phases 2 and 5.
+  navigation and tab close; the profile in `chrome.storage.local` behind `ProfileRepository`
+  (validated on write, corrupt data reported rather than repaired); uploaded resume files and
+  their parsed drafts in IndexedDB behind `ResumeStore`. Applications will use IndexedDB in
+  Phase 5.
+
+## Resume parsing and matching (Phase 2)
+
+- `packages/resume-parser`: `extractResumeText` reads PDF (pdf.js legacy build, worker shipped
+  as `pdf.worker.min.mjs`, WASM off) or DOCX (mammoth, via its HTML so list items stay bullets);
+  `parseResumeText` splits the text into sections and builds a `ParsedResume` (draft profile,
+  sections found, warnings); `mergeProfiles` applies a reviewed draft by merge or replace.
+- `packages/matching`: `matchJob(job, profile, weights)` is a pure function returning the score,
+  coverage, per-component breakdown, per-skill evidence, gaps, items to confirm and suggestions.
+- Both run in the side panel page. The service worker and content script are unchanged, so the
+  job extraction path from Phase 1 is untouched.
 
 ## Job extraction pipeline
 
