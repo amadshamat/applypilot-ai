@@ -1,0 +1,21 @@
+{
+  "name": "@applypilot/api",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Local ApplyPilot API: holds the Claude API key server-side and serves the extension's AI features.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "setup": "tsx src/setup.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
+    "@applypilot/ai-core": "workspace:*",
+    "@applypilot/shared": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

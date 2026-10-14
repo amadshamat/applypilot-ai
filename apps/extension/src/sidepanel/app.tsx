@@ -2,6 +2,7 @@ import { APP_NAME } from '@applypilot/shared';
 import { ErrorBoundary } from '../components/error-boundary';
 import { useSettings } from '../hooks/use-settings';
 import { useTheme } from '../hooks/use-theme';
+import { AiView } from '../features/ai/ai-view';
 import { AnalyzeView } from '../features/analyze/analyze-view';
 import { NavBar } from '../features/navigation/nav-bar';
 import { useNavigation } from '../features/navigation/store';
@@ -16,6 +17,8 @@ function CurrentView({ view }: { view: ViewId }) {
       return <AnalyzeView />;
     case 'resume':
       return <ProfileView />;
+    case 'tailor':
+      return <AiView />;
     case 'settings':
       return <SettingsView />;
     default:

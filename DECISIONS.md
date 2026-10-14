@@ -163,3 +163,75 @@ not stated.
 
 "2022 – 2023" could mean two months or two years. Counting from December to January means the
 experience total can be too low but never too high, and the editor encourages month precision.
+
+## 026: Claude is called from a local API, not from the extension
+
+Anything shipped in an extension can be read by anyone who installs it, so a Claude API key in
+the bundle would be a leaked key. Phase 3 adds `services/api`, a small Node service on
+127.0.0.1 that holds the key in a git-ignored `.env`. The extension holds only a random access
+token for it. The AWS backend is Phase 6 and needs approval; a local service gives the same
+security property now at no cost, and its handler is written to move into Lambda unchanged.
+
+## 027: Free mock mode by default; paid calls need two explicit settings
+
+`APPLYPILOT_PROVIDER` defaults to `mock`, and `anthropic` is refused unless a key is also set.
+Setting only a key does nothing. The mock provider drafts by reordering and quoting the user's
+own text, so it can never invent anything, and it lets the whole flow (and e2e tests) run
+offline. Every draft records which provider produced it, and the UI labels mock drafts.
+
+## 028: Claude Opus 5.5 with structured outputs, adaptive thinking, medium effort and fallbacks
+
+Default model `claude-opus-5-5`. Output is constrained to each task's schema with
+`output_config.format` and parsed by the SDK, which removes free-text parsing. Thinking is
+adaptive (the only mode this model supports) with `effort: medium` as a cost/quality balance,
+configurable with `APPLYPILOT_EFFORT`. Server-side `fallbacks: "default"` (beta
+`server-side-fallback-2026-07-01`) retries a classifier-declined request on Anthropic's
+recommended fallback model inside the same call; the response's `model` is recorded so the user
+can see which model answered, and cost is shown only for models with a known price.
+`stop_reason` is checked for `refusal` and `max_tokens` before any output is read.
+
+## 029: The extension re-checks every draft against the profile (grounding)
+
+The prompt asks for truthfulness; code verifies it. Rewritten bullets must cite the original
+bullets they come from, or they are removed. Unknown entries and skills outside the user's list
+are removed. Numbers and known skills that the source does not contain are flagged on the exact
+bullet or paragraph. The check runs in the extension against the profile stored there, so it
+does not depend on trusting the server, and it runs again whenever a saved draft is shown.
+
+## 030: Only the data each task needs is sent, with short refs instead of ids
+
+Contact details, links, GPA, preferences and salary are never sent; the name is included only
+for cover letters. Profile entries are labelled `E1`, `P2` and so on: short refs are easier for
+the model to cite correctly than UUIDs, and storage ids stay in the browser. The user can see
+the exact JSON before sending.
+
+## 031: Sensitive screening questions never reach the model
+
+A local classifier marks questions about work authorization, criminal history, age,
+demographics and legal attestations as sensitive, and pay, availability, relocation, references
+and contact details as personal. Both are left to the user and are not sent. The API applies the
+same rules again and answers without calling Claude if nothing is left. The classifier errs
+toward "you answer"; a false positive costs the user a minute, a false negative could misstate
+their legal status.
+
+## 032: The local API is hardened like a public one
+
+A localhost port is reachable from any web page the user visits. The server binds to 127.0.0.1,
+rejects Host headers other than localhost (DNS rebinding), allows only `chrome-extension://`
+origins, requires a bearer token compared in constant time, caps bodies at 300 KB and limits
+generation requests per day. Host access to 127.0.0.1 is an optional extension permission,
+requested only from the Connect click.
+
+## 033: Drafts are saved per job and task, with the request that produced them
+
+Closing the side panel should not lose a draft or cost another request. The latest draft of each
+task for each job (keyed by page URL without fragment, at most 30) is stored in
+`chrome.storage.local` together with its request, so it can be re-validated and re-reviewed when
+shown. Edits in the text boxes are not saved; users copy or download the final text.
+
+## 034: Prompts are versioned and kept free of per-request content
+
+Each task has one system prompt with a version string stored on every draft, so a change in
+output can be traced to a prompt change. Request data goes only in the user message (profile as
+JSON, posting fenced as untrusted), which keeps the system prompt identical across requests, so
+prompt caching can be turned on later without restructuring.

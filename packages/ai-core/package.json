@@ -1,0 +1,17 @@
+{
+  "name": "@applypilot/ai-core",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Contracts, prompts, privacy filtering and grounding checks for ApplyPilot's AI features.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/shared": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

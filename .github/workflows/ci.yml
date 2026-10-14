@@ -29,6 +29,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm test:coverage
       - run: pnpm build
+      - run: pnpm check:bundle
       - uses: actions/upload-artifact@v4
         with:
           name: extension-dist

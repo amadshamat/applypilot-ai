@@ -91,9 +91,9 @@ export function SettingsForm({
                   Allow AI processing
                 </label>
                 <p id={`${id}-ai-help`} className="text-xs text-muted">
-                  Off by default. When AI features arrive (Phase 3), job text and the profile
-                  details you choose will be sent to the ApplyPilot server only while this is on.
-                  Phase 1 never sends data anywhere.
+                  Off by default. While on, the AI Tailor tools can send the job text and the
+                  profile details listed under "What will be sent" to the ApplyPilot API you connect
+                  below, and only when you press Generate. Contact details are never sent.
                 </p>
               </div>
               <Switch

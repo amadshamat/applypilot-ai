@@ -1,17 +1,36 @@
 # Progress
 
-_Last updated: 2026-10-14 (v0.2.0)_
+_Last updated: 2026-10-14 (v0.3.0)_
 
 ## Current phase
 
-**Phase 2 (Profile, resume parsing and matching): built and tested here, waiting for Muhaid's
-manual test in Chrome.** Phase 3 will not start until Phase 2 is approved.
+**Phase 3 (Claude integration, tailoring, cover letters, screening drafts): built and tested
+here, waiting for Muhaid's manual test in Chrome.** Phase 4 will not start until Phase 3 is
+approved. No real (paid) Claude request has been made; see "Not yet verified".
 
-Phase 1 (Foundation) and the v0.1.1 Indeed fix are complete and were confirmed in Chrome.
+Phase 2 was approved by Muhaid on 2026-10-14 after manual testing in Google Chrome (resume
+upload, profile management, persistence, job matching and suggestions). Phase 1 and the
+v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
 
-### Phase 2 (v0.2.0)
+### Phase 3 (v0.3.0)
+
+| Feature                                                                                                                                                                                                                                   | Verified by                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Local ApplyPilot API (`services/api`) on 127.0.0.1 holding the Claude key in a git-ignored `.env`; `pnpm api:setup` creates a random access token; free mock mode by default                                                              | `config.test.ts`, manual run with `curl`                                |
+| API security: bearer token (constant-time), localhost-only Host header, `chrome-extension://` origins only, CORS and Private Network Access preflights, 300 KB body cap, daily limit, content-free logs                                   | `app.test.ts`, `http.test.ts` (real HTTP server)                        |
+| Claude provider: official SDK, `claude-opus-5-5`, structured outputs from Zod schemas, adaptive thinking, effort `medium`, server-side `fallbacks: "default"`, refusal and `max_tokens` handling, typed errors, token and cost accounting | `anthropic.test.ts` (real SDK against a local fake of the Messages API) |
+| Versioned prompts; job text fenced as untrusted data with fence-escape removal                                                                                                                                                            | `ai-core.test.ts`                                                       |
+| Data minimisation: no contact details, links, GPA, preferences or salary; name only for cover letters; short refs instead of storage ids; exact JSON preview before sending                                                               | `ai-core.test.ts`, `test/ai.test.tsx`                                   |
+| Grounding review of every draft: untraceable bullets, entries and skills removed; new numbers and skills flagged per bullet or paragraph                                                                                                  | `ai-core.test.ts`, `test/ai.test.tsx`                                   |
+| Screening question classifier: legal, eligibility, demographic, attestation, pay, availability, relocation, references and contact questions are never sent (checked in the extension and again in the API)                               | `ai-core.test.ts`, `app.test.ts`, `test/ai.test.tsx`                    |
+| AI Tailor view: consent gate, connection gate, profile and job gates; resume tailoring, cover letter (tone, length, notes, editable), screening drafts (editable, per-question badges); copy and download                                 | `test/ai.test.tsx`, e2e                                                 |
+| Settings → AI connection: optional host permission requested on Connect, token saved, health check showing mock or Claude and today's usage                                                                                               | `test/ai.test.tsx`, e2e                                                 |
+| Latest draft per task and job saved locally (max 30), validated and re-reviewed when shown; discard; included in export (token excluded) and in delete-all                                                                                | `ai-drafts-repository.test.ts`, `test/ai.test.tsx`, e2e                 |
+| `pnpm check:bundle`: fails if an API key, `x-api-key`, the SDK or `api.anthropic.com` appears in the extension build                                                                                                                      | Run on the release build; confirmed it fails on a planted fake key      |
+
+### Phase 2 (v0.2.0, approved in Chrome 2026-10-14)
 
 | Feature                                                                                                                                                                                                                                                           | Verified by                                                                              |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -42,20 +61,27 @@ Phase 1 (Foundation) and the v0.1.1 Indeed fix are complete and were confirmed i
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, Chrome on Indeed (Muhaid)  |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-14, v0.2.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-14, v0.3.0, local container, Node 22.22, Chromium 141)
 
-- `pnpm typecheck`: passes (6 projects)
-- `pnpm lint`: 0 errors, 0 warnings
-- `pnpm format:check`: passes
-- `pnpm test`: **210 passed** (extension 48, job-extraction 74, resume-parser 44, matching 30, shared 14)
-- `pnpm test:coverage`: 86.4% statements, 78.4% branches, 81.6% functions, 88.6% lines
-- `pnpm build`: passes
-- `pnpm test:e2e`: **8 passed** (2 new: upload the real PDF and DOCX in the built extension, save, reload, analyze a job and see a score); screenshot test skipped by default
-- `pnpm audit --audit-level high`: passes. One **moderate** advisory (sprintf-js, via mammoth → argparse) is in mammoth's command-line tool only; it is not in the extension bundle (checked with `grep` on `dist`).
+- `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
+- `pnpm test`: **328 passed** (extension 81, job-extraction 74, resume-parser 44, ai-core 43,
+  api 42, matching 30, shared 14)
+- `pnpm test:coverage`: 87.4% statements, 78.8% branches, 84.2% functions, 89.1% lines
+- `pnpm test:e2e`: **9 passed**, including the new AI flow: upload a resume, analyze a job, give
+  consent, connect to the real local API (mock mode), generate a tailored resume, cover letter
+  and screening answer, reload and see the saved draft. Screenshot test skipped by default.
+- `pnpm audit --audit-level high`: passes. One **moderate** advisory (sprintf-js, via mammoth →
+  argparse) is in mammoth's command-line tool only and not in the extension bundle.
 
 ## Not yet verified
 
-- Phase 2 in desktop Google Chrome by hand (checklist in `docs/INSTALL-CHROME.md`, section 6).
+- **A real Claude request.** No paid call has been made. The request shape is verified against
+  the real SDK and a fake API, but output quality, latency and actual cost per draft need
+  Muhaid's own key and approval.
+- Phase 3 in desktop Google Chrome by hand, including Chrome's permission prompt for
+  127.0.0.1 (checklist in `docs/INSTALL-CHROME.md`, section 7).
+- Running the local API on Windows or macOS (tested on Linux).
+
 - Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
   layouts. Two-column PDFs, tables and image-only (scanned) PDFs are known weak spots (see below).
 - The real side panel container (e2e opens `sidepanel.html` as a tab).
@@ -63,13 +89,20 @@ Phase 1 (Foundation) and the v0.1.1 Indeed fix are complete and were confirmed i
 
 ## Under development
 
-Nothing in progress. Waiting for Phase 2 approval.
+Nothing in progress. Waiting for Phase 3 approval.
 
 ## Known bugs and limitations
 
 - **Fixed during Phase 2:** the profile editor showed an empty form after reopening the side
   panel, because a state updater read a "has unsaved edits" flag after it had changed. Found by
   the new e2e test, fixed, and covered by a regression test.
+- AI drafts need the local API running on the same computer; there is no hosted service yet.
+- Grounding catches new numbers and known skills, not every invented claim (for example numbers
+  written as words, or a vague claim with neither). Every draft is shown for review.
+- Text edited in the draft boxes is not saved; copy or download it.
+- The screening classifier is keyword-based and errs toward "you answer"; it can mark a harmless
+  question as one to answer yourself.
+- Mock mode only reorders and quotes your text; it is for testing the flow, not for real drafts.
 - Scanned (image-only) PDFs are rejected with an explanation; there is no OCR.
 - Two-column PDF layouts can interleave lines from both columns. The review screen is where the
   user corrects this.
@@ -87,12 +120,13 @@ Nothing in progress. Waiting for Phase 2 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** test v0.2.0 in Chrome with your own resume and approve Phase 2 (or report issues).
-2. **Phase 3:** server-side Claude integration with prompt versioning and schema-validated
-   outputs; AI-assisted resume tailoring and cover letters grounded only in the saved profile;
-   optional AI fallback for resumes the deterministic parser struggles with (off unless
-   **Allow AI processing** is on).
-3. **Phase 4:** autofill preview and per-field approval.
+1. **Muhaid:** test v0.3.0 in Chrome in mock mode (section 7 of the install guide), then decide
+   whether to try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft).
+2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser
+   struggles with; prompt caching once real usage shows repeated prefixes.
+3. **Phase 4:** autofill preview and per-field approval (will also read screening questions from
+   the form instead of pasting).
 4. **Phase 5:** application tracker and analytics.
-5. **Phase 6:** AWS CDK stacks with a cost estimate. No deployment without approval.
+5. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda). No
+   deployment without approval.
 6. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.

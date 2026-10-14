@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the Phase 1 build as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.3.0) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.2.0.zip` from the project files.
+Download `applypilot-ai-extension-0.3.0.zip` from the project files.
 
 ## 2. Extract
 
@@ -86,6 +86,51 @@ Use your own resume for these. Everything stays in your browser.
 Please send screenshots of anything that looks wrong, especially P3, with the part of the resume
 it came from (you can cover personal details).
 
+## 7. Phase 3 checklist: AI drafts
+
+The AI tools talk to the ApplyPilot API, a small program you run on your computer that keeps the
+Claude API key out of the browser. Start in **mock mode**: it is free, sends nothing anywhere, and
+tests the whole flow. Mock drafts reorder and quote your own text; they are not real rewrites.
+
+**Run the API (once per session).** You need Node.js 22 or newer
+([nodejs.org](https://nodejs.org)). In a terminal, in the `applypilot-ai` source folder from the
+project files:
+
+```bash
+corepack enable        # once, provides pnpm
+pnpm install           # once
+pnpm api:setup         # once: creates services/api/.env and prints your access token
+pnpm api               # starts the API; leave this window open
+```
+
+`pnpm api` prints "listening on http://127.0.0.1:8787" and "Provider: mock". Copy the token that
+`pnpm api:setup` printed (it is also the `APPLYPILOT_LOCAL_TOKEN` line in `services/api/.env`).
+
+| #   | Do this                                                                                                                                                                | Expected                                                                                                                                                                          |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | With your profile saved, analyze a job, then open the **AI Tailor** tab                                                                                                | "AI processing is off" with an explanation and **Allow AI processing**. Nothing has been sent                                                                                     |
+| A2  | Click **Allow AI processing**                                                                                                                                          | "Connect the ApplyPilot API" with **Open Settings**                                                                                                                               |
+| A3  | Settings → **AI connection**: keep `http://127.0.0.1:8787`, paste the token, **Save and test connection**                                                              | Chrome asks once to let ApplyPilot access 127.0.0.1; choose **Allow**. Then "Connected to ApplyPilot API 0.3.0" and "Mock mode: free drafts…"                                     |
+| A4  | Try a wrong token and test again                                                                                                                                       | "Not connected: Missing or wrong access token." Put the right token back                                                                                                          |
+| A5  | **AI Tailor** → **Resume**: open **What will be sent**, then **Show the exact data**                                                                                   | The job and your summary, roles, projects, education, certifications and skills. No email, phone, location, links, GPA or salary                                                  |
+| A6  | **Generate tailored resume**                                                                                                                                           | Your bullets, most relevant first, each with "Based on your original"; skills to feature; "The job asks for things your profile does not show". The `pnpm api` window logs a line |
+| A7  | **Copy** and paste into a document; try **Download .txt**                                                                                                              | Plain text resume sections; your saved profile is unchanged                                                                                                                       |
+| A8  | Close and reopen the side panel, analyze the same job, open **AI Tailor**                                                                                              | The draft is still there, marked "saved", and no new request is logged                                                                                                            |
+| A9  | **Cover letter**: choose a tone and length, type a note (for example why you like the company), **Generate**                                                           | An editable letter starting "Dear Hiring Manager," and ending with your name. Your note appears. You can edit and copy it                                                         |
+| A10 | **Questions**: paste "Why do you want this role?", "Describe a project you are proud of.", "Do you require visa sponsorship?" and "What is your gender?", one per line | The last two are marked **You answer** with the reason; the button says **Draft 2 answers**                                                                                       |
+| A11 | **Draft 2 answers**                                                                                                                                                    | Two editable drafts with "Add yourself:" notes. The two sensitive questions are not drafted and were never sent                                                                   |
+| A12 | Stop the API (Ctrl+C in its window), then **Generate again**                                                                                                           | "Could not reach the ApplyPilot API… Is it running?"                                                                                                                              |
+| A13 | Settings → turn **Allow AI processing** off and save; open AI Tailor                                                                                                   | Back to "AI processing is off"                                                                                                                                                    |
+| A14 | Settings → **Export data**                                                                                                                                             | The export includes your drafts; the token shows as "(not exported)"                                                                                                              |
+
+**Optional: real Claude drafts (costs money).** Only after you approve the cost: create an API
+key at [console.anthropic.com](https://console.anthropic.com), then in `services/api/.env` set
+`APPLYPILOT_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=<your key>`, and restart `pnpm api`. It
+should say "Provider: Claude (claude-opus-5-5, effort medium)". Each draft costs about
+$0.05–$0.25; the preview shows the upper bound first, and each draft shows its real cost. Check
+that the drafts read naturally, stay truthful, and that any "Check:" flags make sense. Never put
+the key anywhere in the extension.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them.
@@ -113,3 +158,8 @@ them. Before removing, use Settings → **Export data** if you want a copy.
 | Wrong or missing values on a real posting                   | Expected sometimes; only Greenhouse has a dedicated adapter. Send the page URL and a screenshot                    |
 | "Disable developer mode extensions" popup at Chrome startup | Normal for unpacked extensions; choose to keep it                                                                  |
 | After a new build                                           | See "Updating to a new build" above                                                                                |
+| "Could not reach the ApplyPilot API"                        | Start it with `pnpm api` in the source folder and keep the window open; check the address in Settings              |
+| "Missing or wrong access token"                             | Copy `APPLYPILOT_LOCAL_TOKEN` from `services/api/.env` into Settings → AI connection again                         |
+| `pnpm api` says "not configured"                            | Run `pnpm api:setup` first; it creates `services/api/.env`                                                         |
+| "The Claude API rejected the API key"                       | Check `ANTHROPIC_API_KEY` in `services/api/.env`, then restart `pnpm api`                                          |
+| "The daily limit … has been reached"                        | It resets at midnight, or raise `APPLYPILOT_DAILY_LIMIT` and restart                                               |

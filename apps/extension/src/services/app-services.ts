@@ -5,14 +5,23 @@ import {
   detectResumeType,
   extractResumeText,
 } from '@applypilot/resume-parser/files';
+import { AiConnectionRepository } from '../storage/ai-connection-repository';
+import { AiDraftsRepository } from '../storage/ai-drafts-repository';
 import { ProfileRepository } from '../storage/profile-repository';
 import { indexedDbResumeStore, type ResumeStore } from '../storage/resume-store';
 import { SettingsRepository } from '../storage/settings-repository';
 import { chromeStore, type KeyValueStore } from '../storage/storage-area';
+import { createAiClient, type AiClient } from './ai-client';
 import { sendToBackground } from './messaging';
 
 /** Reads the text out of an uploaded resume file. Swapped for a fake in tests. */
 export type ResumeTextReader = (file: File) => Promise<string>;
+
+/** Optional host permissions, requested at runtime from a user gesture. */
+export interface PermissionService {
+  contains(origin: string): Promise<boolean>;
+  request(origin: string): Promise<boolean>;
+}
 
 /**
  * Browser-facing dependencies for the React tree. Production wires Chrome APIs;
@@ -24,6 +33,10 @@ export interface AppServices {
   resumes: ResumeStore;
   readResumeText: ResumeTextReader;
   localStore: KeyValueStore;
+  aiConnection: AiConnectionRepository;
+  aiDrafts: AiDraftsRepository;
+  ai: AiClient;
+  permissions: PermissionService;
   send: <R extends BackgroundRequest>(request: R) => Promise<ResponseFor<R['type']>>;
   getActiveTabId: () => Promise<number | null>;
   openOptionsPage: () => void;
@@ -46,6 +59,13 @@ export function createChromeServices(): AppServices {
     resumes: indexedDbResumeStore(),
     readResumeText,
     localStore,
+    aiConnection: new AiConnectionRepository(localStore),
+    aiDrafts: new AiDraftsRepository(localStore),
+    ai: createAiClient(),
+    permissions: {
+      contains: (origin) => chrome.permissions.contains({ origins: [origin] }),
+      request: (origin) => chrome.permissions.request({ origins: [origin] }),
+    },
     send: (request) => sendToBackground(request),
     async getActiveTabId() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

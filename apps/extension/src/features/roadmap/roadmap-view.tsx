@@ -1,4 +1,4 @@
-import { Bot, ListChecks, Wand2, type LucideIcon } from 'lucide-react';
+import { ListChecks, Wand2, type LucideIcon } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 
@@ -10,7 +10,7 @@ interface PlannedFeature {
   points: string[];
 }
 
-const PLANNED: Record<'autofill' | 'applications' | 'copilot', PlannedFeature> = {
+const PLANNED: Record<'autofill' | 'applications', PlannedFeature> = {
   autofill: {
     icon: Wand2,
     title: 'Assisted autofill',
@@ -30,18 +30,6 @@ const PLANNED: Record<'autofill' | 'applications' | 'copilot', PlannedFeature> =
     summary:
       'Track every application from saved to offer, with follow-ups and analytics from your real data.',
     points: ['Status timeline and notes', 'Duplicate detection', 'CSV export'],
-  },
-  copilot: {
-    icon: Bot,
-    title: 'AI Copilot',
-    phase: 'Phase 3',
-    summary:
-      'Ask questions about a job and your profile. Grounded in your verified information only.',
-    points: [
-      'Off until you allow AI processing',
-      'Page content is treated as untrusted',
-      'No invented experience or metrics',
-    ],
   },
 };
 

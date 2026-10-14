@@ -1,6 +1,6 @@
 {
   "name": "@applypilot/extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "ApplyPilot AI Chrome extension (Manifest V3).",
@@ -11,6 +11,7 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@applypilot/ai-core": "workspace:*",
     "@applypilot/job-extraction": "workspace:*",
     "@applypilot/matching": "workspace:*",
     "@applypilot/resume-parser": "workspace:*",

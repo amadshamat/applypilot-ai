@@ -11,6 +11,8 @@
   "scripts": {
     "build": "pnpm -r --filter ./apps/** run build",
     "dev": "pnpm --filter @applypilot/extension run dev",
+    "api": "pnpm --filter @applypilot/api run start",
+    "api:setup": "pnpm --filter @applypilot/api run setup",
     "typecheck": "tsc -p tsconfig.json && pnpm -r run typecheck",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
@@ -20,7 +22,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "pnpm build:e2e && playwright test",
     "build:e2e": "APPLYPILOT_E2E=1 pnpm --filter @applypilot/extension run build",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build"
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm check:bundle",
+    "check:bundle": "node scripts/check-bundle.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

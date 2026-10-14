@@ -4,7 +4,7 @@ import { createManifest } from './manifest';
 describe('manifest', () => {
   const release = createManifest({ e2e: false });
 
-  it('requests only the permissions Phase 1 needs', () => {
+  it('requests only the permissions the features need', () => {
     expect([...(release.permissions ?? [])].sort()).toEqual([
       'activeTab',
       'scripting',
@@ -13,6 +13,10 @@ describe('manifest', () => {
     ]);
     expect(release.host_permissions).toBeUndefined();
     expect(release.content_scripts).toBeUndefined();
+  });
+
+  it('asks for local API access only as an optional permission', () => {
+    expect(release.optional_host_permissions).toEqual(['http://127.0.0.1/*', 'http://localhost/*']);
   });
 
   it('keeps a strict extension-page CSP with no remote or eval code', () => {

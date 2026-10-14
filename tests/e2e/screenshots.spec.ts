@@ -64,5 +64,31 @@ test('capture side panel screenshots', async () => {
   await panel
     .getByRole('region', { name: 'Match score' })
     .screenshot({ path: `${OUT}/match-dark.png` });
+
+  // Phase 3: AI drafts through the local API in mock mode (started by playwright.config.ts).
+  await panel.emulateMedia({ colorScheme: 'light' });
+  await panel.getByRole('tab', { name: 'AI Tailor' }).click();
+  await panel.getByRole('button', { name: 'Allow AI processing' }).click();
+  await panel.getByRole('button', { name: 'Open Settings' }).click();
+  await panel
+    .getByLabel('API address')
+    .fill(`http://127.0.0.1:${process.env.E2E_API_PORT ?? 8799}`);
+  await panel.getByLabel('Access token').fill('e2e-local-token-0123456789abcdef');
+  await panel.getByRole('button', { name: 'Save and test connection' }).click();
+  await panel.getByText('Connected to ApplyPilot API').waitFor();
+  await panel.screenshot({ path: `${OUT}/ai-connection.png`, fullPage: true });
+  await panel.getByRole('tab', { name: 'AI Tailor' }).click();
+  await panel.getByText('What will be sent').click();
+  await panel.screenshot({ path: `${OUT}/ai-preview.png`, fullPage: true });
+  await panel.getByRole('button', { name: 'Generate tailored resume' }).click();
+  await panel.getByText('Skills to feature').waitFor();
+  await panel.screenshot({ path: `${OUT}/ai-tailored-resume.png`, fullPage: true });
+  await panel.getByRole('button', { name: 'Questions' }).click();
+  await panel
+    .getByLabel('Questions')
+    .fill('Why do you want this internship?\nDo you require visa sponsorship?');
+  await panel.getByRole('button', { name: 'Draft 1 answer' }).click();
+  await panel.getByLabel('Draft answer (edit before you use it)').waitFor();
+  await panel.screenshot({ path: `${OUT}/ai-screening.png`, fullPage: true });
   await context.close();
 });

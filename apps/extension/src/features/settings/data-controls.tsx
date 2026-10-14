@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Download, Trash2 } from 'lucide-react';
-import { DEFAULT_SETTINGS } from '@applypilot/shared';
+import { DEFAULT_SETTINGS, STORAGE_KEYS } from '@applypilot/shared';
 import { Button } from '../../components/ui/button';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { useServices } from '../../services/app-services';
@@ -13,6 +13,11 @@ export function DataControls() {
 
   const exportData = async () => {
     const data = await localStore.getAll();
+    // The API access token is a credential; it is not part of an export.
+    const connection = data[STORAGE_KEYS.aiConnection];
+    if (typeof connection === 'object' && connection !== null && 'token' in connection) {
+      data[STORAGE_KEYS.aiConnection] = { ...connection, token: '(not exported)' };
+    }
     // Resume metadata, extracted text and parsed drafts. Original files stay downloadable from the Profile tab.
     const resumeVersions = await resumes.list();
     const blob = new Blob(
@@ -42,7 +47,7 @@ export function DataControls() {
     await settings.save(DEFAULT_SETTINGS);
     setConfirming(false);
     setMessage(
-      'All local ApplyPilot data, including your profile and resumes, was deleted. Settings are back to defaults.',
+      'All local ApplyPilot data, including your profile, resumes, AI drafts and the API token, was deleted. Settings are back to defaults.',
     );
   };
 
@@ -82,8 +87,8 @@ export function DataControls() {
       </div>
       {confirming ? (
         <p className="text-xs text-danger">
-          This permanently removes your profile, uploaded resumes, settings and saved data from this
-          browser.
+          This permanently removes your profile, uploaded resumes, AI drafts, settings and saved
+          data from this browser.
         </p>
       ) : null}
       {message ? (

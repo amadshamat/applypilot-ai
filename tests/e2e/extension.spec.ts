@@ -9,6 +9,8 @@ import { test as base, chromium, expect, type BrowserContext, type Page } from '
 const EXTENSION_PATH = resolve(import.meta.dirname, '../../apps/extension/dist-e2e');
 const FIXTURES = `http://127.0.0.1:${process.env.FIXTURE_PORT ?? 4173}`;
 const RESUMES = resolve(import.meta.dirname, '../fixtures/resumes');
+const API_URL = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 8799}`;
+const API_TOKEN = 'e2e-local-token-0123456789abcdef';
 
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // eslint-disable-next-line no-empty-pattern
@@ -43,7 +45,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.2.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.3.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -158,3 +160,64 @@ for (const file of ['sample-resume.pdf', 'sample-resume.docx']) {
     await expect(match).toContainText('Matching qualifications');
   });
 }
+
+test('drafts a tailored resume, cover letter and screening answers through the local API', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await panel.getByRole('tab', { name: 'Profile' }).click();
+  await panel.getByRole('button', { name: 'Upload a resume' }).click();
+  await panel.getByLabel('Choose a file').setInputFiles(resolve(RESUMES, 'sample-resume.pdf'));
+  await panel.getByRole('button', { name: 'Save to profile' }).click();
+  await expect(panel.getByText('Your profile was saved from this resume.')).toBeVisible();
+
+  const job = await context.newPage();
+  await job.goto(`${FIXTURES}/jobs/json-ld-cloud-intern.html`);
+  await job.bringToFront();
+  await panel.getByRole('tab', { name: 'Analyze' }).click();
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(panel.getByRole('heading', { name: 'Cloud Engineering Intern' })).toBeVisible();
+
+  // Consent, then connection, are both required before anything is sent.
+  await panel.getByRole('tab', { name: 'AI Tailor' }).click();
+  await expect(panel.getByText('AI processing is off')).toBeVisible();
+  await panel.getByRole('button', { name: 'Allow AI processing' }).click();
+  await panel.getByRole('button', { name: 'Open Settings' }).click();
+  await panel.getByLabel('API address').fill(API_URL);
+  await panel.getByLabel('Access token').fill(API_TOKEN);
+  await panel.getByRole('button', { name: 'Save and test connection' }).click();
+  await expect(panel.getByText('Connected to ApplyPilot API')).toBeVisible();
+  await expect(panel.getByText(/Mock mode: free drafts/)).toBeVisible();
+
+  await panel.getByRole('tab', { name: 'AI Tailor' }).click();
+  await panel.getByRole('button', { name: 'Generate tailored resume' }).click();
+  await expect(panel.getByText('Skills to feature')).toBeVisible();
+  await expect(panel.getByText(/Mock draft \(free, made offline\)/)).toBeVisible();
+
+  await panel.getByRole('button', { name: 'Cover letter' }).click();
+  await panel.getByRole('button', { name: 'Generate cover letter' }).click();
+  await expect(panel.getByLabel('Cover letter (edit before you use it)')).toHaveValue(
+    /^Dear Hiring Manager,[\s\S]*Jordan Rivera$/,
+  );
+
+  await panel.getByRole('button', { name: 'Questions' }).click();
+  await panel
+    .getByLabel('Questions')
+    .fill('Describe your experience with AWS.\nAre you authorized to work in the US?');
+  await expect(panel.getByText('You answer', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: 'Draft 1 answer' }).click();
+  await expect(panel.getByLabel('Draft answer (edit before you use it)')).toHaveValue(/\S/);
+
+  // The draft survives closing the panel without another request.
+  await panel.reload();
+  await job.bringToFront();
+  // The Analyze tab restores this tab's cached analysis.
+  await expect(panel.getByRole('heading', { name: 'Cloud Engineering Intern' })).toBeVisible();
+  await panel.getByRole('tab', { name: 'AI Tailor' }).click();
+  await expect(panel.getByText('Skills to feature')).toBeVisible();
+  await expect(panel.getByText(/· saved /)).toBeVisible();
+
+  // The job page itself was never touched.
+  await expect(job.locator('h1')).toHaveText('Cloud Engineering Intern');
+});

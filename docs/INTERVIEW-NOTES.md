@@ -72,3 +72,48 @@ Concepts you should be able to explain from this phase, with where they live in 
   posting does not state instead of guessing.
 - Grew the test suite to 210 Vitest tests and 8 Playwright tests, including end-to-end upload of
   real PDF and DOCX files inside the built extension.
+
+# Interview notes: Phase 3
+
+## Concepts
+
+1. **Keeping secrets off the client.** A browser extension cannot hide a key, so the Claude key
+   lives in a local API (`services/api`), the extension holds only a revocable access token, and
+   `pnpm check:bundle` fails the build if a key pattern or direct Claude call appears in it.
+2. **Securing a localhost service.** Binding to 127.0.0.1, Host header checks against DNS
+   rebinding, an origin allowlist (only `chrome-extension://`), a constant-time token compare,
+   body caps and a daily limit (`http.ts`, `app.ts`).
+3. **Structured outputs.** The task's Zod schema becomes the JSON schema Claude must follow
+   (`betaZodOutputFormat`), then both the API and the extension validate again. Business rules
+   live in code, not in the schema.
+4. **Grounding / hallucination control.** Every rewritten bullet must cite the original bullets
+   it came from; the extension checks numbers and skills against the source and removes what
+   cannot be traced (`grounding.ts`). The model is asked to be truthful, and code checks it.
+5. **Prompt injection.** Job pages are untrusted. They are fenced and labelled as data, fence
+   tags inside them are stripped, the model's output cannot trigger any action, and its output
+   is constrained to a schema.
+6. **Data minimisation.** Only what each task needs is sent; contact details never are; entries
+   are referenced by short refs so storage ids stay local (`context.ts`).
+7. **Human-in-the-loop safety rules.** Sensitive questions are classified locally and never
+   reach the model, with a second filter in the API (`screening.ts`).
+8. **Provider abstraction and testing without paid calls.** A mock provider for development and
+   e2e, and the real SDK tested against a local fake of the Messages API to verify the exact
+   request (model, effort, thinking, fallbacks, schema).
+9. **Cost control.** Token accounting and cost on every draft, a worst-case estimate before
+   sending, per-task output ceilings, and a daily cap.
+10. **Lambda-ready design.** The API is a pure `(request) => response` function; only the thin
+    HTTP adapter is Node-specific.
+
+## Resume bullets (only what is built and verified)
+
+- Integrated the Claude API through a local Node.js service that keeps the API key server-side,
+  with structured JSON outputs, versioned prompts, typed error handling and per-request cost
+  accounting.
+- Built AI resume tailoring, cover letters and screening-answer drafts with deterministic
+  grounding checks that remove untraceable content and flag new numbers or skills, so drafts
+  stay truthful to the user's own profile.
+- Hardened a localhost API against DNS rebinding, cross-origin access and prompt injection, and
+  kept legal, eligibility and demographic questions away from the model entirely.
+- Tested the AI flow without paid calls: 330+ unit and integration tests, the real SDK against a
+  fake Messages API, and a Playwright test running the built extension against the real API in
+  mock mode.

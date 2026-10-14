@@ -43,7 +43,7 @@ describe('side panel navigation', () => {
       'Autofill',
       'Profile',
       'Applications',
-      'AI Copilot',
+      'AI Tailor',
       'Settings',
     ]);
     expect(screen.getByRole('tab', { name: 'Analyze' })).toHaveAttribute('aria-selected', 'true');
@@ -181,7 +181,7 @@ describe('settings view', () => {
 
     expect(
       await screen.findByText(
-        /All local ApplyPilot data, including your profile and resumes, was deleted/,
+        /All local ApplyPilot data, including your profile, resumes, AI drafts and the API token, was deleted/,
       ),
     ).toBeInTheDocument();
     expect(await services.localStore.get('applypilot.example')).toBeUndefined();

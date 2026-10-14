@@ -17,4 +17,6 @@ export type ApplicationStage = (typeof APPLICATION_STAGES)[number];
 export const STORAGE_KEYS = {
   settings: 'applypilot.settings',
   profile: 'applypilot.profile',
+  aiConnection: 'applypilot.aiConnection',
+  aiDrafts: 'applypilot.aiDrafts',
 } as const;

@@ -17,6 +17,8 @@ export interface ManifestOptions {
  *   the extension never sees browsing history.
  * - `sidePanel`: the main UI.
  * - `storage`: settings and local data.
+ * - Optional host access to 127.0.0.1 / localhost, requested only when the
+ *   user connects the local ApplyPilot API for AI features (Phase 3).
  */
 export function createManifest({ e2e }: ManifestOptions): chrome.runtime.ManifestV3 {
   return {
@@ -41,6 +43,7 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     options_ui: { page: 'options.html', open_in_tab: true },
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['activeTab', 'scripting', 'sidePanel', 'storage'],
+    optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*'],
     ...(e2e ? { host_permissions: ['http://127.0.0.1/*', 'http://www.indeed.com/*'] } : {}),
     content_security_policy: {
       extension_pages:

@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useSettings } from '../../hooks/use-settings';
 import { useServices } from '../../services/app-services';
+import { AiConnectionCard } from './ai-connection-card';
 import { DataControls } from './data-controls';
 import { SettingsForm, SettingsLoadError } from './settings-form';
 
@@ -23,6 +24,7 @@ export function SettingsView({ showOpenFullPage = true }: { showOpenFullPage?: b
       {error ? <SettingsLoadError message={error} /> : null}
       {!settings && !error ? <Skeleton className="h-64 w-full" /> : null}
       {settings ? <SettingsForm settings={settings} onSave={save} /> : null}
+      <AiConnectionCard />
       <DataControls />
     </div>
   );
