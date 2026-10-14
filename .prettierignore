@@ -1,0 +1,7 @@
+dist
+dist-e2e
+coverage
+pnpm-lock.yaml
+playwright-report
+test-results
+tests/fixtures/jobs/*.html

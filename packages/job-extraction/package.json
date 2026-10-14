@@ -1,0 +1,16 @@
+{
+  "name": "@applypilot/job-extraction",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic, layered job posting extraction (JSON-LD, site adapters, semantic DOM).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/shared": "workspace:*"
+  }
+}

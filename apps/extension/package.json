@@ -1,0 +1,38 @@
+{
+  "name": "@applypilot/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ApplyPilot AI Chrome extension (Manifest V3).",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build && vite build --config vite.content.config.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@applypilot/job-extraction": "workspace:*",
+    "@applypilot/shared": "workspace:*",
+    "@hookform/resolvers": "5.9.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.56.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.90.0",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.7",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@types/chrome": "0.3.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "tailwindcss": "4.3.3",
+    "vite": "8.3.4"
+  }
+}

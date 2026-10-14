@@ -1,0 +1,128 @@
+import { useEffect } from 'react';
+import { RefreshCw, ScanSearch, Sparkles } from 'lucide-react';
+import { Alert } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import { Card, CardDescription, CardTitle } from '../../components/ui/card';
+import { EmptyState } from '../../components/ui/empty-state';
+import { Skeleton } from '../../components/ui/skeleton';
+import { useServices } from '../../services/app-services';
+import { JobDetails } from './job-details';
+import { useAnalysis } from './store';
+
+const ERROR_TITLES = {
+  PERMISSION_REQUIRED: 'Permission needed for this page',
+  UNSUPPORTED_PAGE: 'This page cannot be analyzed',
+  NO_ACTIVE_TAB: 'No tab to analyze',
+  TIMEOUT: 'The page took too long',
+} as const;
+
+function AnalysisSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Analyzing page">
+      <Card className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+      </Card>
+      <Card className="space-y-2">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Skeleton key={i} className="h-4 w-full" />
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+export function AnalyzeView() {
+  const services = useServices();
+  const { state, analyze, restoreCached } = useAnalysis();
+
+  useEffect(() => {
+    void restoreCached(services);
+  }, [restoreCached, services]);
+
+  const run = () => void analyze(services);
+  const loading = state.status === 'loading';
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h1 className="text-base font-semibold text-brand">Job analysis</h1>
+          <p className="text-xs text-muted">
+            Reads the job on the current tab. Nothing leaves your browser.
+          </p>
+        </div>
+        {state.status === 'success' ? (
+          <Button size="sm" variant="secondary" onClick={run} disabled={loading}>
+            <RefreshCw aria-hidden className="h-3.5 w-3.5" /> Re-analyze
+          </Button>
+        ) : null}
+      </div>
+
+      {state.status === 'idle' ? (
+        <EmptyState
+          icon={ScanSearch}
+          title="Analyze the job on this tab"
+          description="Open a job posting, then analyze it to see the role, requirements and skills ApplyPilot found, with where each detail came from."
+          action={
+            <Button onClick={run}>
+              <ScanSearch aria-hidden className="h-4 w-4" /> Analyze this page
+            </Button>
+          }
+        />
+      ) : null}
+
+      {loading ? <AnalysisSkeleton /> : null}
+
+      {state.status === 'error' ? (
+        <Alert
+          tone="error"
+          title={
+            state.error.code in ERROR_TITLES
+              ? ERROR_TITLES[state.error.code as keyof typeof ERROR_TITLES]
+              : 'Analysis failed'
+          }
+          action={
+            <Button size="sm" variant="secondary" onClick={run}>
+              Try again
+            </Button>
+          }
+        >
+          {state.error.message}
+        </Alert>
+      ) : null}
+
+      {state.status === 'success' ? (
+        <>
+          {state.result.isJobPosting ? null : (
+            <Alert tone="warning" title="This may not be a job posting">
+              Results are shown below, but they may not describe a job.
+            </Alert>
+          )}
+          {state.result.warnings
+            .filter((w) => state.result.isJobPosting || !/does not look like/.test(w))
+            .map((warning) => (
+              <Alert key={warning} tone="info" title="Note">
+                {warning}
+              </Alert>
+            ))}
+          {state.fromCache ? (
+            <p className="text-xs text-muted">Showing the earlier analysis of this tab.</p>
+          ) : null}
+          <JobDetails result={state.result} />
+          <Card className="flex gap-3">
+            <Sparkles aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div>
+              <CardTitle>Match score</CardTitle>
+              <CardDescription>
+                Comparing this job with your profile arrives with the resume profile in Phase 2.
+                Until then ApplyPilot shows no score rather than a made-up one.
+              </CardDescription>
+            </div>
+          </Card>
+        </>
+      ) : null}
+    </div>
+  );
+}

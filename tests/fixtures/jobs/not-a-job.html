@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Five lessons from migrating our monolith to AWS Lambda - Harborline Engineering Blog</title>
+  <meta property="og:title" content="Five lessons from migrating our monolith to AWS Lambda">
+</head>
+<body>
+  <main>
+    <article>
+      <h1>Five lessons from migrating our monolith to AWS Lambda</h1>
+      <p class="byline">By the Harborline platform team · October 2, 2026</p>
+      <p>Last year we moved our appointment reminder service from a single EC2 instance to AWS Lambda and DynamoDB. The migration took four months and taught us a lot about cold starts, idempotency and observability.</p>
+      <h2>1. Start with the data model</h2>
+      <p>DynamoDB rewards you for knowing your access patterns up front. We spent the first two weeks writing down every query the service made and designing keys around them.</p>
+      <h2>2. Make every handler idempotent</h2>
+      <p>Events can be delivered more than once. We added idempotency keys to every write so retries never sent a patient two reminders.</p>
+      <h2>3. Invest in structured logs</h2>
+      <p>CloudWatch Logs Insights is only as good as the logs you send it. We log JSON with a request ID on every line, which made incident reviews dramatically faster.</p>
+      <p>We are always looking for engineers who enjoy problems like these, so keep an eye on our careers page.</p>
+    </article>
+  </main>
+</body>
+</html>
