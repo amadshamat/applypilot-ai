@@ -154,6 +154,11 @@ Phases 2 to 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): p
 parsing with explainable matching, server-side Claude integration, user-approved autofill,
 tracking and analytics, AWS infrastructure with CDK, and production hardening.
 
+## Interview notes
+
+What to be able to explain about each phase, and resume bullets limited to verified work:
+[docs/INTERVIEW-NOTES.md](docs/INTERVIEW-NOTES.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
