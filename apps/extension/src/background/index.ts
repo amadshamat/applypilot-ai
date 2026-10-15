@@ -37,9 +37,11 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') void settings.save(DEFAULT_SETTINGS);
 });
 
-// Cached analyses are per page load: drop them on navigation and tab close.
+// Cached analyses are per page load: drop them on navigation, on in-page address
+// changes (Indeed switches the selected job that way) and on tab close.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === 'loading') void session.remove(cacheKey(tabId));
+  if (changeInfo.status === 'loading' || changeInfo.url !== undefined)
+    void session.remove(cacheKey(tabId));
 });
 chrome.tabs.onRemoved.addListener((tabId) => void session.remove(cacheKey(tabId)));
 

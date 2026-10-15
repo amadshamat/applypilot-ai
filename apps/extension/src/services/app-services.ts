@@ -39,6 +39,14 @@ export interface AppServices {
   permissions: PermissionService;
   send: <R extends BackgroundRequest>(request: R) => Promise<ResponseFor<R['type']>>;
   getActiveTabId: () => Promise<number | null>;
+  /** The active tab's address, or null when the extension may not see it. */
+  getActiveTabUrl: () => Promise<string | null>;
+  /**
+   * Calls back whenever the active tab may show something new: an address
+   * change (including in-page changes such as picking another Indeed job), a
+   * tab switch, or the panel regaining focus. Returns an unsubscribe function.
+   */
+  watchActiveTab: (onChange: () => void) => () => void;
   openOptionsPage: () => void;
 }
 
@@ -70,6 +78,23 @@ export function createChromeServices(): AppServices {
     async getActiveTabId() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       return tab?.id ?? null;
+    },
+    async getActiveTabUrl() {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      return tab?.url ?? null;
+    },
+    watchActiveTab(onChange) {
+      const onUpdated = (_id: number, change: chrome.tabs.OnUpdatedInfo) => {
+        if (change.url !== undefined || change.status === 'complete') onChange();
+      };
+      chrome.tabs.onUpdated.addListener(onUpdated);
+      chrome.tabs.onActivated.addListener(onChange);
+      window.addEventListener('focus', onChange);
+      return () => {
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        chrome.tabs.onActivated.removeListener(onChange);
+        window.removeEventListener('focus', onChange);
+      };
     },
     openOptionsPage: () => void chrome.runtime.openOptionsPage(),
   };

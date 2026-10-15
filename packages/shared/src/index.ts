@@ -7,3 +7,4 @@ export * from './constants/skills';
 export * from './schemas/profile';
 export * from './constants/ids';
 export * from './skills';
+export * from './job-page';

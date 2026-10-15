@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { JSDOM } from 'jsdom';
 import { extractJob } from '@applypilot/job-extraction';
@@ -10,7 +10,7 @@ import { useAnalysis } from '../src/features/analyze/store';
 import { useNavigation } from '../src/features/navigation/store';
 import { ServicesProvider } from '../src/services/services-provider';
 import { SidePanelApp } from '../src/sidepanel/app';
-import { fakeServices } from './fakes';
+import { fakeServices, type FakeOptions } from './fakes';
 
 const FIXTURES = resolve(import.meta.dirname, '../../../tests/fixtures/jobs');
 
@@ -19,8 +19,22 @@ function fixtureResult(name: string, url: string) {
   return extractJob(doc, url);
 }
 
-function renderPanel(handler?: (request: BackgroundRequest) => unknown) {
-  const fake = fakeServices(handler);
+const SUNSTATES = 'b5e7a1c3d9f20486';
+const SUNSTATES_URL = `https://www.indeed.com/jobs?q=security+officer&l=Alexandria%2C+VA&vjk=${SUNSTATES}`;
+
+/** The reported Indeed search page, with the details frame's content placed inline. */
+function sunstatesResult() {
+  const doc = new JSDOM(readFileSync(resolve(FIXTURES, 'indeed-search-frame-panel.html'), 'utf8'), {
+    url: SUNSTATES_URL,
+  }).window.document;
+  const panel = readFileSync(resolve(FIXTURES, 'indeed-embedded-sunstates.html'), 'utf8');
+  doc.querySelector('.jobsearch-RightPane')!.innerHTML =
+    `<div id="jobsearch-ViewjobPaneWrapper">${/<body>([\s\S]*)<\/body>/.exec(panel)?.[1] ?? ''}</div>`;
+  return extractJob(doc, SUNSTATES_URL);
+}
+
+function renderPanel(handler?: (request: BackgroundRequest) => unknown, options: FakeOptions = {}) {
+  const fake = fakeServices(handler, options);
   render(
     <ServicesProvider services={fake.services}>
       <SidePanelApp />
@@ -109,6 +123,67 @@ describe('analyze view', () => {
     expect(screen.getByText('From $20 per hour')).toBeInTheDocument();
     expect(screen.getAllByText('Part-time, Full-time').length).toBe(2);
     expect(screen.queryByText(/Hello, Jordan/)).not.toBeInTheDocument();
+  });
+
+  it('shows only the selected Indeed job and how it was read (Sunstates report)', async () => {
+    const result = sunstatesResult();
+    renderPanel((request) => (request.type === 'job/extract-active-tab' ? ok(result) : ok(null)), {
+      tabUrl: SUNSTATES_URL,
+    });
+    await userEvent.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    expect(
+      await screen.findByRole('heading', { name: 'FT Unarmed Security Officer – $20.89/hr' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Sunstates Security').length).toBeGreaterThan(0);
+    expect(screen.getByText('Alexandria, VA', { exact: true })).toBeInTheDocument();
+    expect(screen.getByText('$20.89 per hour')).toBeInTheDocument();
+    expect(screen.queryByText(/Job Search/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Z S Connections/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No job is open/)).not.toBeInTheDocument();
+
+    expect(screen.getByText(/all checks passed/)).toBeInTheDocument();
+    const checks = screen.getByRole('list', { name: 'Extraction checks', hidden: true });
+    expect(checks).toHaveTextContent('Read from the job details panel');
+    expect(checks).toHaveTextContent('The details panel title matches the selected result.');
+  });
+
+  it('copies a bug-report summary without the job text', async () => {
+    const u = userEvent.setup();
+    const result = sunstatesResult();
+    renderPanel((request) => (request.type === 'job/extract-active-tab' ? ok(result) : ok(null)));
+    await u.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    await u.click(await screen.findByText('How this was read'));
+    await u.click(screen.getByRole('button', { name: /Copy details for a bug report/ }));
+    const copied = await navigator.clipboard.readText();
+    expect(JSON.parse(copied)).toMatchObject({
+      platform: 'indeed',
+      diagnostics: { scope: 'selected-job', selectedJobId: SUNSTATES },
+      fields: { title: 'adapter/high', company: 'adapter/high' },
+    });
+    expect(copied).not.toContain('DCJS');
+    expect(await screen.findByText(/Copied/)).toBeInTheDocument();
+  });
+
+  it('notices when another Indeed job is selected and re-analyzes on request', async () => {
+    const first = sunstatesResult();
+    let calls = 0;
+    const { navigateTab } = renderPanel(
+      (request) => {
+        if (request.type !== 'job/extract-active-tab') return ok(null);
+        calls += 1;
+        return ok(first);
+      },
+      { tabUrl: SUNSTATES_URL },
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    await screen.findByRole('heading', { name: 'FT Unarmed Security Officer – $20.89/hr' });
+    expect(screen.queryByText('The selected job changed')).not.toBeInTheDocument();
+
+    // The user clicks another card: Indeed changes only the vjk in the address.
+    act(() => navigateTab(SUNSTATES_URL.replace(SUNSTATES, '3c9d2e8f71a04b65')));
+    expect(await screen.findByText('The selected job changed')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Analyze selected job/ }));
+    await waitFor(() => expect(calls).toBe(2));
   });
 
   it('restores a cached analysis for the active tab', async () => {

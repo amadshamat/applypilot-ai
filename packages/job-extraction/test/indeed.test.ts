@@ -141,7 +141,7 @@ describe('Indeed: edge cases', () => {
     ]);
   });
 
-  it('prefers the selected job over JSON-LD describing something else', () => {
+  it('ignores search-page JSON-LD, which does not describe the selected job', () => {
     const doc = htmlDocument(
       pane(`<h2 data-testid="jobsearch-JobInfoHeader-title">Line Cook</h2>
             <div id="jobDescriptionText"><p>Prep and cook.</p></div>`),
@@ -157,8 +157,9 @@ describe('Indeed: edge cases', () => {
     doc.head.append(script);
     const result = extractJob(doc, doc.URL, { now: NOW });
     expect(result.job.title).toMatchObject({ value: 'Line Cook', source: 'adapter' });
-    // Fields the adapter lacks may still come from JSON-LD; the title never does.
-    expect(result.strategies).toEqual(['adapter', 'json-ld', 'dom']);
+    // Not even fields the adapter lacks: they would belong to another job.
+    expect(result.job.company).toEqual({ status: 'missing' });
+    expect(result.strategies).toEqual(['adapter', 'dom']);
   });
 
   it('removes ratings and screen-reader text from the company and strips it from location', () => {

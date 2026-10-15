@@ -235,3 +235,24 @@ Each task has one system prompt with a version string stored on every draft, so 
 output can be traced to a prompt change. Request data goes only in the user message (profile as
 JSON, posting fenced as untrusted), which keeps the system prompt identical across requests, so
 prompt caching can be turned on later without restructuring.
+
+## 035: On pages that list many jobs, nothing is read outside the selected job
+
+An Indeed search page shows a list of jobs plus one selected job's details. When the details
+panel was not found, the extractor used to fall back to reading the whole page, which mixed the
+page title and other results into one "job" (reported 2026-10-15). Adapters for such pages now
+provide `locate()`, which returns the selected job's container, possibly inside a same-origin
+frame. Every strategy (adapter, description analysis, generic DOM) then reads only inside it, and
+page-wide signals (document title, meta tags, search-page JSON-LD) are skipped. If no container
+is found, or it still shows another job than the one selected, the result has no job fields and
+says why. An empty result the user can retry is better than a confident mix of two jobs, because
+AI drafts and match scores are built on it.
+
+## 036: An analysis is tied to the job the tab shows
+
+Indeed switches jobs by changing the address in place, without a page load, so per-tab caching
+and an open side panel could keep showing the previous job. Each analysis is compared with the
+tab's current address by job identity (the Indeed job id where present, otherwise the address
+without its hash). A mismatch drops the cached result, warns in the Analyze view, and stops the
+AI Tailor from drafting until the user analyzes again. AI drafts use the same identity as their
+key.

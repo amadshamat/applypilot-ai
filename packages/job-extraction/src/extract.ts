@@ -1,5 +1,7 @@
 import {
   jobPostingSchema,
+  type ExtractionCheck,
+  type ExtractionDiagnostics,
   type ExtractionSource,
   type JobExtractionResult,
   type JobPosting,
@@ -11,7 +13,7 @@ import { extractFromDom, findDescriptionElement } from './strategies/dom';
 import { extractFromJsonLd, findJobPostingNodes } from './strategies/json-ld';
 import { extractFromUrl } from './strategies/url';
 import { parseHtmlFragment } from './text';
-import type { SiteAdapter, StrategyOutput } from './types';
+import type { JobScope, LocateResult, SiteAdapter, StrategyOutput } from './types';
 
 export interface ExtractOptions {
   adapters?: readonly SiteAdapter[];
@@ -43,13 +45,25 @@ export function extractJob(
   const url = new URL(pageUrl);
   const platform = detectPlatform(url);
   const adapters = options.adapters ?? SITE_ADAPTERS;
+  const extractedAt = (options.now?.() ?? new Date()).toISOString();
   const warnings: string[] = [];
   const strategies: JobExtractionResult['strategies'] = [];
   const outputs: StrategyOutput[] = [];
 
-  const jsonLd = extractFromJsonLd(doc);
   const adapter = adapters.find((a) => a.matches(url, doc));
-  const adapterFields = adapter?.extract(doc, url) ?? null;
+  // Pages that can show many jobs: confine everything to the selected one.
+  const located: LocateResult | null = adapter?.locate?.(doc, url) ?? null;
+  if (located && !located.scope) {
+    return noSelectedJob(url, platform, extractedAt, located, adapter?.noJobMessage);
+  }
+  const scope: JobScope | undefined = located?.scope ?? undefined;
+  const jobDoc = scope?.doc ?? doc;
+  // Structured data describes the document it is in; a search page's does not
+  // describe the selected job, so it is only read from single-job documents.
+  const structuredDataApplies = !scope || scope.singleJobDocument;
+
+  const jsonLd = structuredDataApplies ? extractFromJsonLd(jobDoc) : null;
+  const adapterFields = adapter?.extract(doc, url, scope) ?? null;
 
   const jsonLdOutput: StrategyOutput | null = jsonLd ? { source: 'json-ld', fields: jsonLd } : null;
   const adapterOutput: StrategyOutput | null = adapterFields
@@ -71,10 +85,16 @@ export function extractJob(
       `This page is hosted on ${platform}, which does not have a dedicated adapter yet. Results come from general page analysis.`,
     );
   }
+  if (scope && !scope.confirmed) {
+    warnings.push(
+      'ApplyPilot could not confirm that the job details panel matches the job you selected. Check the title and company before using this analysis.',
+    );
+  }
 
-  const dom = extractFromDom(doc);
+  const dom = extractFromDom(jobDoc, scope ? { scope: scope.root } : {});
   const title = jsonLd?.title?.value ?? adapterFields?.title?.value ?? dom.title?.value ?? null;
-  const descriptionRoot = selectDescriptionRoot(doc, adapter, findJobPostingNodes(doc)[0]);
+  const jsonLdNode = structuredDataApplies ? findJobPostingNodes(jobDoc)[0] : undefined;
+  const descriptionRoot = selectDescriptionRoot(jobDoc, adapter, scope, jsonLdNode);
   if (descriptionRoot)
     outputs.push({ source: 'dom', fields: analyzeDescription(descriptionRoot, title) });
   outputs.push({ source: 'dom', fields: dom });
@@ -99,19 +119,96 @@ export function extractJob(
     isJobPosting,
     platform,
     pageUrl: url.href,
-    extractedAt: (options.now?.() ?? new Date()).toISOString(),
+    extractedAt,
     strategies,
     job,
     warnings,
+    diagnostics: {
+      scope: scope ? 'selected-job' : 'page',
+      selectedJobId: located?.selectedJobId ?? null,
+      checks: [...(located?.checks ?? []), ...fieldChecks(job)],
+    },
   };
+}
+
+/** The result for a multi-job page where no single selected job could be read. */
+function noSelectedJob(
+  url: URL,
+  platform: JobExtractionResult['platform'],
+  extractedAt: string,
+  located: LocateResult,
+  fallbackMessage: string | undefined,
+): JobExtractionResult {
+  const message = located.message ?? fallbackMessage ?? 'No single job is selected on this page.';
+  const diagnostics: ExtractionDiagnostics = {
+    scope: 'selected-job',
+    selectedJobId: located.selectedJobId,
+    checks: located.checks,
+  };
+  return {
+    isJobPosting: false,
+    platform,
+    pageUrl: url.href,
+    extractedAt,
+    strategies: ['adapter'],
+    // Nothing is read from the rest of the page: it lists other jobs.
+    job: mergeFields(
+      [{ source: 'url', fields: { url: { value: url.href, confidence: 'high' } } }],
+      [],
+    ),
+    warnings: [message],
+    diagnostics,
+  };
+}
+
+const SHORT_DESCRIPTION = MIN_POSTING_DESCRIPTION;
+
+/** Plain-language self-checks on the merged result. */
+function fieldChecks(job: JobPosting): ExtractionCheck[] {
+  const checks: ExtractionCheck[] = [];
+  checks.push(
+    job.title.status === 'found'
+      ? {
+          id: 'title',
+          status: job.title.confidence === 'low' ? 'warn' : 'pass',
+          message: `Title read from ${describeSource(job.title.source)}.`,
+        }
+      : { id: 'title', status: 'fail', message: 'No job title was found.' },
+  );
+  checks.push(
+    job.company.status === 'found'
+      ? {
+          id: 'company',
+          status: job.company.confidence === 'low' ? 'warn' : 'pass',
+          message: `Company read from ${describeSource(job.company.source)}.`,
+        }
+      : { id: 'company', status: 'warn', message: 'No company name was found.' },
+  );
+  if (job.description.status !== 'found') {
+    checks.push({ id: 'description', status: 'fail', message: 'No job description was found.' });
+  } else if (job.description.value.length < SHORT_DESCRIPTION) {
+    checks.push({
+      id: 'description',
+      status: 'warn',
+      message: `The description is short (${job.description.value.length} characters). The page may not have finished loading.`,
+    });
+  } else {
+    checks.push({
+      id: 'description',
+      status: 'pass',
+      message: `Description read from ${describeSource(job.description.source)} (${job.description.value.length} characters).`,
+    });
+  }
+  return checks;
 }
 
 function selectDescriptionRoot(
   doc: Document,
   adapter: SiteAdapter | undefined,
+  scope: JobScope | undefined,
   jsonLdNode: Record<string, unknown> | undefined,
 ): Element | null {
-  const fromAdapter = adapter?.descriptionElement(doc);
+  const fromAdapter = adapter?.descriptionElement(doc, scope);
   if (fromAdapter) return fromAdapter;
   const html = jsonLdNode?.['description'];
   if (typeof html === 'string' && html.trim().length > 0) {
@@ -121,7 +218,7 @@ function selectDescriptionRoot(
       ? inert.body
       : parseHtmlFragment(inert.body.textContent, doc).body;
   }
-  return findDescriptionElement(doc)?.value ?? null;
+  return findDescriptionElement(doc, scope?.root)?.value ?? null;
 }
 
 function mergeFields(outputs: readonly StrategyOutput[], warnings: string[]): JobPosting {

@@ -97,6 +97,26 @@ export const platformSchema = z.enum([
 ]);
 export type Platform = z.infer<typeof platformSchema>;
 
+/** One self-check the extractor ran, shown to the user as "How this was read". */
+export const extractionCheckSchema = z.object({
+  id: z.string().max(40),
+  status: z.enum(['pass', 'warn', 'fail']),
+  message: z.string().max(400),
+});
+export type ExtractionCheck = z.infer<typeof extractionCheckSchema>;
+
+export const extractionDiagnosticsSchema = z.object({
+  /**
+   * `selected-job`: every value was read from one job's container (for example
+   * the details panel of a search results page). `page`: the whole page was read.
+   */
+  scope: z.enum(['selected-job', 'page']),
+  /** The site's id for the job being read, when the page exposes one. */
+  selectedJobId: z.string().max(64).nullable(),
+  checks: z.array(extractionCheckSchema),
+});
+export type ExtractionDiagnostics = z.infer<typeof extractionDiagnosticsSchema>;
+
 export const jobExtractionResultSchema = z.object({
   /** False when the page does not look like a job posting at all. */
   isJobPosting: z.boolean(),
@@ -106,5 +126,7 @@ export const jobExtractionResultSchema = z.object({
   strategies: z.array(z.enum(['json-ld', 'adapter', 'dom'])),
   job: jobPostingSchema,
   warnings: z.array(z.string()),
+  /** Optional so analyses cached by an earlier version still parse. */
+  diagnostics: extractionDiagnosticsSchema.optional(),
 });
 export type JobExtractionResult = z.infer<typeof jobExtractionResultSchema>;

@@ -18,6 +18,8 @@ export interface FakeOptions {
   ai?: AiClient;
   /** Whether the optional host permission is granted, and what a request answers. */
   permission?: { granted: boolean; grantOnRequest: boolean };
+  /** The active tab's address. Defaults to null (not visible to the extension). */
+  tabUrl?: string | null;
 }
 
 const unavailableAi: AiClient = {
@@ -32,6 +34,13 @@ export function fakeServices(
   const localStore = memoryStore();
   const permission = { ...(options.permission ?? { granted: true, grantOnRequest: true }) };
   const send = vi.fn((request: BackgroundRequest) => Promise.resolve(handler(request)));
+  // The active tab's address; null models a tab the extension may not see.
+  const tab = { url: options.tabUrl ?? null, listeners: new Set<() => void>() };
+  /** Simulates the tab moving to another address, as an Indeed job switch does. */
+  const navigateTab = (url: string | null) => {
+    tab.url = url;
+    for (const listener of tab.listeners) listener();
+  };
   const services: AppServices = {
     settings: new SettingsRepository(localStore),
     profile: new ProfileRepository(localStore, () => new Date('2026-10-14T12:00:00Z')),
@@ -54,7 +63,12 @@ export function fakeServices(
     },
     send: send as unknown as <R extends BackgroundRequest>(r: R) => Promise<ResponseFor<R['type']>>,
     getActiveTabId: () => Promise.resolve(7),
+    getActiveTabUrl: () => Promise.resolve(tab.url),
+    watchActiveTab: (onChange) => {
+      tab.listeners.add(onChange);
+      return () => tab.listeners.delete(onChange);
+    },
     openOptionsPage: vi.fn(),
   };
-  return { services, send };
+  return { services, send, navigateTab };
 }

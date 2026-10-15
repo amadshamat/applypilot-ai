@@ -6,9 +6,12 @@ import { Card } from '../../components/ui/card';
 import { EmptyState } from '../../components/ui/empty-state';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useServices } from '../../services/app-services';
+import { ExtractionChecks } from './extraction-checks';
 import { JobDetails } from './job-details';
 import { MatchCard } from './match-card';
+import { StaleAnalysisAlert } from './stale-analysis-alert';
 import { useAnalysis } from './store';
+import { useStaleAnalysis } from './use-stale-analysis';
 
 const ERROR_TITLES = {
   PERMISSION_REQUIRED: 'Permission needed for this page',
@@ -44,6 +47,7 @@ export function AnalyzeView() {
 
   const run = () => void analyze(services);
   const loading = state.status === 'loading';
+  const stale = useStaleAnalysis(state.status === 'success' ? state.result : null);
 
   return (
     <div className="space-y-3">
@@ -96,6 +100,7 @@ export function AnalyzeView() {
 
       {state.status === 'success' ? (
         <>
+          {stale ? <StaleAnalysisAlert result={state.result} onAnalyze={run} /> : null}
           {state.result.isJobPosting ? null : (
             <Alert tone="warning" title="This may not be a job posting">
               Results are shown below, but they may not describe a job.
@@ -112,6 +117,7 @@ export function AnalyzeView() {
             <p className="text-xs text-muted">Showing the earlier analysis of this tab.</p>
           ) : null}
           <JobDetails result={state.result} />
+          <ExtractionChecks result={state.result} />
           <MatchCard job={state.result.job} />
         </>
       ) : null}

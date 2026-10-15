@@ -1,18 +1,39 @@
 # Progress
 
-_Last updated: 2026-10-14 (v0.3.0)_
+_Last updated: 2026-10-15 (v0.3.1)_
 
 ## Current phase
 
 **Phase 3 (Claude integration, tailoring, cover letters, screening drafts): built and tested
-here, waiting for Muhaid's manual test in Chrome.** Phase 4 will not start until Phase 3 is
-approved. No real (paid) Claude request has been made; see "Not yet verified".
+here, waiting for Muhaid's manual test in Chrome.** v0.3.1 fixes an Indeed extraction bug found
+during that test (below). Phase 4 will not start until Phase 3 is approved. No real (paid)
+Claude request has been made; see "Not yet verified".
 
 Phase 2 was approved by Muhaid on 2026-10-14 after manual testing in Google Chrome (resume
 upload, profile management, persistence, job matching and suggestions). Phase 1 and the
 v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### v0.3.1: Indeed reads only the selected job
+
+Reported by Muhaid on 2026-10-15: on an Indeed search page the analysis showed the title "Job
+Search | Indeed", no company, the location of another result card ("Z S Connections …
+Alexandria, VA 22314") and "no job is selected", while the selected job was "FT Unarmed
+Security Officer – $20.89/hr" at Sunstates Security. Cause: the selected job's details were not
+where the adapter looked (the regression fixture renders them in a same-origin frame, as some
+Indeed layouts do), and the extractor then read the whole search page. The old code reproduces
+the reported values on the new fixture.
+
+| Fix                                                                                                                                                                                                      | Verified by                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| The Indeed adapter locates the selected job's details panel (inline, or in Indeed's same-origin details frame) and every strategy reads only inside it; with no panel nothing is extracted from the page | `indeed-selection.test.ts`, e2e                            |
+| The panel is checked against the selection (the `vjk` id, the frame's `jk`, or the highlighted card's title); a panel still showing the previous job is never read                                       | `indeed-selection.test.ts`, e2e                            |
+| Waiting covers the details frame (its own mutations and load events), so a job switch is analyzed once the new job has loaded                                                                            | `indeed-selection.test.ts`, e2e                            |
+| Search-page headings and titles ("Job Search \| Indeed", "… jobs in Alexandria, VA") are never used as a job title; search-page JSON-LD is ignored                                                       | `indeed-selection.test.ts`, `indeed.test.ts`               |
+| Diagnostics: "How this was read" lists each self-check, lowers confidence when the panel cannot be confirmed, and copies a bug-report summary without job text                                           | `indeed-selection.test.ts`, `sidepanel.test.tsx`           |
+| Switching jobs: the side panel and AI Tailor notice when the tab shows another job, block drafting from the old analysis and offer to analyze the new one; the tab cache is dropped on address changes   | `sidepanel.test.tsx`, `ai.test.tsx`, `router.test.ts`, e2e |
+| AI drafts are keyed by job (the Indeed job id on Indeed), so two jobs from one search never share a draft                                                                                                | `ai.test.tsx`, `job-page.test.ts`                          |
 
 ### Phase 3 (v0.3.0)
 
@@ -58,18 +79,20 @@ v0.1.1 Indeed fix were confirmed earlier.
 | Service worker, typed message router, per-tab session cache                                                | `router.test.ts`, e2e                                           |
 | Side panel navigation, error boundary, loading/empty/error states                                          | `sidepanel.test.tsx`, e2e                                       |
 | Settings (theme, AI consent off by default, analysis caching, match weights totalling 100)                 | `sidepanel.test.tsx`, e2e                                       |
-| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, Chrome on Indeed (Muhaid)  |
+| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-14, v0.3.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-15, v0.3.1, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **328 passed** (extension 81, job-extraction 74, resume-parser 44, ai-core 43,
-  api 42, matching 30, shared 14)
-- `pnpm test:coverage`: 87.4% statements, 78.8% branches, 84.2% functions, 89.1% lines
-- `pnpm test:e2e`: **9 passed**, including the new AI flow: upload a resume, analyze a job, give
-  consent, connect to the real local API (mock mode), generate a tailored resume, cover letter
-  and screening answer, reload and see the saved draft. Screenshot test skipped by default.
+- `pnpm test`: **359 passed** (job-extraction 95, extension 87, resume-parser 44, ai-core 43,
+  api 42, matching 30, shared 18)
+- `pnpm test:coverage`: 87.5% statements, 79.0% branches, 84.4% functions, 89.2% lines
+- `pnpm test:e2e`: **10 passed**. New: the reported Indeed page with the selected job in a
+  details frame, then a switch to another job whose frame loads 0.8 s after the address changes
+  (repeated 4 times, no flakes). Also the AI flow: upload a resume, analyze a job, give consent,
+  connect to the real local API (mock mode), generate a tailored resume, cover letter and
+  screening answer, reload and see the saved draft. Screenshot test skipped by default.
 - `pnpm audit --audit-level high`: passes. One **moderate** advisory (sprintf-js, via mammoth →
   argparse) is in mammoth's command-line tool only and not in the extension bundle.
 
@@ -80,6 +103,10 @@ v0.1.1 Indeed fix were confirmed earlier.
   Muhaid's own key and approval.
 - Phase 3 in desktop Google Chrome by hand, including Chrome's permission prompt for
   127.0.0.1 (checklist in `docs/INSTALL-CHROME.md`, section 7).
+- **The v0.3.1 Indeed fix on live Indeed.** It is tested on fixtures modeled on Indeed's markup,
+  with the panel both inline and in a frame. Indeed's live markup could not be inspected from
+  here, so it is not certain which of the two caused the original report. If it still fails,
+  "Copy details for a bug report" in the analysis shows which check failed.
 - Running the local API on Windows or macOS (tested on Linux).
 
 - Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
@@ -93,6 +120,10 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Known bugs and limitations
 
+- **Fixed in v0.3.1:** Indeed search pages mixed the page title and other result cards into the
+  analysis when the selected job's panel was not found (see above).
+- On Indeed, if a job is opened without a `vjk` id and no result card is highlighted, the panel
+  cannot be cross-checked; the analysis says so and shows medium confidence.
 - **Fixed during Phase 2:** the profile editor showed an empty form after reopening the side
   panel, because a state updater read a "has unsaved edits" flag after it had changed. Found by
   the new e2e test, fixed, and covered by a regression test.
@@ -120,7 +151,8 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** test v0.3.0 in Chrome in mock mode (section 7 of the install guide), then decide
+1. **Muhaid:** load v0.3.1, re-check the Sunstates Security search page and a job switch
+   (section 5a of the install guide), then test Phase 3 in mock mode (section 7) and decide
    whether to try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft).
 2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser
    struggles with; prompt caching once real usage shows repeated prefixes.

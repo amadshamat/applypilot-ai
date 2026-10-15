@@ -19,7 +19,9 @@ import { AiClientError } from '../../services/ai-client';
 import { useServices } from '../../services/app-services';
 import { isConfigured, type AiConnection } from '../../storage/ai-connection-repository';
 import { jobKeyFor } from '../../storage/ai-drafts-repository';
+import { StaleAnalysisAlert } from '../analyze/stale-analysis-alert';
 import { useAnalysis } from '../analyze/store';
+import { useStaleAnalysis } from '../analyze/use-stale-analysis';
 import { useNavigation } from '../navigation/store';
 import { useProfile } from '../profile/use-profile';
 import { describeProvider } from './provider-label';
@@ -81,6 +83,8 @@ export function AiView() {
   const { state: profileState } = useProfile();
   const { state: analysis, analyze } = useAnalysis();
   const [tool, setTool] = useState<Tool>('resume');
+
+  const stale = useStaleAnalysis(analysis.status === 'success' ? analysis.result : null);
 
   const consented = settings?.allowAiProcessing === true;
   const configured = connection !== null && isConfigured(connection);
@@ -181,6 +185,19 @@ export function AiView() {
     );
   }
 
+  if (stale) {
+    // Never draft from an analysis of a job the tab no longer shows.
+    return (
+      <div className="space-y-3">
+        <Header />
+        <StaleAnalysisAlert result={analysis.result} onAnalyze={() => void analyze(services)} />
+      </div>
+    );
+  }
+
+  const unconfirmed = analysis.result.diagnostics?.checks.some(
+    (c) => c.id === 'panel-match' && c.status !== 'pass',
+  );
   const jobKey = jobKeyFor(analysis.result.pageUrl);
   const ready = health.status === 'ok' ? health.health : null;
 
@@ -215,6 +232,12 @@ export function AiView() {
           }
         >
           {health.message}
+        </Alert>
+      ) : null}
+      {unconfirmed ? (
+        <Alert tone="warning" title="Check that this is the job you selected">
+          ApplyPilot could not confirm that the job details on the page match your selection.
+          Compare the title and company above with the page before generating.
         </Alert>
       ) : null}
       {!hasUsableJob(job) ? (

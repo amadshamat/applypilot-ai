@@ -75,6 +75,22 @@ describe('handleBackgroundMessage', () => {
     ).resolves.toMatchObject({ ok: true, data: { platform: 'generic' } });
   });
 
+  it('drops the cached analysis once the tab shows a different job', async () => {
+    const search = (key: string) => `https://www.indeed.com/jobs?q=security&vjk=${key}`;
+    const deps = makeDeps({
+      getActiveTab: () => Promise.resolve({ id: 3, url: search('3c9d2e8f71a04b65') }),
+    });
+    deps.cached.set(3, { ...sampleResult(), pageUrl: search('b5e7a1c3d9f20486') });
+    await expect(
+      handleBackgroundMessage({ type: 'job/get-cached', tabId: 3 }, deps),
+    ).resolves.toEqual({ ok: true, data: null });
+
+    // The same job reached with other search parameters is still the same job.
+    deps.cached.set(3, { ...sampleResult(), pageUrl: `${search('3c9d2e8f71a04b65')}&from=serp` });
+    const same = await handleBackgroundMessage({ type: 'job/get-cached', tabId: 3 }, deps);
+    expect(same.ok && (same.data as JobExtractionResult).pageUrl).toContain('3c9d2e8f');
+  });
+
   it('does not cache when the user turned caching off', async () => {
     const deps = makeDeps({ shouldCache: () => Promise.resolve(false) });
     await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);

@@ -117,3 +117,30 @@ Concepts you should be able to explain from this phase, with where they live in 
 - Tested the AI flow without paid calls: 330+ unit and integration tests, the real SDK against a
   fake Messages API, and a Playwright test running the built extension against the real API in
   mock mode.
+
+# Interview notes: v0.3.1 Indeed bug
+
+## The story (a good "tell me about a bug" answer)
+
+- **Symptom:** on an Indeed search page the analysis showed "Job Search | Indeed" as the title,
+  no company, the location of a different result card, and "no job is selected".
+- **Reproduce first:** wrote a fixture of that page with the selected job's details in a
+  same-origin frame and ran the old code on it. It produced the same wrong location, which
+  confirmed the cause before any fix.
+- **Root cause:** when the adapter could not find the selected job, the extractor fell back to
+  reading the whole page, so other jobs' data leaked in. The bug was the fallback, not one
+  selector.
+- **Fix:** adapters for multi-job pages return a scope (`locate()`), and every strategy is
+  confined to it. The scope is cross-checked against the selection (job id, frame address, card
+  title). No scope means no fields and a clear message. Waiting also watches the frame.
+- **Second-order bug found while fixing:** Indeed switches jobs without a page load, so a cached
+  analysis and AI drafts could describe the previous job. Analyses are now tied to a job identity.
+- **Tests:** fixtures for inline and framed panels, switching between two jobs mid-load, a
+  timeout, and a Playwright test in real Chromium that switches jobs while the frame is loading.
+
+## Resume bullet
+
+- Diagnosed and fixed a data-mixing bug in DOM extraction on dynamic job search pages by
+  scoping extraction to the selected job (including same-origin iframes), cross-checking it
+  against the selection and adding self-check diagnostics, with regression tests in jsdom and
+  real Chromium.

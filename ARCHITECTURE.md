@@ -97,10 +97,13 @@ sequenceDiagram
 1. **JSON-LD** (`strategies/json-ld.ts`): schema.org `JobPosting`, including `@graph` containers,
    arrays of types, `MonetaryAmount` salaries and double-encoded HTML descriptions.
 2. **Site adapter** (`adapters/`): host-matched, platform-specific selectors. Greenhouse and
-   Indeed are implemented. Indeed lookups are scoped to the selected job's pane so the account
-   header and other result cards are never read, and its values take precedence over JSON-LD
-   (`preferOverStructuredData`) because a results page can carry data about other jobs. Other platforms are detected and
-   flagged.
+   Indeed are implemented. Adapters for pages that list many jobs implement `locate()`: Indeed's
+   finds the selected job's details panel (inline, or in its same-origin details frame) and
+   checks it against the selection (the `vjk` id, the frame's `jk`, or the highlighted card's
+   title). When it returns a scope, **every** strategy below reads only inside it and page-wide
+   signals (document title, meta tags, search-page JSON-LD) are skipped; when it returns none,
+   or the panel still shows another job, no job fields are extracted and the result says why
+   (DECISIONS 035). Other platforms are detected and flagged.
 3. **Description analysis** (`strategies/description.ts`, `sections.ts`, `text-signals.ts`): the
    description (from the adapter, JSON-LD or the page) is split into sections by headings and
    bold lead-ins, then mined for skills, experience, work arrangement, employment type, salary,

@@ -45,7 +45,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.3.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.3.1' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -113,6 +113,59 @@ test('analyzes the selected job on an Indeed search page', async ({ context, ext
   await expect(panel.getByText('From $20 per hour')).toBeVisible();
   await expect(panel.getByText('Part-time, Full-time').first()).toBeVisible();
   await expect(panel.getByText('Arlington, VA', { exact: true })).toBeVisible();
+});
+
+test('reads only the selected Indeed job from its details frame, and follows a switch', async ({
+  context,
+  extensionId,
+}) => {
+  // Regression for the Sunstates Security report: the page title and other
+  // result cards were mixed into the analysis.
+  const panel = await openPanel(context, extensionId);
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const job = await context.newPage();
+  await job.goto(
+    `http://www.indeed.com:${port}/jobs/indeed-search-frame-panel.html?q=security+officer&vjk=b5e7a1c3d9f20486`,
+  );
+  await expect(
+    job.frameLocator('#vjs-container-iframe').getByRole('heading', {
+      name: /FT Unarmed Security Officer/,
+    }),
+  ).toBeVisible();
+  await job.bringToFront();
+
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(
+    panel.getByRole('heading', { name: 'FT Unarmed Security Officer – $20.89/hr' }),
+  ).toBeVisible();
+  await expect(panel.getByText('Alexandria, VA', { exact: true })).toBeVisible();
+  await expect(panel.getByText('$20.89 per hour', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Sunstates Security').first()).toBeVisible();
+  await expect(panel.getByText(/Job Search/)).toHaveCount(0);
+  await expect(panel.getByText(/Z S Connections/)).toHaveCount(0);
+  await expect(panel.getByText(/No job is open/)).toHaveCount(0);
+
+  // Pick another job the way Indeed does: the address changes at once, the
+  // details frame loads the new job a moment later.
+  await job.evaluate(() => {
+    const zs = '3c9d2e8f71a04b65';
+    history.pushState({}, '', location.href.replace(/vjk=[a-f0-9]+/, `vjk=${zs}`));
+    for (const card of document.querySelectorAll('.job_seen_beacon')) {
+      card.classList.toggle('vjs-highlight', card.getAttribute('data-jk') === zs);
+    }
+    setTimeout(() => {
+      document.querySelector<HTMLIFrameElement>('#vjs-container-iframe')!.src =
+        `/jobs/indeed-embedded-zs-connections.html?jk=${zs}&viewtype=embedded`;
+    }, 800);
+  });
+  await expect(panel.getByText('The selected job changed')).toBeVisible();
+  await panel.getByRole('button', { name: /Analyze selected job/ }).click();
+  await expect(
+    panel.getByRole('heading', { name: 'Unarmed Security Guard – Weekends' }),
+  ).toBeVisible();
+  await expect(panel.getByText('Alexandria, VA 22314', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Sunstates Security')).toHaveCount(0);
+  await expect(panel.getByText('The selected job changed')).toHaveCount(0);
 });
 
 test('asks for a toolbar click on pages it has no access to', async ({ context, extensionId }) => {

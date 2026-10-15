@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.3.0) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.3.1) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.3.0.zip` from the project files.
+Download `applypilot-ai-extension-0.3.1.zip` from the project files.
 
 ## 2. Extract
 
@@ -58,6 +58,22 @@ the `applypilot-ai-extension` folder inside.
 | 10  | Open a job search results page (a list of jobs) and analyze                                                                                                                        | Usually "This may not be a job posting"                                                                                   |
 | 11  | Settings → **Export data**                                                                                                                                                         | A JSON file downloads                                                                                                     |
 | 12  | Settings → **Delete all local data** → **Yes, delete everything**                                                                                                                  | Confirmation message; settings return to defaults                                                                         |
+
+## 5a. Indeed check (v0.3.1)
+
+Use any Indeed search with several results, for example security officer jobs in Alexandria, VA.
+
+| #   | Do this                                                                                                                     | Expected                                                                                                                                      |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| I1  | Click a job in the results, wait until its details show on the right, click the ApplyPilot icon, then **Analyze this page** | Title, company, location, pay and job type match the right-hand panel. Never "Job Search \| Indeed", and nothing from other cards in the list |
+| I2  | Open **How this was read** under the job details                                                                            | "Read from the job details panel", "The details panel … matches the selected result", and no red items                                        |
+| I3  | Click a different job in the results list (do not reload the page)                                                          | The side panel shows "The selected job changed"; the AI Tailor tab shows the same notice and no Generate buttons                              |
+| I4  | Click **Analyze selected job**                                                                                              | The new job's details, with nothing left over from the first job                                                                              |
+| I5  | Click a job and analyze immediately, before its details finish loading                                                      | Either the new job, or a note asking you to wait and analyze again. Never the previous job's details                                          |
+
+If any value is wrong, open **How this was read**, click **Copy details for a bug report** and
+paste it with a screenshot. The copy has the page address, field sources and checks, but no job
+text or profile data.
 
 ## 6. Phase 2 checklist: profile, resume and match
 
@@ -150,16 +166,18 @@ them. Before removing, use Settings → **Export data** if you want a copy.
 
 ## Troubleshooting
 
-| Problem                                                     | Fix                                                                                                                |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| "Manifest file is missing or unreadable"                    | You picked the outer folder. Select the one that directly contains `manifest.json`                                 |
-| Clicking the icon does nothing                              | Update Chrome to 116+. Then open `chrome://extensions`, click **Errors** on the ApplyPilot card, and send the text |
-| "Permission needed for this page"                           | Click the ApplyPilot toolbar icon while that tab is open, then analyze again. Access is granted per tab, by design |
-| Wrong or missing values on a real posting                   | Expected sometimes; only Greenhouse has a dedicated adapter. Send the page URL and a screenshot                    |
-| "Disable developer mode extensions" popup at Chrome startup | Normal for unpacked extensions; choose to keep it                                                                  |
-| After a new build                                           | See "Updating to a new build" above                                                                                |
-| "Could not reach the ApplyPilot API"                        | Start it with `pnpm api` in the source folder and keep the window open; check the address in Settings              |
-| "Missing or wrong access token"                             | Copy `APPLYPILOT_LOCAL_TOKEN` from `services/api/.env` into Settings → AI connection again                         |
-| `pnpm api` says "not configured"                            | Run `pnpm api:setup` first; it creates `services/api/.env`                                                         |
-| "The Claude API rejected the API key"                       | Check `ANTHROPIC_API_KEY` in `services/api/.env`, then restart `pnpm api`                                          |
-| "The daily limit … has been reached"                        | It resets at midnight, or raise `APPLYPILOT_DAILY_LIMIT` and restart                                               |
+| Problem                                                     | Fix                                                                                                                                                  |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Manifest file is missing or unreadable"                    | You picked the outer folder. Select the one that directly contains `manifest.json`                                                                   |
+| Clicking the icon does nothing                              | Update Chrome to 116+. Then open `chrome://extensions`, click **Errors** on the ApplyPilot card, and send the text                                   |
+| "Permission needed for this page"                           | Click the ApplyPilot toolbar icon while that tab is open, then analyze again. Access is granted per tab, by design                                   |
+| Wrong or missing values on a real posting                   | Expected sometimes outside Greenhouse and Indeed. Open **How this was read**, click **Copy details for a bug report**, and send it with a screenshot |
+| "The selected job changed"                                  | You picked another job on the page after analyzing. Click **Analyze selected job**                                                                   |
+| "The job details panel is still showing a different job"    | Indeed had not finished loading the job you clicked. Wait until its details appear on the right, then analyze again                                  |
+| "Disable developer mode extensions" popup at Chrome startup | Normal for unpacked extensions; choose to keep it                                                                                                    |
+| After a new build                                           | See "Updating to a new build" above                                                                                                                  |
+| "Could not reach the ApplyPilot API"                        | Start it with `pnpm api` in the source folder and keep the window open; check the address in Settings                                                |
+| "Missing or wrong access token"                             | Copy `APPLYPILOT_LOCAL_TOKEN` from `services/api/.env` into Settings → AI connection again                                                           |
+| `pnpm api` says "not configured"                            | Run `pnpm api:setup` first; it creates `services/api/.env`                                                                                           |
+| "The Claude API rejected the API key"                       | Check `ANTHROPIC_API_KEY` in `services/api/.env`, then restart `pnpm api`                                                                            |
+| "The daily limit … has been reached"                        | It resets at midnight, or raise `APPLYPILOT_DAILY_LIMIT` and restart                                                                                 |

@@ -1,6 +1,6 @@
 import type { Confidence } from '@applypilot/shared';
 import type { Found, PartialJob } from '../types';
-import { elementToText, nonEmpty, normalizeWhitespace } from '../text';
+import { elementToText, isGenericPageTitle, nonEmpty, normalizeWhitespace } from '../text';
 import { findWorkArrangement } from './text-signals';
 
 const MIN_DESCRIPTION_CHARS = 200;
@@ -18,14 +18,17 @@ const DESCRIPTION_SELECTORS: ReadonlyArray<[string, Confidence]> = [
   ['main, [role="main"]', 'low'],
 ];
 
-/** Finds the element most likely to hold the job description. */
-export function findDescriptionElement(doc: Document): Found<Element> | null {
+/** Finds the element most likely to hold the job description, inside `root` when given. */
+export function findDescriptionElement(
+  doc: Document,
+  root: ParentNode = doc,
+): Found<Element> | null {
   for (const [selector, confidence] of DESCRIPTION_SELECTORS) {
-    for (const el of doc.querySelectorAll(selector)) {
+    for (const el of root.querySelectorAll(selector)) {
       if (elementToText(el).length >= MIN_DESCRIPTION_CHARS) return { value: el, confidence };
     }
   }
-  const densest = densestTextContainer(doc);
+  const densest = densestTextContainer(root === doc ? doc.body : root);
   return densest ? { value: densest, confidence: 'low' } : null;
 }
 
@@ -33,9 +36,9 @@ export function findDescriptionElement(doc: Document): Found<Element> | null {
  * Last resort for unconventional markup: the element whose direct paragraph and
  * list children hold the most text. Forms and navigation are ignored.
  */
-function densestTextContainer(doc: Document): Element | null {
+function densestTextContainer(root: ParentNode): Element | null {
   const totals = new Map<Element, number>();
-  for (const block of doc.body.querySelectorAll('p, ul, ol')) {
+  for (const block of root.querySelectorAll('p, ul, ol')) {
     const parent = block.parentElement;
     if (!parent || block.closest('form, nav, header, footer')) continue;
     totals.set(parent, (totals.get(parent) ?? 0) + normalizeWhitespace(block.textContent).length);
@@ -71,8 +74,8 @@ function isSiteChrome(el: Element): boolean {
 /** Account greetings that some sites render as the page's first heading. */
 const GREETING = /^(hello|hi|hey|welcome( back)?|good (morning|afternoon|evening))\b/i;
 
-function firstText(doc: Document, selector: string, maxLength: number): string | null {
-  for (const el of doc.querySelectorAll(selector)) {
+function firstText(root: ParentNode, selector: string, maxLength: number): string | null {
+  for (const el of root.querySelectorAll(selector)) {
     if (isSiteChrome(el)) continue;
     const text = nonEmpty(el.textContent);
     if (text && GREETING.test(text)) continue;
@@ -88,8 +91,8 @@ function companyFromTitle(title: string): string | null {
 }
 
 /** Whether the page shows an application form the user could fill in. */
-export function detectApplicationForm(doc: Document): Found<boolean> | null {
-  for (const form of doc.querySelectorAll('form')) {
+export function detectApplicationForm(root: ParentNode): Found<boolean> | null {
+  for (const form of root.querySelectorAll('form')) {
     const hasResumeUpload = form.querySelector('input[type="file"]') !== null;
     const hasContactFields =
       form.querySelector(
@@ -104,31 +107,43 @@ export function detectApplicationForm(doc: Document): Found<boolean> | null {
   return null;
 }
 
+export interface DomOptions {
+  /**
+   * Confines every lookup to one job's container. Page-wide signals (meta
+   * tags, the document title) are skipped because they describe the page,
+   * which may list many jobs.
+   */
+  scope?: Element;
+}
+
 /**
  * Semantic DOM strategy: page-level signals that work without structured data
  * or a site adapter. Values are lower confidence because layouts vary widely.
  */
-export function extractFromDom(doc: Document): PartialJob {
+export function extractFromDom(doc: Document, options: DomOptions = {}): PartialJob {
   const out: PartialJob = {};
+  const root: ParentNode = options.scope ?? doc;
+  const pageSignals = options.scope === undefined;
+  const usable = (title: string | null) => (title && !isGenericPageTitle(title) ? title : null);
 
-  const itempropTitle = firstText(doc, '[itemprop="title"]', 150);
-  const h1 = firstText(doc, 'h1', 150);
-  const ogTitle = meta(doc, 'og:title');
+  const itempropTitle = usable(firstText(root, '[itemprop="title"]', 150));
+  const h1 = usable(firstText(root, 'h1', 150));
+  const ogTitle = pageSignals ? meta(doc, 'og:title') : null;
   if (itempropTitle) out.title = { value: itempropTitle, confidence: 'medium' };
   else if (h1) out.title = { value: h1, confidence: 'medium' };
-  else if (ogTitle) out.title = { value: ogTitle, confidence: 'low' };
+  else if (usable(ogTitle)) out.title = { value: ogTitle as string, confidence: 'low' };
 
   const company =
-    firstText(doc, '[itemprop="hiringOrganization"] [itemprop="name"]', 100) ??
-    meta(doc, 'og:site_name');
+    firstText(root, '[itemprop="hiringOrganization"] [itemprop="name"]', 100) ??
+    (pageSignals ? meta(doc, 'og:site_name') : null);
   if (company) out.company = { value: company, confidence: 'medium' };
-  else {
+  else if (pageSignals) {
     const fromTitle = companyFromTitle(ogTitle ?? doc.title);
     if (fromTitle) out.company = { value: fromTitle, confidence: 'low' };
   }
 
   const location = firstText(
-    doc,
+    root,
     '[itemprop="jobLocation"], [data-testid*="location" i], [class*="job-location" i], [class*="location" i]',
     100,
   );
@@ -138,7 +153,7 @@ export function extractFromDom(doc: Document): PartialJob {
     if (arrangement) out.workArrangement = { ...arrangement, confidence: 'medium' };
   }
 
-  const description = findDescriptionElement(doc);
+  const description = findDescriptionElement(doc, root);
   if (description) {
     out.description = {
       value: elementToText(description.value),
@@ -146,7 +161,7 @@ export function extractFromDom(doc: Document): PartialJob {
     };
   }
 
-  const form = detectApplicationForm(doc);
+  const form = detectApplicationForm(root);
   if (form) out.hasApplicationForm = form;
 
   return out;

@@ -112,3 +112,24 @@ export function uniqueStrings(values: Iterable<string>): string[] {
   }
   return out;
 }
+
+/**
+ * Headings and document titles that name a search page or a site rather than a
+ * job ("Job Search | Indeed", "Fundraiser jobs in Arlington, VA", "1,204 jobs").
+ * They are never used as a job title.
+ */
+const GENERIC_PAGE_TITLES: readonly RegExp[] = [
+  /^job search\b/i,
+  /[|–—-]\s*indeed(\.com)?$/i,
+  /^indeed(\.com)?$/i,
+  /^(find|search|browse)\s+(jobs?|careers?)\b/i,
+  /\bjobs?,\s*employment\b/i,
+  /^[\d,.]+\+?\s+(\S+\s+){0,6}jobs?\b/i,
+  /^(\S+\s+){0,5}jobs\s+(in|near)\s/i,
+  /^(search results?|jobs|careers|job board|all jobs)$/i,
+];
+
+export function isGenericPageTitle(text: string): boolean {
+  const title = normalizeWhitespace(text);
+  return GENERIC_PAGE_TITLES.some((pattern) => pattern.test(title));
+}

@@ -242,8 +242,9 @@ not a hiring prediction.
   generic extraction, and their results may be incomplete.
 - Greenhouse boards embedded in an employer's site run in a cross-origin iframe, which is not read.
 - The Greenhouse and Indeed adapters were built against fixtures modeled on public markup. The
-  Indeed adapter fixes a bug reported from a live Indeed page but has not been re-checked there
-  yet.
+  Indeed adapter reads only the selected job's details panel (inline or in Indeed's details
+  frame) and checks it against the selection; v0.3.1 fixes a second bug reported from live
+  Indeed, which has not been re-checked there yet.
 - Skill detection uses a fixed vocabulary of 53 technologies, so it can miss niche tools.
 - A bare `$` salary is reported with an unknown currency rather than assumed to be USD.
 - Analysis requires a toolbar click per tab because the extension does not request broad host

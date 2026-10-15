@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { JSDOM } from 'jsdom';
 import { extractJob } from '@applypilot/job-extraction';
@@ -15,6 +15,7 @@ import { createAiClient, type AiClient } from '../src/services/ai-client';
 import { ServicesProvider } from '../src/services/services-provider';
 import { SidePanelApp } from '../src/sidepanel/app';
 import { DEFAULT_API_URL } from '../src/storage/ai-connection-repository';
+import { jobKeyFor } from '../src/storage/ai-drafts-repository';
 import { fakeServices, type FakeOptions } from './fakes';
 
 const TOKEN = 'local-test-token-abcdefghijklmnop';
@@ -79,6 +80,7 @@ interface Setup {
   analyzed?: boolean;
   ai?: AiClient;
   permission?: FakeOptions['permission'];
+  tabUrl?: string | null;
 }
 
 async function renderAi({
@@ -88,10 +90,12 @@ async function renderAi({
   analyzed = true,
   ai,
   permission,
+  tabUrl = null,
 }: Setup = {}) {
   const api = localApi();
   const fake = fakeServices(undefined, {
     ai: ai ?? api.client,
+    tabUrl,
     ...(permission ? { permission } : {}),
   });
   await fake.services.settings.update({ allowAiProcessing: consent });
@@ -114,6 +118,39 @@ const user = () => userEvent.setup();
 beforeEach(() => {
   useAnalysis.setState({ state: { status: 'idle' } });
   useNavigation.setState({ view: 'analyze' });
+});
+
+describe('AI Tailor and job switching', () => {
+  it('stops drafting from an analysis once the tab shows another job', async () => {
+    const { navigateTab, fetchImpl } = await renderAi({ tabUrl: JOB_URL });
+    expect(
+      await screen.findByRole('button', { name: 'Generate tailored resume' }),
+    ).toBeInTheDocument();
+
+    act(() => navigateTab('http://127.0.0.1/jobs/generic-devops-role.html'));
+    expect(await screen.findByText('The selected job changed')).toBeInTheDocument();
+    expect(screen.getByText(/This analysis is for “Cloud Engineering Intern”/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Generate tailored resume' }),
+    ).not.toBeInTheDocument();
+    expect(sentBodies(fetchImpl, '/v1/tailor-resume')).toHaveLength(0);
+
+    // Coming back to the analyzed job brings the tools back.
+    act(() => navigateTab(`${JOB_URL}#apply`));
+    expect(
+      await screen.findByRole('button', { name: 'Generate tailored resume' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps drafts for two Indeed jobs from the same search apart', () => {
+    const search = 'https://www.indeed.com/jobs?q=security+officer&l=Alexandria%2C+VA';
+    expect(jobKeyFor(`${search}&vjk=b5e7a1c3d9f20486`)).not.toBe(
+      jobKeyFor(`${search}&vjk=3c9d2e8f71a04b65`),
+    );
+    expect(jobKeyFor(`${search}&vjk=b5e7a1c3d9f20486`)).toBe(
+      jobKeyFor('https://www.indeed.com/viewjob?jk=b5e7a1c3d9f20486&from=serp'),
+    );
+  });
 });
 
 describe('AI Tailor prerequisites', () => {

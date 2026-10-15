@@ -1,6 +1,7 @@
 import {
   backgroundRequestSchema,
   fail,
+  isSameJobPage,
   jobExtractionResultSchema,
   ok,
   responseSchemas,
@@ -55,13 +56,24 @@ export async function handleBackgroundMessage(
   switch (request.type) {
     case 'app/ping':
       return ok({ version: deps.version });
-    case 'job/get-cached': {
-      const cached = jobExtractionResultSchema.safeParse(await deps.cache.get(request.tabId));
-      return ok(cached.success ? cached.data : null);
-    }
+    case 'job/get-cached':
+      return ok(await cachedFor(request.tabId, deps));
     case 'job/extract-active-tab':
       return extractActiveTab(deps);
   }
+}
+
+/**
+ * The tab's earlier analysis, unless the tab now shows a different job. Indeed
+ * switches jobs without reloading the page (only the address changes), so the
+ * cached result is compared with the tab's current address.
+ */
+async function cachedFor(tabId: number, deps: BackgroundDeps): Promise<JobExtractionResult | null> {
+  const cached = jobExtractionResultSchema.safeParse(await deps.cache.get(tabId));
+  if (!cached.success) return null;
+  const tab = await deps.getActiveTab();
+  if (tab?.id === tabId && tab.url && !isSameJobPage(cached.data.pageUrl, tab.url)) return null;
+  return cached.data;
 }
 
 async function extractActiveTab(deps: BackgroundDeps): Promise<Result<JobExtractionResult>> {

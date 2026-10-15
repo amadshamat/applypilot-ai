@@ -7,7 +7,7 @@ import {
   type TaskResponse,
   type TaskTypes,
 } from '@applypilot/ai-core';
-import { STORAGE_KEYS } from '@applypilot/shared';
+import { STORAGE_KEYS, jobPageIdentity } from '@applypilot/shared';
 import type { KeyValueStore } from './storage-area';
 
 /**
@@ -48,11 +48,11 @@ function parseDraft(raw: unknown): SavedDraft | null {
   };
 }
 
-/** A stable key for the job on a page: its URL without the fragment. */
+/** A stable key for the job on a page: its URL without the fragment, or its Indeed job id. */
 export function jobKeyFor(pageUrl: string): string {
-  const url = new URL(pageUrl);
-  url.hash = '';
-  return url.toString();
+  // One key per job: on Indeed search pages that is the selected job's id, so
+  // drafts for two jobs from the same search never share a key.
+  return jobPageIdentity(pageUrl);
 }
 
 export class AiDraftsRepository {
