@@ -319,3 +319,78 @@ describe('card and panel title matching', () => {
     ).toBe(false);
   });
 });
+
+/**
+ * Regression for the third real-world test (2026-10-15): on Indeed's homepage
+ * feed (`/?from=gnav-homepage…&vjk=…`) v0.3.1 correctly refused to mix in other
+ * jobs, but found no panel at all ("No job is open"), because the feed uses
+ * none of the search page's hooks.
+ */
+describe('Indeed: homepage feed without search-page hooks', () => {
+  const POLICE = '95f7e7268e283d42';
+  const HOME = `https://www.indeed.com/?from=gnav-homepage--homepage-frontend&vjk=${POLICE}`;
+
+  it('finds the panel by the selected card’s title and reads only it', () => {
+    const doc = loadFixture('indeed-homepage-feed.html', HOME);
+    const result = extractJob(doc, HOME, { now: NOW });
+    expect(result.isJobPosting).toBe(true);
+    expect(result.job.title).toMatchObject({ value: 'Police Officer', source: 'adapter' });
+    expect(result.job.company).toMatchObject({
+      value: 'Fairfax County Police Department',
+      source: 'adapter',
+    });
+    expect(value(result.job.location)).toBe('Fairfax, VA 22035');
+    expect(value(result.job.salary)).toEqual({
+      min: 74034.9,
+      max: 132956.1,
+      currency: 'USD',
+      period: 'year',
+    });
+    expect(value(result.job.employmentType)).toEqual(['full-time']);
+    expect(value(result.job.jobId)).toBe(POLICE);
+    expect(value(result.job.requiredQualifications)).toContain("Valid driver's license");
+    expect(result.warnings).toEqual([]);
+    const text = JSON.stringify(result.job);
+    for (const other of [
+      'Arlington',
+      'Surgementis',
+      'Springfield',
+      'CARS LLC',
+      'Part-time',
+      'Matches your',
+    ])
+      expect(text).not.toContain(other);
+    expect(result.diagnostics?.checks.find((c) => c.id === 'panel-match')?.status).toBe('pass');
+  });
+
+  it('never takes another card with the same title for the panel', () => {
+    const doc = loadFixture('indeed-homepage-feed.html', HOME);
+    // Card headings outside their links, so only the card guard can tell them apart.
+    for (const link of doc.querySelectorAll('a.css-link')) {
+      const heading = link.querySelector('h3')!;
+      link.replaceWith(heading);
+      heading.insertAdjacentHTML(
+        'afterend',
+        `<a class="css-link" href="${link.getAttribute('href')}">View</a>`,
+      );
+    }
+    doc.querySelector('.css-detail')!.remove();
+    const result = extractJob(doc, HOME, { now: NOW });
+    expect(result.isJobPosting).toBe(false);
+    expect(JSON.stringify(result.job)).not.toContain('Arlington');
+    expect(result.diagnostics?.checks.find((c) => c.id === 'page-structure')?.message).toMatch(
+      /selected job was found in the list; 1 heading\(s\) outside it match its title/,
+    );
+  });
+
+  it('waits for the feed panel to load', async () => {
+    const doc = loadFixture('indeed-homepage-feed.html', HOME);
+    const body = doc.querySelector('.css-body')!;
+    const saved = body.innerHTML;
+    body.innerHTML = '';
+    const ready = waitForJobContent(doc, { timeoutMs: 2000, checkIntervalMs: 10, url: HOME });
+    setTimeout(() => (body.innerHTML = saved), 30);
+    await expect(ready).resolves.toBe(true);
+    expect(value(extractJob(doc, HOME, { now: NOW }).job.title)).toBe('Police Officer');
+  });
+});

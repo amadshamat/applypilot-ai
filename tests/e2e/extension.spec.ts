@@ -45,7 +45,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.3.1' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.3.2' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -168,6 +168,24 @@ test('reads only the selected Indeed job from its details frame, and follows a s
   await expect(panel.getByText('The selected job changed')).toHaveCount(0);
 });
 
+test('reads the selected job on the Indeed homepage feed', async ({ context, extensionId }) => {
+  // Regression: the homepage feed has none of the search page's hooks, and
+  // v0.3.1 reported "No job is open" there.
+  const panel = await openPanel(context, extensionId);
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const job = await context.newPage();
+  await job.goto(
+    `http://www.indeed.com:${port}/jobs/indeed-homepage-feed.html?from=gnav-homepage--homepage-frontend&vjk=95f7e7268e283d42`,
+  );
+  await job.bringToFront();
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(panel.getByRole('heading', { name: 'Police Officer' })).toBeVisible();
+  await expect(panel.getByText('Fairfax, VA 22035', { exact: true })).toBeVisible();
+  await expect(panel.getByText('$74,034.90 – $132,956.10 per year', { exact: true })).toBeVisible();
+  await expect(panel.getByText(/No job is open/)).toHaveCount(0);
+  await expect(panel.getByText(/Arlington/)).toHaveCount(0);
+});
+
 test('asks for a toolbar click on pages it has no access to', async ({ context, extensionId }) => {
   const panel = await openPanel(context, extensionId);
   const blank = await context.newPage();
@@ -245,7 +263,7 @@ test('drafts a tailored resume, cover letter and screening answers through the l
 
   await panel.getByRole('tab', { name: 'AI Tailor' }).click();
   await panel.getByRole('button', { name: 'Generate tailored resume' }).click();
-  await expect(panel.getByText('Skills to feature')).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Skills to feature' })).toBeVisible();
   await expect(panel.getByText(/Mock draft \(free, made offline\)/)).toBeVisible();
 
   await panel.getByRole('button', { name: 'Cover letter' }).click();
@@ -268,7 +286,7 @@ test('drafts a tailored resume, cover letter and screening answers through the l
   // The Analyze tab restores this tab's cached analysis.
   await expect(panel.getByRole('heading', { name: 'Cloud Engineering Intern' })).toBeVisible();
   await panel.getByRole('tab', { name: 'AI Tailor' }).click();
-  await expect(panel.getByText('Skills to feature')).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Skills to feature' })).toBeVisible();
   await expect(panel.getByText(/· saved /)).toBeVisible();
 
   // The job page itself was never touched.

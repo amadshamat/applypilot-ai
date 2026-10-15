@@ -62,13 +62,17 @@ function formatAmount(value: number, currency: string | null): string {
         style: 'currency',
         currency,
         maximumFractionDigits: 2,
-        minimumFractionDigits: 0,
+        // Cents are shown in full ("$20.90"), whole amounts without them ("$20").
+        minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
       }).format(value);
     } catch {
       // Unknown currency code: fall through to a plain number.
     }
   }
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+  }).format(value);
 }
 
 /** "$28 – $34 per hour", "From $20 per hour", "Up to $30 per hour". */

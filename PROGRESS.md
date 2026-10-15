@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-15 (v0.3.1)_
+_Last updated: 2026-10-15 (v0.3.2)_
 
 ## Current phase
 
@@ -14,6 +14,23 @@ upload, profile management, persistence, job matching and suggestions). Phase 1 
 v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### v0.3.2: Indeed homepage feed
+
+Reported by Muhaid on 2026-10-15 with v0.3.1: on Indeed's homepage feed
+(`indeed.com/?from=gnav-homepage…&vjk=…`, "Matches your preferences") the analysis said "No job
+is open" and found nothing, although "Police Officer" at Fairfax County Police Department was
+open on the right. v0.3.1 correctly refused to mix in other jobs, but the feed uses none of the
+search page's hooks. The feed's real markup could not be inspected from here, so the fix does
+not depend on Indeed's class names:
+
+| Fix                                                                                                                                              | Verified by                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| The selected card is found by its job id in `data-jk` or in a job link (`jk=`); the panel is the heading outside the list with that card's title | `indeed-selection.test.ts`, e2e |
+| A different card with the same title ("Police Officer" twice) is never taken for the panel                                                       | `indeed-selection.test.ts`      |
+| Company from the `/cmp/` link; location and pay from the "Company • City, ST • $pay" line; description from the densest text block in the panel  | `indeed-selection.test.ts`, e2e |
+| Pay with both thousands separators and cents ("$74,034.90 - $132,956.10 a year") is read, and cents are shown                                    | `text-signals.test.ts`, e2e     |
+| When no panel is found, the bug-report copy now describes the page structure (job links, matching headings, frames, hooks) without page content  | `indeed-selection.test.ts`      |
 
 ### v0.3.1: Indeed reads only the selected job
 
@@ -85,10 +102,11 @@ the reported values on the new fixture.
 ## Test results (2026-10-15, v0.3.1, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **359 passed** (job-extraction 95, extension 87, resume-parser 44, ai-core 43,
-  api 42, matching 30, shared 18)
+- `pnpm test`: **363 passed** (job-extraction 99, extension 87, resume-parser 44, ai-core 43,
+  api 42, matching 30, shared 18) (v0.3.2)
 - `pnpm test:coverage`: 87.5% statements, 79.0% branches, 84.4% functions, 89.2% lines
-- `pnpm test:e2e`: **10 passed**. New: the reported Indeed page with the selected job in a
+- `pnpm test:e2e`: **11 passed** (v0.3.2 adds the homepage feed; an ambiguous AI-flow locator
+  that failed intermittently was made exact). New: the reported Indeed page with the selected job in a
   details frame, then a switch to another job whose frame loads 0.8 s after the address changes
   (repeated 4 times, no flakes). Also the AI flow: upload a resume, analyze a job, give consent,
   connect to the real local API (mock mode), generate a tailored resume, cover letter and

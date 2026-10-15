@@ -38,6 +38,16 @@ describe('findYearsOfExperience', () => {
 });
 
 describe('findSalary', () => {
+  it('reads amounts with both thousands separators and cents', () => {
+    expect(findSalary('$74,034.90 - $132,956.10 a year')?.value).toEqual({
+      min: 74034.9,
+      max: 132956.1,
+      currency: null,
+      period: 'year',
+    });
+    expect(findSalary('From $1,250.50 a week')?.value).toMatchObject({ min: 1250.5, max: null });
+  });
+
   it('parses thousands shorthand and keeps "$" currency unknown', () => {
     expect(findSalary('Pay: $120K–$150K a year')?.value).toEqual({
       min: 120000,

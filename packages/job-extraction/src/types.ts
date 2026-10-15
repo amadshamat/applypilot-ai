@@ -23,6 +23,8 @@ export interface JobScope {
   doc: Document;
   /** The job's container. Nothing outside it is read. */
   root: Element;
+  /** The job title element, when the adapter found it by a route its selectors don't cover. */
+  title?: Element;
   /**
    * True when `doc` describes this job only (a job page, or the frame that
    * shows the selected job), so its structured data applies to the job.

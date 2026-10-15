@@ -7,6 +7,7 @@ import {
 } from '@applypilot/shared';
 import type { JobScope, LocateResult, PartialJob, SiteAdapter } from '../types';
 import { elementToText, isGenericPageTitle, nonEmpty, normalizeWhitespace } from '../text';
+import { findDescriptionElement } from '../strategies/dom';
 import { findSalary, parseEmploymentTypeLabels } from '../strategies/text-signals';
 
 /**
@@ -52,7 +53,11 @@ const RESULT_CARD =
   '.job_seen_beacon, [data-testid="slider_item"], .cardOutline, .tapItem, li[data-jk], div.result[data-jk], [data-testid="job-card"]';
 /** The frame some Indeed layouts use for the details panel. */
 const DETAILS_FRAME =
-  'iframe#vjs-container-iframe, iframe[name="vjs-container-iframe"], iframe[src*="/viewjob"]';
+  'iframe#vjs-container-iframe, iframe[name="vjs-container-iframe"], iframe[src*="/viewjob"], iframe[src*="jk="]';
+/** Anything that names a job by its key: card hooks and links to a job. */
+const JOB_REFERENCE = '[data-jk], a[href*="jk="]';
+/** Headings a details panel may use for the job title when Indeed's hooks are absent. */
+const HEADINGS = 'h1, h2, h3, [role="heading"]';
 /** How Indeed marks the result card that is currently open. */
 const HIGHLIGHTED_CARD =
   '.vjs-highlight, [aria-current="true"][data-jk], [aria-selected="true"][data-jk], [data-testid="slider_item"][aria-current="true"]';
@@ -61,6 +66,7 @@ const COMPANY = [
   '[data-testid="inlineHeader-companyName"]',
   '[data-company-name="true"]',
   '.jobsearch-CompanyInfoContainer a[href*="/cmp/"]',
+  'a[href*="/cmp/"]',
 ];
 const LOCATION = [
   '[data-testid="inlineHeader-companyLocation"]',
@@ -93,6 +99,13 @@ function first(root: ParentNode, selectors: readonly string[]): Element | null {
     if (el && nonEmpty(el.textContent)) return el;
   }
   return null;
+}
+
+/** Indeed's description hook, or the densest text block inside the panel. */
+function descriptionIn(root: Element): Element | null {
+  return (
+    first(root, DESCRIPTION) ?? findDescriptionElement(root.ownerDocument, root)?.value ?? null
+  );
 }
 
 function insideCard(el: Element): boolean {
@@ -180,7 +193,7 @@ function keyFromAddress(address: string | null | undefined, base: string): strin
 }
 
 function cardTitle(card: Element): string | null {
-  for (const selector of CARD_TITLE) {
+  for (const selector of [...CARD_TITLE, HEADINGS]) {
     const el = card.querySelector(selector);
     const text = nonEmpty(el?.getAttribute('title') ?? el?.textContent);
     if (text) return text.replace(/\s*-\s*job post$/i, '');
@@ -188,12 +201,87 @@ function cardTitle(card: Element): string | null {
   return null;
 }
 
+/** The job keys an element refers to: its own and its descendants' `data-jk` and job links. */
+function jobKeysIn(el: Element, base: string): Set<string> {
+  const keys = new Set<string>();
+  const add = (node: Element) => {
+    const key =
+      declaredOwnKey(node) ??
+      (node.tagName === 'A' ? keyFromAddress(node.getAttribute('href'), base) : null);
+    if (key) keys.add(key);
+  };
+  if (el.matches(JOB_REFERENCE)) add(el);
+  for (const node of el.querySelectorAll(JOB_REFERENCE)) add(node);
+  return keys;
+}
+
+function declaredOwnKey(el: Element): string | null {
+  const key = el.getAttribute('data-jk');
+  return key && /^[a-f0-9]{8,32}$/i.test(key) ? key.toLowerCase() : null;
+}
+
+/**
+ * The card around a job reference when Indeed's card classes are unknown (for
+ * example the homepage feed): the largest ancestor that refers to no other job.
+ */
+function cardAround(el: Element, key: string, base: string): Element {
+  let card = el;
+  while (card.parentElement && card.parentElement.tagName !== 'BODY') {
+    const keys = jobKeysIn(card.parentElement, base);
+    if (keys.size > 1 || (keys.size === 1 && !keys.has(key))) break;
+    card = card.parentElement;
+  }
+  return card;
+}
+
 function selectedCard(doc: Document, key: string | null): Element | null {
   const marked = key
-    ? doc.querySelector(`[data-jk="${key}"]`)
+    ? (doc.querySelector(`[data-jk="${key}"]`) ??
+      [...doc.querySelectorAll('a[href*="jk="]')].find(
+        (a) => keyFromAddress(a.getAttribute('href'), doc.URL) === key,
+      ) ??
+      null)
     : doc.querySelector(HIGHLIGHTED_CARD);
   if (!marked) return null;
-  return marked.closest(RESULT_CARD) ?? marked;
+  const known = marked.closest(RESULT_CARD);
+  if (known) return known;
+  const markedKey = key ?? declaredOwnKey(marked);
+  return markedKey ? cardAround(marked, markedKey, doc.URL) : marked;
+}
+
+/**
+ * Fallback for layouts without Indeed's details hooks (such as the homepage
+ * feed): the heading outside every card whose text is the selected card's
+ * title. The panel is the largest block around it that does not reach the
+ * selected card, so the list is never included.
+ */
+function panelByTitle(
+  doc: Document,
+  card: Element | null,
+  key: string | null,
+): PanelCandidate | null {
+  const wanted = card ? cardTitle(card) : null;
+  if (!card || !wanted) return null;
+  for (const heading of doc.querySelectorAll(HEADINGS)) {
+    if (card.contains(heading) || insideCard(heading) || heading.closest(JOB_REFERENCE)) continue;
+    const text = cleanTitle(heading);
+    if (!text || isGenericPageTitle(text) || !sameJobTitle(text, wanted)) continue;
+    let root = heading;
+    while (
+      root.parentElement &&
+      root.parentElement.tagName !== 'BODY' &&
+      !root.parentElement.contains(card)
+    ) {
+      root = root.parentElement;
+    }
+    if (root === heading) continue;
+    // Another card with the same title (two "Police Officer" openings) is not the panel.
+    const keys = jobKeysIn(root, doc.URL);
+    const otherCard = keys.size === 1 && key !== null && !keys.has(key);
+    if (otherCard && normalizeWhitespace(root.textContent).length < 1500) continue;
+    return { doc, root, title: heading, jobKey: null, frame: false };
+  }
+  return null;
 }
 
 function words(text: string): string[] {
@@ -220,6 +308,35 @@ export function sameJobTitle(a: string, b: string): boolean {
 
 function isJobPage(url: URL): boolean {
   return /^\/(m\/)?viewjob\b/i.test(url.pathname);
+}
+
+/**
+ * A content-free summary of the page's structure for bug reports, so an
+ * unrecognised Indeed layout can be diagnosed without the page itself.
+ */
+function describeStructure(doc: Document, card: Element | null): string {
+  const keys = jobKeysIn(doc.body, doc.URL).size;
+  const frames = frameDocuments(doc);
+  const readable = frames.filter((f) => f.doc?.body).length;
+  const allFrames = doc.querySelectorAll('iframe').length;
+  const hooks = TITLE.reduce((n, selector) => n + doc.querySelectorAll(selector).length, 0);
+  const title = card ? cardTitle(card) : null;
+  const matching = title
+    ? [...doc.querySelectorAll(HEADINGS)].filter(
+        (h) => !card?.contains(h) && sameJobTitle(normalizeWhitespace(h.textContent), title),
+      ).length
+    : 0;
+  return (
+    [
+      `Page structure: ${keys} job links`,
+      card
+        ? 'the selected job was found in the list'
+        : 'the selected job was not found in the list',
+      title ? `${matching} heading(s) outside it match its title` : 'its title was not found',
+      `${allFrames} frame(s), ${frames.length} job frame(s), ${readable} readable`,
+      `${hooks} Indeed title hook(s)`,
+    ].join('; ') + '.'
+  );
 }
 
 /**
@@ -279,6 +396,7 @@ export function locateSelectedJob(doc: Document, url: URL): LocateResult {
     }
   }
   panel ??= panelIn(doc, false, jobPage);
+  panel ??= jobPage ? null : panelByTitle(doc, card, selectedKey);
 
   if (!panel) {
     checks.push({
@@ -286,6 +404,7 @@ export function locateSelectedJob(doc: Document, url: URL): LocateResult {
       status: 'fail',
       message: 'No job details panel with a job title was found.',
     });
+    checks.push({ id: 'page-structure', status: 'warn', message: describeStructure(doc, card) });
     return {
       scope: null,
       selectedJobId: selectedKey,
@@ -358,6 +477,7 @@ export function locateSelectedJob(doc: Document, url: URL): LocateResult {
     scope: {
       doc: panel.doc,
       root: panel.root,
+      title: panel.title,
       singleJobDocument: panel.frame || jobPage,
       confirmed,
     },
@@ -425,6 +545,32 @@ function parseLocation(
   return { location: places.length > 0 ? places.join(' · ') : null, arrangement };
 }
 
+const PLACE = /^(remote|[\p{L} .'-]{2,40},\s*[A-Z]{2}(\s+\d{5})?)$/u;
+
+/**
+ * Reads the "Company • City, ST 12345 • $pay a year" line that sits next to the
+ * company link when the panel has no location or pay hooks.
+ */
+function bulletLine(
+  companyEl: Element | null,
+  company: string | null,
+): { location: string | null; pay: string | null } | null {
+  let block = companyEl?.parentElement ?? null;
+  for (let depth = 0; block && depth < 3; depth += 1, block = block.parentElement) {
+    const text = normalizeWhitespace(block.textContent);
+    if (!text.includes('•')) continue;
+    const parts = text
+      .split('•')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0 && part !== company);
+    return {
+      location: parts.find((part) => PLACE.test(part)) ?? null,
+      pay: parts.find((part) => /[$€£¥₹]\s?\d/.test(part)) ?? null,
+    };
+  }
+  return null;
+}
+
 /** Texts listed under a "Job details" group such as Pay or Job type. */
 function detailGroup(root: Element, label: RegExp): string[] {
   const section = root.querySelector('#jobDetailsSection, [data-testid="jobDetailsSection"]');
@@ -471,7 +617,7 @@ export const indeedAdapter: SiteAdapter = {
 
   isReady(doc, url) {
     const scope = locateSelectedJob(doc, url).scope;
-    return scope !== null && first(scope.root, DESCRIPTION) !== null;
+    return scope !== null && descriptionIn(scope.root) !== null;
   },
 
   watchedDocuments(doc) {
@@ -481,7 +627,7 @@ export const indeedAdapter: SiteAdapter = {
   },
 
   descriptionElement(_doc, scope) {
-    return scope ? first(scope.root, DESCRIPTION) : null;
+    return scope ? descriptionIn(scope.root) : null;
   },
 
   extract(doc, url, given) {
@@ -491,7 +637,7 @@ export const indeedAdapter: SiteAdapter = {
     const confidence: Confidence = scope.confirmed ? 'high' : 'medium';
     const out: PartialJob = {};
 
-    const titleEl = titleElement(root, scope.singleJobDocument);
+    const titleEl = scope.title ?? titleElement(root, scope.singleJobDocument);
     const title = titleEl ? cleanTitle(titleEl) : null;
     if (title) out.title = { value: title, confidence };
 
@@ -500,10 +646,16 @@ export const indeedAdapter: SiteAdapter = {
     if (company) out.company = { value: company, confidence };
 
     const locationEl = first(root, LOCATION);
+    // Layouts without Indeed's hooks put "Company • City, ST 12345 • $pay" on one line.
+    const line = locationEl ? null : bulletLine(companyEl, company);
     if (locationEl) {
       const { location, arrangement } = parseLocation(locationEl, company);
       if (location) out.location = { value: location, confidence };
       if (arrangement) out.workArrangement = { value: arrangement, confidence };
+    } else if (line?.location) {
+      out.location = { value: line.location, confidence: 'medium' };
+      const arrangement = ARRANGEMENT_LABELS.find(([pattern]) => pattern.test(line.location ?? ''));
+      if (arrangement) out.workArrangement = { value: arrangement[1], confidence: 'medium' };
     }
 
     // Pay and job type: the "Job details" section first, then the header line
@@ -515,6 +667,7 @@ export const indeedAdapter: SiteAdapter = {
     const payTexts = [
       ...detailGroup(root, /^pay$/i),
       ...headerParts.filter((t) => /[$€£¥₹]/.test(t)),
+      ...(line?.pay ? [line.pay] : []),
     ];
     for (const text of payTexts) {
       const salary = findSalary(text);
@@ -532,7 +685,7 @@ export const indeedAdapter: SiteAdapter = {
     const types = parseEmploymentTypeLabels(typeLabels.length > 0 ? typeLabels : headerTypes);
     if (types.length > 0) out.employmentType = { value: types, confidence };
 
-    const description = first(root, DESCRIPTION);
+    const description = descriptionIn(root);
     const descriptionText = description ? nonEmpty(elementToText(description)) : null;
     if (descriptionText) out.description = { value: descriptionText, confidence };
 

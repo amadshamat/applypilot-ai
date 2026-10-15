@@ -245,7 +245,9 @@ provide `locate()`, which returns the selected job's container, possibly inside 
 frame. Every strategy (adapter, description analysis, generic DOM) then reads only inside it, and
 page-wide signals (document title, meta tags, search-page JSON-LD) are skipped. If no container
 is found, or it still shows another job than the one selected, the result has no job fields and
-says why. An empty result the user can retry is better than a confident mix of two jobs, because
+says why. Where Indeed's hooks are absent (the homepage feed, v0.3.2), the panel is found from
+the selected job's own card: its id, then a heading outside the list with the card's title. An
+empty result the user can retry is better than a confident mix of two jobs, because
 AI drafts and match scores are built on it.
 
 ## 036: An analysis is tied to the job the tab shows

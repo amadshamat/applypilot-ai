@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.3.1) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.3.2) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.3.1.zip` from the project files.
+Download `applypilot-ai-extension-0.3.2.zip` from the project files.
 
 ## 2. Extract
 
@@ -62,6 +62,7 @@ the `applypilot-ai-extension` folder inside.
 ## 5a. Indeed check (v0.3.1)
 
 Use any Indeed search with several results, for example security officer jobs in Alexandria, VA.
+Repeat I1 and I3 on the Indeed homepage feed ("Matches your preferences").
 
 | #   | Do this                                                                                                                     | Expected                                                                                                                                      |
 | --- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |

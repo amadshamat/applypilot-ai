@@ -112,7 +112,7 @@ export function findEmploymentTypeList(text: string): Found<EmploymentType[]> | 
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = { '€': 'EUR', '£': 'GBP', '¥': 'JPY', '₹': 'INR' };
-const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)\s*([kK])?`;
+const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\s*([kK])?`;
 const SALARY_PATTERN = new RegExp(
   String.raw`(USD|CAD|AUD|EUR|GBP)?\s*([$€£¥₹])\s*${AMOUNT}\s*(?:-|–|—|to)\s*(?:USD|CAD|AUD|EUR|GBP)?\s*[$€£¥₹]?\s*${AMOUNT}\s*(USD|CAD|AUD|EUR|GBP)?(?:\s*(?:\/|per|an|a)\s*(hour|hr|day|week|month|year|yr|annum))?`,
   'i',
