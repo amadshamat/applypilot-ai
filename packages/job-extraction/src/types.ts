@@ -34,8 +34,18 @@ export interface JobScope {
   confirmed: boolean;
 }
 
+export interface LocateOptions {
+  /**
+   * The document is the inside of a job details frame (the content script was
+   * asked to read one frame directly), so it shows exactly one job.
+   */
+  embedded?: boolean;
+}
+
 export interface LocateResult {
   scope: JobScope | null;
+  /** Origins of job frames on the page that this document is not allowed to read. */
+  blockedFrameOrigins?: string[];
   /** The site's id for the selected job, when the page exposes one. */
   selectedJobId: string | null;
   /** Shown when no scope was found, telling the user what to do. */
@@ -53,7 +63,7 @@ export interface SiteAdapter {
    * a null scope means nothing is extracted, so values from other jobs on the
    * page can never be mixed in.
    */
-  locate?(doc: Document, url: URL): LocateResult;
+  locate?(doc: Document, url: URL, options?: LocateOptions): LocateResult;
   /** Returns null when the page is on the platform but no single job is shown. */
   extract(doc: Document, url: URL, scope?: JobScope): PartialJob | null;
   /** The element holding the description, used for requirement and skill analysis. */

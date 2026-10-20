@@ -27,6 +27,16 @@ Only the page in your current tab, and only after you click the ApplyPilot toolb
 **Analyze this page**. It reads the page's text and structured job data. It does not read
 other tabs, your browsing history, passwords, cookies or payment information.
 
+On Indeed, the selected job is sometimes shown in a frame from another Indeed address. If you
+click **Allow reading Indeed job details**, Chrome lets ApplyPilot read Indeed pages too. It
+still reads only when you click Analyze, and you can remove the access at any time from the
+extension's details page in `chrome://extensions` (Site access). If you paste a job instead, only
+the text you paste is read.
+
+**Copy details for a bug report** copies the page address, how each field was found, and, when
+no job was found, an outline of the page's element names and frame addresses. It contains no text
+from the page.
+
 ## Sharing
 
 Nothing is shared or sold. No analytics or tracking are included.

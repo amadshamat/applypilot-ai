@@ -12,12 +12,15 @@ import { analyzeDescription } from './strategies/description';
 import { extractFromDom, findDescriptionElement } from './strategies/dom';
 import { extractFromJsonLd, findJobPostingNodes } from './strategies/json-ld';
 import { extractFromUrl } from './strategies/url';
-import { parseHtmlFragment } from './text';
-import type { JobScope, LocateResult, SiteAdapter, StrategyOutput } from './types';
+import { outlinePage } from './outline';
+import { elementToText, parseHtmlFragment } from './text';
+import type { JobScope, LocateResult, PartialJob, SiteAdapter, StrategyOutput } from './types';
 
 export interface ExtractOptions {
   adapters?: readonly SiteAdapter[];
   now?: () => Date;
+  /** The document is the inside of a job details frame, read on its own. */
+  embedded?: boolean;
 }
 
 const FIELDS = Object.keys(jobPostingSchema.shape) as JobPostingField[];
@@ -52,9 +55,10 @@ export function extractJob(
 
   const adapter = adapters.find((a) => a.matches(url, doc));
   // Pages that can show many jobs: confine everything to the selected one.
-  const located: LocateResult | null = adapter?.locate?.(doc, url) ?? null;
+  const located: LocateResult | null =
+    adapter?.locate?.(doc, url, { embedded: options.embedded === true }) ?? null;
   if (located && !located.scope) {
-    return noSelectedJob(url, platform, extractedAt, located, adapter?.noJobMessage);
+    return noSelectedJob(doc, url, platform, extractedAt, located, adapter?.noJobMessage);
   }
   const scope: JobScope | undefined = located?.scope ?? undefined;
   const jobDoc = scope?.doc ?? doc;
@@ -127,12 +131,14 @@ export function extractJob(
       scope: scope ? 'selected-job' : 'page',
       selectedJobId: located?.selectedJobId ?? null,
       checks: [...(located?.checks ?? []), ...fieldChecks(job)],
+      ...(options.embedded ? { via: 'frame' as const } : {}),
     },
   };
 }
 
 /** The result for a multi-job page where no single selected job could be read. */
 function noSelectedJob(
+  doc: Document,
   url: URL,
   platform: JobExtractionResult['platform'],
   extractedAt: string,
@@ -144,6 +150,8 @@ function noSelectedJob(
     scope: 'selected-job',
     selectedJobId: located.selectedJobId,
     checks: located.checks,
+    ...(located.blockedFrameOrigins ? { blockedFrameOrigins: located.blockedFrameOrigins } : {}),
+    outline: outlinePage(doc, url.href),
   };
   return {
     isJobPosting: false,
@@ -190,7 +198,10 @@ function fieldChecks(job: JobPosting): ExtractionCheck[] {
     checks.push({
       id: 'description',
       status: 'warn',
-      message: `The description is short (${job.description.value.length} characters). The page may not have finished loading.`,
+      message:
+        job.description.source === 'user'
+          ? `The pasted description is short (${job.description.value.length} characters). Paste the whole posting for a better match.`
+          : `The description is short (${job.description.value.length} characters). The page may not have finished loading.`,
     });
   } else {
     checks.push({
@@ -254,6 +265,8 @@ function describeSource(source: ExtractionSource): string {
       return 'the page address';
     case 'ai':
       return 'AI extraction';
+    case 'user':
+      return 'text you entered';
     case 'dom':
       return 'page content';
   }
@@ -272,4 +285,81 @@ function looksLikeJobPosting(job: JobPosting, hasJsonLd: boolean, hasAdapter: bo
     job.hasApplicationForm.status === 'found',
   ].filter(Boolean).length;
   return signals >= 2;
+}
+
+export interface PastedJob {
+  title: string;
+  company?: string;
+  location?: string;
+  /** The job description as the user copied it from the page. */
+  text: string;
+  /** The tab the user copied it from, when known; a placeholder otherwise. */
+  pageUrl: string;
+}
+
+const BULLET = /^\s*(?:[-•*·▪●]|\d{1,2}[.)])\s+/;
+
+/**
+ * The safe fallback when a page cannot be read: the user pastes the job's
+ * description and names its title. The text is turned into paragraphs and
+ * lists and analyzed like a description; nothing else on any page is read.
+ */
+export function extractFromText(
+  doc: Document,
+  input: PastedJob,
+  options: Pick<ExtractOptions, 'now'> = {},
+): JobExtractionResult {
+  const url = new URL(input.pageUrl);
+  const root = doc.createElement('div');
+  let list: HTMLUListElement | null = null;
+  for (const raw of input.text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      list = null;
+      continue;
+    }
+    if (BULLET.test(line)) {
+      list ??= root.appendChild(doc.createElement('ul'));
+      list.appendChild(doc.createElement('li')).textContent = line.replace(BULLET, '');
+    } else {
+      list = null;
+      root.appendChild(doc.createElement('p')).textContent = line;
+    }
+  }
+  const title = input.title.trim();
+  const user: PartialJob = { title: { value: title, confidence: 'high' } };
+  const company = input.company?.trim();
+  if (company) user.company = { value: company, confidence: 'high' };
+  const location = input.location?.trim();
+  if (location) user.location = { value: location, confidence: 'high' };
+  const description = elementToText(root);
+  if (description) user.description = { value: description, confidence: 'high' };
+
+  const warnings: string[] = [];
+  const job = mergeFields(
+    [
+      { source: 'user', fields: user },
+      { source: 'dom', fields: analyzeDescription(root, title) },
+      { source: 'url', fields: { url: { value: url.href, confidence: 'medium' } } },
+    ],
+    warnings,
+  );
+  return {
+    isJobPosting: true,
+    platform: detectPlatform(url),
+    pageUrl: url.href,
+    extractedAt: (options.now?.() ?? new Date()).toISOString(),
+    strategies: ['dom'],
+    job,
+    warnings: [
+      'Analyzed from the text you pasted. Check the details against the posting.',
+      ...warnings,
+    ],
+    diagnostics: {
+      scope: 'selected-job',
+      selectedJobId: null,
+      checks: fieldChecks(job),
+      via: 'pasted',
+    },
+  };
 }

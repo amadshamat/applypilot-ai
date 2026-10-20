@@ -13,6 +13,7 @@ export const SOURCE_LABELS: Record<ExtractionSource, string> = {
   dom: 'Page content',
   url: 'Page address',
   ai: 'AI',
+  user: 'You entered',
 };
 
 export const CONFIDENCE_LABELS: Record<Confidence, string> = {

@@ -1,33 +1,49 @@
-import { contentRequestSchema, fail, ok } from '@applypilot/shared';
+import { contentRequestSchema, fail, ok, type FrameProbe } from '@applypilot/shared';
 import { extractJob, waitForJobContent } from '@applypilot/job-extraction';
 
 /**
  * Injected on demand (never declared in the manifest) when the user asks to
- * analyze the current page. It only reads the DOM: it does not modify the page,
- * submit forms, or contact any server.
+ * analyze the current page, into the page and every frame Chrome lets the
+ * extension read. It only reads the DOM: it does not modify the page, submit
+ * forms, or contact any server.
  */
 type MessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
 declare global {
   interface Window {
     __applyPilotListener?: MessageListener;
+    /** Called by the background (scripting.executeScript) to find the frame that holds a job. */
+    __applyPilotProbe?: () => FrameProbe;
   }
 }
+
+const isFrame = window !== window.top;
 
 const listener: MessageListener = (message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
   const parsed = contentRequestSchema.safeParse(message);
   if (!parsed.success) return false;
 
-  const { waitMs } = parsed.data;
+  const { waitMs, embedded = false } = parsed.data;
   waitForJobContent(document, { timeoutMs: waitMs, url: location.href })
-    .then(() => sendResponse(ok(extractJob(document, location.href))))
+    .then(() => sendResponse(ok(extractJob(document, location.href, { embedded }))))
     .catch((error: unknown) => {
       const detail = error instanceof Error ? error.message : String(error);
       sendResponse(fail('EXTRACTION_FAILED', `Extraction failed: ${detail}`));
     });
   return true;
 };
+
+function probe(): FrameProbe {
+  const result = extractJob(document, location.href, { embedded: isFrame });
+  const { jobId, title } = result.job;
+  return {
+    url: location.href.slice(0, 4000),
+    isJobPosting: result.isJobPosting,
+    jobId: jobId.status === 'found' ? jobId.value.slice(0, 64) : null,
+    title: title.status === 'found' ? title.value.slice(0, 300) : null,
+  };
+}
 
 // Each injection replaces the previous listener, so the page always answers
 // with the newest code (for example after the extension is updated) and never
@@ -41,4 +57,5 @@ if (previous) {
   }
 }
 window.__applyPilotListener = listener;
+window.__applyPilotProbe = probe;
 chrome.runtime.onMessage.addListener(listener);

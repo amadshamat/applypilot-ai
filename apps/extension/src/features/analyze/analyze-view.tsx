@@ -7,6 +7,8 @@ import { EmptyState } from '../../components/ui/empty-state';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useServices } from '../../services/app-services';
 import { ExtractionChecks } from './extraction-checks';
+import { FrameAccessAlert } from './frame-access-alert';
+import { PasteJobForm } from './paste-job-form';
 import { JobDetails } from './job-details';
 import { MatchCard } from './match-card';
 import { StaleAnalysisAlert } from './stale-analysis-alert';
@@ -77,6 +79,7 @@ export function AnalyzeView() {
           }
         />
       ) : null}
+      {state.status === 'idle' || state.status === 'error' ? <PasteJobForm /> : null}
 
       {loading ? <AnalysisSkeleton /> : null}
 
@@ -101,6 +104,8 @@ export function AnalyzeView() {
       {state.status === 'success' ? (
         <>
           {stale ? <StaleAnalysisAlert result={state.result} onAnalyze={run} /> : null}
+          <FrameAccessAlert result={state.result} onGranted={run} />
+          {state.result.isJobPosting ? null : <PasteJobForm />}
           {state.result.isJobPosting ? null : (
             <Alert tone="warning" title="This may not be a job posting">
               Results are shown below, but they may not describe a job.

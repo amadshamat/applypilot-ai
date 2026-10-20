@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Where a value came from. Ordered roughly from most to least trustworthy;
  * `ai` is reserved for Phase 3 and is never produced by the deterministic engine.
  */
-export const extractionSourceSchema = z.enum(['json-ld', 'adapter', 'dom', 'url', 'ai']);
+export const extractionSourceSchema = z.enum(['json-ld', 'adapter', 'dom', 'url', 'ai', 'user']);
 export type ExtractionSource = z.infer<typeof extractionSourceSchema>;
 
 export const confidenceSchema = z.enum(['high', 'medium', 'low']);
@@ -114,6 +114,18 @@ export const extractionDiagnosticsSchema = z.object({
   /** The site's id for the job being read, when the page exposes one. */
   selectedJobId: z.string().max(64).nullable(),
   checks: z.array(extractionCheckSchema),
+  /**
+   * Origins of frames that seem to hold the job but that Chrome does not let
+   * ApplyPilot read yet (a separate site, or a subdomain without access).
+   */
+  blockedFrameOrigins: z.array(z.string().max(200)).max(10).optional(),
+  /**
+   * A content-free outline of the page's elements (tags, ids, test hooks,
+   * frames), recorded only when no job was found, for bug reports.
+   */
+  outline: z.string().max(40_000).optional(),
+  /** How the job was read when it came from inside a frame or from pasted text. */
+  via: z.enum(['page', 'frame', 'pasted']).optional(),
 });
 export type ExtractionDiagnostics = z.infer<typeof extractionDiagnosticsSchema>;
 

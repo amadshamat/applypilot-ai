@@ -1,4 +1,5 @@
-export { extractJob, type ExtractOptions } from './extract';
+export { extractJob, extractFromText, type ExtractOptions, type PastedJob } from './extract';
+export { outlinePage } from './outline';
 export { waitForJobContent, isJobContentReady, type WaitOptions } from './wait';
 export { SITE_ADAPTERS, detectPlatform } from './adapters';
 export {

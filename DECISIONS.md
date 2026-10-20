@@ -258,3 +258,30 @@ tab's current address by job identity (the Indeed job id where present, otherwis
 without its hash). A mismatch drops the cached result, warns in the Analyze view, and stops the
 AI Tailor from drafting until the user analyzes again. AI drafts use the same identity as their
 key.
+
+## 037: Read the job inside Indeed's details frame, ask for Indeed access only from a click, and let the user paste
+
+Reported 2026-10-20: on an Indeed search page with a job open on the right, the analysis said
+"No job is open". When Indeed shows the details in a frame on another origin (for example a
+different Indeed subdomain), the page cannot read that frame (`contentDocument` is null), and
+the toolbar click (activeTab) grants access to the tab's own origin only. Three changes:
+
+1. The content script is injected into every frame Chrome allows. When the page finds no job,
+   the background asks each frame what it shows and reads only a frame whose job id equals the
+   selected job's id (with no selection known, only the single frame showing a job). The frame's
+   result is checked again for the same id. A frame can never stand in for a different job.
+2. When a frame is still unreadable, the result names its origin, the warning says so instead of
+   "No job is open", and the side panel offers **Allow reading Indeed job details**. That
+   requests the optional permission `https://*.indeed.com/*` from the user's click, never
+   automatically, and the analysis runs again. Declining keeps everything working as before.
+3. **Paste the job instead** always works: the user copies the posting's text, enters the title,
+   and only that text is analyzed (fields marked "You entered").
+
+When no job is found, the bug-report copy now includes a content-free outline of the page (tags,
+ids, test hooks, frame origins and paths, whether each frame is readable, shadow roots; digits in
+names masked; no text). The live markup could not be inspected from the build environment, so
+this outline is how the real structure gets confirmed.
+
+Rejected: a declared content script or permanent `host_permissions` for Indeed (reads every
+Indeed page without a click and adds an install warning), and reading the frame by fetching its
+address from the background (a second request with the user's cookies, and not what the user sees).

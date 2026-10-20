@@ -15,9 +15,25 @@ const deps: BackgroundDeps = {
     return tab.url ? { id: tab.id, url: tab.url } : { id: tab.id };
   },
   async injectContentScript(tabId) {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    try {
+      // Frames Chrome does not let the extension read are skipped.
+      await chrome.scripting.executeScript({
+        target: { tabId, allFrames: true },
+        files: ['content.js'],
+      });
+    } catch {
+      // Some pages refuse an all-frames injection outright; the page alone still works.
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    }
   },
-  sendToTab: (tabId, message) => chrome.tabs.sendMessage(tabId, message),
+  sendToTab: (tabId, message, frameId) => chrome.tabs.sendMessage(tabId, message, { frameId }),
+  async probeFrames(tabId) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => window.__applyPilotProbe?.() ?? null,
+    });
+    return results.map(({ frameId, result }) => ({ frameId, result }));
+  },
   cache: {
     get: (tabId) => session.get(cacheKey(tabId)),
     set: (tabId, result) => session.set(cacheKey(tabId), result),

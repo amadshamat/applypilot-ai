@@ -21,8 +21,9 @@ const test = base.extend<{ context: BrowserContext; extensionId: string }>({
       args: [
         `--disable-extensions-except=${EXTENSION_PATH}`,
         `--load-extension=${EXTENSION_PATH}`,
-        // Serve the Indeed fixture under Indeed's hostname so the adapter matches.
-        '--host-resolver-rules=MAP www.indeed.com 127.0.0.1',
+        // Serve the Indeed fixtures under Indeed's hostnames so the adapter matches;
+        // jobs.indeed.com is a separate origin, like Indeed's embedded job frames.
+        '--host-resolver-rules=MAP www.indeed.com 127.0.0.1, MAP jobs.indeed.com 127.0.0.1',
       ],
     });
     await use(context);
@@ -45,7 +46,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.3.2' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.3.3' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -166,6 +167,52 @@ test('reads only the selected Indeed job from its details frame, and follows a s
   await expect(panel.getByText('Alexandria, VA 22314', { exact: true })).toBeVisible();
   await expect(panel.getByText('Sunstates Security')).toHaveCount(0);
   await expect(panel.getByText('The selected job changed')).toHaveCount(0);
+});
+
+test('reads the selected job from a details frame on another Indeed origin', async ({
+  context,
+  extensionId,
+}) => {
+  // Regression for the PaperMoon report: the details frame was on another
+  // origin, the page could not read it, and v0.3.1 said "No job is open".
+  // The e2e build has access to both Indeed hosts, as after "Allow reading
+  // Indeed job details".
+  const panel = await openPanel(context, extensionId);
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const key = 'e1f2a3b4c5d6e7f8';
+  const job = await context.newPage();
+  await job.goto(
+    `http://www.indeed.com:${port}/jobs/indeed-search-papermoon.html?q=server+bartender&vjk=${key}`,
+  );
+  await job.evaluate(
+    ([port, key]) => {
+      document.querySelector<HTMLIFrameElement>('#vjs-container-iframe')!.src =
+        `http://jobs.indeed.com:${port}/jobs/indeed-embedded-papermoon.html?jk=${key}&viewtype=embedded`;
+    },
+    [port, key],
+  );
+  await expect(
+    job.frameLocator('#vjs-container-iframe').getByRole('heading', { name: /Server \/ Bartender/ }),
+  ).toBeVisible();
+  // The page itself really cannot see into the frame.
+  expect(
+    await job.evaluate(
+      () => document.querySelector<HTMLIFrameElement>('#vjs-container-iframe')!.contentDocument,
+    ),
+  ).toBeNull();
+  await job.bringToFront();
+
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(panel.getByRole('heading', { name: 'Server / Bartender' })).toBeVisible();
+  await expect(panel.getByText('PaperMoon Springfield').first()).toBeVisible();
+  await expect(
+    panel.getByText('6315 Amherst Avenue, Springfield, VA 22150', { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText('$15.54 – $17.29 per hour', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Part-time').first()).toBeVisible();
+  await expect(panel.getByText(/Brookfield Tavern/)).toHaveCount(0);
+  await expect(panel.getByText(/No job is open/)).toHaveCount(0);
+  await expect(panel.getByText(/Untitled position/)).toHaveCount(0);
 });
 
 test('reads the selected job on the Indeed homepage feed', async ({ context, extensionId }) => {

@@ -47,7 +47,9 @@ export function ExtractionChecks({ result }: { result: JobExtractionResult }) {
           </span>
         </summary>
         <div className="mt-2 space-y-2">
-          {result.diagnostics?.scope === 'selected-job' ? (
+          {result.diagnostics?.via === 'pasted' ? (
+            <p className="text-xs text-muted">Only the text you pasted was read.</p>
+          ) : result.diagnostics?.scope === 'selected-job' ? (
             <p className="text-xs text-muted">
               Only the selected job was read. Other jobs on the page were ignored.
             </p>

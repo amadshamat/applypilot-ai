@@ -21,9 +21,23 @@ export const contentRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('content/extract-job'),
     /** Upper bound for waiting on dynamically rendered content. */
     waitMs: z.number().int().min(0).max(10_000),
+    /** Read this frame on its own: it is a job details frame inside the page. */
+    embedded: z.boolean().optional(),
   }),
 ]);
 export type ContentRequest = z.infer<typeof contentRequestSchema>;
+
+/**
+ * What each frame's content script reports when the background asks which
+ * frame holds a job. Frames run inside untrusted pages, so this is validated.
+ */
+export const frameProbeSchema = z.object({
+  url: z.string().max(4000),
+  isJobPosting: z.boolean(),
+  jobId: z.string().max(64).nullable(),
+  title: z.string().max(300).nullable(),
+});
+export type FrameProbe = z.infer<typeof frameProbeSchema>;
 
 export const errorCodeSchema = z.enum([
   'INVALID_MESSAGE',

@@ -1,4 +1,5 @@
 import pkg from '../package.json' with { type: 'json' };
+import { INDEED_FRAMES_ORIGIN } from './lib/host-access';
 
 export interface ManifestOptions {
   /**
@@ -43,8 +44,18 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     options_ui: { page: 'options.html', open_in_tab: true },
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['activeTab', 'scripting', 'sidePanel', 'storage'],
-    optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*'],
-    ...(e2e ? { host_permissions: ['http://127.0.0.1/*', 'http://www.indeed.com/*'] } : {}),
+    // Indeed frames are requested only from the user's click when a job sits in
+    // a frame on another Indeed subdomain (DECISIONS 037).
+    optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', INDEED_FRAMES_ORIGIN],
+    ...(e2e
+      ? {
+          host_permissions: [
+            'http://127.0.0.1/*',
+            'http://www.indeed.com/*',
+            'http://jobs.indeed.com/*',
+          ],
+        }
+      : {}),
     content_security_policy: {
       extension_pages:
         "script-src 'self'; object-src 'self'; base-uri 'self'; frame-ancestors 'none'",

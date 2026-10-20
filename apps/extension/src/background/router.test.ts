@@ -3,6 +3,7 @@ import { extractJob } from '@applypilot/job-extraction';
 import { ok, type JobExtractionResult } from '@applypilot/shared';
 import {
   CONTENT_WAIT_MS,
+  FRAME_WAIT_MS,
   PERMISSION_MESSAGE,
   handleBackgroundMessage,
   type BackgroundDeps,
@@ -25,6 +26,7 @@ function makeDeps(
     getActiveTab: () => Promise.resolve({ id: 3, url: 'https://careers.example.com/jobs/1' }),
     injectContentScript: vi.fn(() => Promise.resolve()),
     sendToTab: vi.fn(() => Promise.resolve(ok(sampleResult()))),
+    probeFrames: vi.fn(() => Promise.resolve([])),
     cache: {
       get: (tabId) => Promise.resolve(cached.get(tabId)),
       set: (tabId, result) => {
@@ -65,10 +67,11 @@ describe('handleBackgroundMessage', () => {
     const response = await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);
     expect(response.ok).toBe(true);
     expect(deps.injectContentScript).toHaveBeenCalledWith(3);
-    expect(deps.sendToTab).toHaveBeenCalledWith(3, {
-      type: 'content/extract-job',
-      waitMs: CONTENT_WAIT_MS,
-    });
+    expect(deps.sendToTab).toHaveBeenCalledWith(
+      3,
+      { type: 'content/extract-job', waitMs: CONTENT_WAIT_MS },
+      0,
+    );
     expect(deps.cached.has(3)).toBe(true);
     await expect(
       handleBackgroundMessage({ type: 'job/get-cached', tabId: 3 }, deps),
@@ -89,6 +92,141 @@ describe('handleBackgroundMessage', () => {
     deps.cached.set(3, { ...sampleResult(), pageUrl: `${search('3c9d2e8f71a04b65')}&from=serp` });
     const same = await handleBackgroundMessage({ type: 'job/get-cached', tabId: 3 }, deps);
     expect(same.ok && (same.data as JobExtractionResult).pageUrl).toContain('3c9d2e8f');
+  });
+
+  it('does not look in frames when the page found the job itself', async () => {
+    const deps = makeDeps({
+      sendToTab: vi.fn(() => Promise.resolve(ok({ ...sampleResult(), isJobPosting: true }))),
+    });
+    await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);
+    expect(deps.probeFrames).not.toHaveBeenCalled();
+  });
+
+  describe('job details frames', () => {
+    const SEARCH = 'https://www.indeed.com/jobs?q=server&vjk=e1f2a3b4c5d6e7f8';
+    const FRAME = 'https://jobs.indeed.com/viewjob?jk=e1f2a3b4c5d6e7f8&viewtype=embedded';
+
+    function pageResult(selectedJobId: string | null): JobExtractionResult {
+      const base = sampleResult();
+      return {
+        ...base,
+        pageUrl: SEARCH,
+        isJobPosting: false,
+        diagnostics: {
+          scope: 'selected-job',
+          selectedJobId,
+          checks: [{ id: 'selected-job', status: 'pass', message: 'A result is selected.' }],
+          blockedFrameOrigins: ['https://jobs.indeed.com'],
+        },
+      };
+    }
+
+    function frameResult(jobId: string): JobExtractionResult {
+      const base = sampleResult();
+      return {
+        ...base,
+        pageUrl: FRAME,
+        isJobPosting: true,
+        job: {
+          ...base.job,
+          jobId: { status: 'found', value: jobId, source: 'url', confidence: 'high' },
+        },
+      };
+    }
+
+    function frameDeps(selected: string | null, frames: { frameId: number; jobId: string }[]) {
+      const sendToTab = vi.fn((_tab: number, _msg: unknown, frameId: number) => {
+        if (frameId === 0) return Promise.resolve(ok(pageResult(selected)));
+        const frame = frames.find((f) => f.frameId === frameId);
+        return Promise.resolve(ok(frameResult(frame?.jobId ?? 'unknown')));
+      });
+      return makeDeps({
+        getActiveTab: () => Promise.resolve({ id: 3, url: SEARCH }),
+        sendToTab,
+        probeFrames: vi.fn(() =>
+          Promise.resolve([
+            { frameId: 0, result: null },
+            ...frames.map((f) => ({
+              frameId: f.frameId,
+              result: {
+                url: `https://jobs.indeed.com/viewjob?jk=${f.jobId}`,
+                isJobPosting: true,
+                jobId: f.jobId,
+                title: 'Server / Bartender',
+              },
+            })),
+          ]),
+        ),
+      });
+    }
+
+    it('reads the frame that shows the selected job', async () => {
+      const deps = frameDeps('e1f2a3b4c5d6e7f8', [
+        { frameId: 4, jobId: 'aaaabbbbccccdddd' },
+        { frameId: 7, jobId: 'e1f2a3b4c5d6e7f8' },
+      ]);
+      const response = await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);
+      expect(deps.sendToTab).toHaveBeenLastCalledWith(
+        3,
+        { type: 'content/extract-job', waitMs: FRAME_WAIT_MS, embedded: true },
+        7,
+      );
+      expect(response).toMatchObject({
+        ok: true,
+        data: {
+          isJobPosting: true,
+          pageUrl: SEARCH,
+          diagnostics: { via: 'frame', selectedJobId: 'e1f2a3b4c5d6e7f8' },
+        },
+      });
+    });
+
+    it('ignores frames that show a different job', async () => {
+      const deps = frameDeps('e1f2a3b4c5d6e7f8', [{ frameId: 4, jobId: 'aaaabbbbccccdddd' }]);
+      const response = await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);
+      expect(deps.sendToTab).toHaveBeenCalledTimes(1);
+      expect(response).toMatchObject({ ok: true, data: { isJobPosting: false } });
+    });
+
+    it('ignores a frame whose content turns out to be another job', async () => {
+      const deps = frameDeps('e1f2a3b4c5d6e7f8', [{ frameId: 4, jobId: 'aaaabbbbccccdddd' }]);
+      // The probe claims the selected job, but the frame's extraction says otherwise.
+      vi.mocked(deps.probeFrames).mockResolvedValue([
+        {
+          frameId: 4,
+          result: { url: FRAME, isJobPosting: true, jobId: 'e1f2a3b4c5d6e7f8', title: null },
+        },
+      ]);
+      const response = await handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps);
+      expect(deps.sendToTab).toHaveBeenCalledTimes(2);
+      expect(response).toMatchObject({ ok: true, data: { isJobPosting: false } });
+    });
+
+    it('with no selection, uses a frame only when it is the only job frame', async () => {
+      const two = frameDeps(null, [
+        { frameId: 4, jobId: 'aaaabbbbccccdddd' },
+        { frameId: 7, jobId: 'e1f2a3b4c5d6e7f8' },
+      ]);
+      await expect(
+        handleBackgroundMessage({ type: 'job/extract-active-tab' }, two),
+      ).resolves.toMatchObject({ data: { isJobPosting: false } });
+
+      const one = frameDeps(null, [{ frameId: 7, jobId: 'e1f2a3b4c5d6e7f8' }]);
+      await expect(
+        handleBackgroundMessage({ type: 'job/extract-active-tab' }, one),
+      ).resolves.toMatchObject({ data: { isJobPosting: true } });
+    });
+
+    it('keeps the page result when frames cannot be probed', async () => {
+      const deps = frameDeps('e1f2a3b4c5d6e7f8', []);
+      vi.mocked(deps.probeFrames).mockRejectedValue(new Error('Cannot access frame'));
+      await expect(
+        handleBackgroundMessage({ type: 'job/extract-active-tab' }, deps),
+      ).resolves.toMatchObject({
+        ok: true,
+        data: { diagnostics: { blockedFrameOrigins: ['https://jobs.indeed.com'] } },
+      });
+    });
   });
 
   it('does not cache when the user turned caching off', async () => {

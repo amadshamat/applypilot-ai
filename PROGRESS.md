@@ -1,12 +1,12 @@
 # Progress
 
-_Last updated: 2026-10-15 (v0.3.2)_
+_Last updated: 2026-10-20 (v0.3.3)_
 
 ## Current phase
 
 **Phase 3 (Claude integration, tailoring, cover letters, screening drafts): built and tested
-here, waiting for Muhaid's manual test in Chrome.** v0.3.1 fixes an Indeed extraction bug found
-during that test (below). Phase 4 will not start until Phase 3 is approved. No real (paid)
+here, waiting for Muhaid's manual test in Chrome.** v0.3.1 to v0.3.3 fix Indeed extraction bugs
+found during that test (below). Phase 4 will not start until Phase 3 is approved. No real (paid)
 Claude request has been made; see "Not yet verified".
 
 Phase 2 was approved by Muhaid on 2026-10-14 after manual testing in Google Chrome (resume
@@ -14,6 +14,31 @@ upload, profile management, persistence, job matching and suggestions). Phase 1 
 v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### v0.3.3: Indeed job details in a frame on another origin
+
+Reported by Muhaid on 2026-10-20 (tested with v0.3.1): on an Indeed search page with "Server /
+Bartender" at PaperMoon Springfield open on the right, the analysis showed "Untitled position",
+no company, location or salary, and "No job is open on this Indeed page."
+
+**Cause (inferred, not seen live):** Indeed's live page could not be opened from the build
+environment (its proxy blocks indeed.com), so the exact markup was not inspected. The fixtures
+and the earlier fixes cover a details panel in the page and in a same-origin frame. The remaining
+layout that produces exactly this result is a details frame whose document is on another origin:
+the page sees it as an empty frame (`contentDocument` is null) and the toolbar click grants
+access to the tab's own origin only. v0.3.3 fixes that case, falls back safely when Chrome still
+blocks the frame, and records the page's structure (no content) in the bug report so the real
+layout can be confirmed.
+
+| Fix                                                                                                                                         | Verified by                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| The content script runs in every frame Chrome allows; a frame is read only when it shows the selected job's id, and its reply is re-checked | `router.test.ts`, e2e (real cross-origin frame)  |
+| A blocked frame is reported by origin; the warning says so instead of "No job is open", and no value is guessed from the search page        | `indeed-frames.test.ts`                          |
+| **Allow reading Indeed job details** asks for the optional `https://*.indeed.com/*` access from a click, then analyzes again                | `sidepanel.test.tsx`, `manifest.test.ts`         |
+| **Paste the job instead**: the user's pasted text and title are analyzed, and nothing else is read                                          | `indeed-frames.test.ts`, `sidepanel.test.tsx`    |
+| A frame filled by script (about:blank) is read instead of being treated as still loading                                                    | `indeed-frames.test.ts`                          |
+| Pay inside the frame gets the country site's currency from the page that holds it (Chrome's ancestor origins)                               | `indeed-frames.test.ts`, e2e ("$15.54 – $17.29") |
+| The bug-report copy includes a content-free outline of the page (element names, frames and whether each is readable, shadow roots)          | `indeed-frames.test.ts`                          |
 
 ### v0.3.2: Indeed homepage feed
 
@@ -99,14 +124,16 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-15, v0.3.1, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-20, v0.3.3, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **363 passed** (job-extraction 99, extension 87, resume-parser 44, ai-core 43,
-  api 42, matching 30, shared 18) (v0.3.2)
-- `pnpm test:coverage`: 87.5% statements, 79.0% branches, 84.4% functions, 89.2% lines
-- `pnpm test:e2e`: **11 passed** (v0.3.2 adds the homepage feed; an ambiguous AI-flow locator
-  that failed intermittently was made exact). New: the reported Indeed page with the selected job in a
+- `pnpm test`: **381 passed** (job-extraction 108, extension 96, resume-parser 44, ai-core 43,
+  api 42, matching 30, shared 18)
+- `pnpm test:coverage`: 88.0% statements, 80.3% branches, 84.8% functions, 89.8% lines
+- `pnpm test:e2e`: **12 passed**. v0.3.3 adds an Indeed search page whose details frame is on a
+  second hostname (`jobs.indeed.com`, a separate origin the page cannot read); the extension reads
+  the selected job from inside the frame (repeated 4 times with the frame-switch test, no flakes).
+  v0.3.2 added the homepage feed. New: the reported Indeed page with the selected job in a
   details frame, then a switch to another job whose frame loads 0.8 s after the address changes
   (repeated 4 times, no flakes). Also the AI flow: upload a resume, analyze a job, give consent,
   connect to the real local API (mock mode), generate a tailored resume, cover letter and
@@ -121,10 +148,12 @@ the reported values on the new fixture.
   Muhaid's own key and approval.
 - Phase 3 in desktop Google Chrome by hand, including Chrome's permission prompt for
   127.0.0.1 (checklist in `docs/INSTALL-CHROME.md`, section 7).
-- **The v0.3.1 Indeed fix on live Indeed.** It is tested on fixtures modeled on Indeed's markup,
-  with the panel both inline and in a frame. Indeed's live markup could not be inspected from
-  here, so it is not certain which of the two caused the original report. If it still fails,
-  "Copy details for a bug report" in the analysis shows which check failed.
+- **The Indeed fixes (v0.3.1 to v0.3.3) on live Indeed.** They are tested on fixtures modeled on
+  Indeed's markup, with the panel inline, in a same-origin frame and in a cross-origin frame.
+  Indeed's live markup could not be inspected from here, so the cause of the PaperMoon report is
+  inferred. If it still fails, "Copy details for a bug report" now includes the page's outline.
+- Chrome's prompt for the optional Indeed access, by hand (automation cannot click it; the e2e
+  build has the access granted up front).
 - Running the local API on Windows or macOS (tested on Linux).
 
 - Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
@@ -138,6 +167,10 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Known bugs and limitations
 
+- **Fixed in v0.3.3:** an Indeed job shown in a frame on another origin was reported as "No job is
+  open". If Chrome still blocks the frame (access declined), the user can paste the job.
+- If a page puts the job inside a closed shadow root or a frame on a non-Indeed site, it cannot be
+  read; pasting the job is the fallback.
 - **Fixed in v0.3.1:** Indeed search pages mixed the page title and other result cards into the
   analysis when the selected job's panel was not found (see above).
 - On Indeed, if a job is opened without a `vjk` id and no result card is highlighted, the panel
@@ -169,8 +202,8 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** load v0.3.1, re-check the Sunstates Security search page and a job switch
-   (section 5a of the install guide), then test Phase 3 in mock mode (section 7) and decide
+1. **Muhaid:** load v0.3.3 (remove the old version first), re-check the PaperMoon search page,
+   a job switch and the homepage feed (section 5a of the install guide, I1 to I7), then test Phase 3 in mock mode (section 7) and decide
    whether to try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft).
 2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser
    struggles with; prompt caching once real usage shows repeated prefixes.

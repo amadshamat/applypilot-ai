@@ -5,7 +5,7 @@ import {
   type SalaryRange,
   type WorkArrangement,
 } from '@applypilot/shared';
-import type { JobScope, LocateResult, PartialJob, SiteAdapter } from '../types';
+import type { JobScope, LocateOptions, LocateResult, PartialJob, SiteAdapter } from '../types';
 import { elementToText, isGenericPageTitle, nonEmpty, normalizeWhitespace } from '../text';
 import { findDescriptionElement } from '../strategies/dom';
 import { findSalary, parseEmploymentTypeLabels } from '../strategies/text-signals';
@@ -160,7 +160,7 @@ function panelIn(doc: Document, frame: boolean, singleJobDocument: boolean): Pan
     }
   }
   // Fallback for layout changes: a job header outside any result card.
-  const title = titleElement(doc, singleJobDocument);
+  const title = titleElement(doc, singleJobDocument) ?? titleNearDescription(doc);
   if (!title) return null;
   const root = singleJobDocument
     ? (title.closest('main') ?? doc.body)
@@ -168,9 +168,38 @@ function panelIn(doc: Document, frame: boolean, singleJobDocument: boolean): Pan
   return { doc, root, title, jobKey: declaredKey(root), frame };
 }
 
+/**
+ * Fallback when the title hooks change but the description keeps its id: the
+ * first heading in the block around the one description outside the cards.
+ */
+function titleNearDescription(doc: Document): Element | null {
+  const descriptions = [...doc.querySelectorAll(DESCRIPTION.join(', '))].filter(
+    (el) => !insideCard(el),
+  );
+  if (descriptions.length !== 1 || !descriptions[0]) return null;
+  const panel = panelAround(descriptions[0], doc.body);
+  for (const heading of panel.querySelectorAll(HEADINGS)) {
+    if (descriptions[0].contains(heading)) continue;
+    const text = cleanTitle(heading);
+    if (text && !isGenericPageTitle(text) && !/^job details$/i.test(text)) return heading;
+  }
+  return null;
+}
+
 function declaredKey(root: Element): string | null {
   const key = root.closest('[data-jk]')?.getAttribute('data-jk');
   return key && /^[a-f0-9]{8,32}$/i.test(key) ? key.toLowerCase() : null;
+}
+
+function frameOrigin(frame: HTMLIFrameElement, url: URL): string | null {
+  const src = frame.getAttribute('src');
+  if (!src) return null;
+  try {
+    const origin = new URL(src, url).origin;
+    return origin === 'null' ? null : origin;
+  } catch {
+    return null;
+  }
 }
 
 function frameDocuments(doc: Document): { frame: HTMLIFrameElement; doc: Document | null }[] {
@@ -343,10 +372,15 @@ function describeStructure(doc: Document, card: Element | null): string {
  * Finds the details panel for the selected job and checks that it really shows
  * that job. See the file comment for the layouts it handles.
  */
-export function locateSelectedJob(doc: Document, url: URL): LocateResult {
+export function locateSelectedJob(
+  doc: Document,
+  url: URL,
+  options: LocateOptions = {},
+): LocateResult {
   const checks: ExtractionCheck[] = [];
   const keyInAddress = indeedJobKey(url);
-  const jobPage = isJobPage(url);
+  // Inside a details frame the document shows one job, whatever its address.
+  const jobPage = isJobPage(url) || options.embedded === true;
   const card = jobPage ? null : selectedCard(doc, keyInAddress);
   const selectedKey = keyInAddress ?? (card ? declaredKey(card) : null);
   const selectedTitle = card ? cardTitle(card) : null;
@@ -374,8 +408,16 @@ export function locateSelectedJob(doc: Document, url: URL): LocateResult {
   // 1. A details frame (its own document), 2. a panel in this page, 3. this job page.
   let panel: PanelCandidate | null = null;
   let frameLoading = false;
+  const blockedFrameOrigins = new Set<string>();
   for (const { frame, doc: frameDoc } of frameDocuments(doc)) {
-    if (!frameDoc?.body || frameDoc.URL === 'about:blank') {
+    // A frame filled by script (srcdoc or about:blank plus writes) has content but no address.
+    const empty =
+      !frameDoc?.body || (frameDoc.URL === 'about:blank' && !frameDoc.body.firstElementChild);
+    if (!frameDoc) {
+      const origin = frameOrigin(frame, url);
+      if (origin) blockedFrameOrigins.add(origin);
+    }
+    if (empty) {
       frameLoading ||= frameDoc !== null;
       checks.push({
         id: 'details-panel',
@@ -411,7 +453,10 @@ export function locateSelectedJob(doc: Document, url: URL): LocateResult {
       checks,
       message: frameLoading
         ? 'The selected job’s details are still loading. Wait until they appear on the right, then analyze again.'
-        : 'No job is open on this Indeed page. Click a job in the results so its details appear on the right, then analyze again.',
+        : blockedFrameOrigins.size > 0
+          ? 'Chrome keeps this job’s details in a separate Indeed frame that ApplyPilot cannot read yet. Allow access below, or paste the job instead.'
+          : 'No job is open on this Indeed page. Click a job in the results so its details appear on the right, then analyze again.',
+      ...(blockedFrameOrigins.size > 0 ? { blockedFrameOrigins: [...blockedFrameOrigins] } : {}),
     };
   }
 
@@ -594,9 +639,32 @@ function detailGroup(root: Element, label: RegExp): string[] {
   return [];
 }
 
-function siteCurrency(url: URL): string | null {
-  const sub = url.hostname.toLowerCase().replace(/\.?indeed\.com$/, '') || 'www';
+function hostCurrency(hostname: string): string | null {
+  const host = hostname.toLowerCase();
+  if (!/(^|\.)indeed\.com$/.test(host)) return null;
+  const sub = host.replace(/\.?indeed\.com$/, '') || 'www';
   return SITE_CURRENCY[sub] ?? null;
+}
+
+/**
+ * The country site's currency. An embedded details frame lives on a shared
+ * subdomain (jobs.indeed.com), so the page that holds it decides; Chrome
+ * exposes only the ancestor origins, never their addresses or content.
+ */
+function siteCurrency(url: URL, doc: Document): string | null {
+  const own = hostCurrency(url.hostname);
+  if (own) return own;
+  const ancestors = doc.defaultView?.location.ancestorOrigins;
+  if (!ancestors) return null;
+  for (let i = ancestors.length - 1; i >= 0; i -= 1) {
+    try {
+      const currency = hostCurrency(new URL(ancestors.item(i) ?? '').hostname);
+      if (currency) return currency;
+    } catch {
+      // not an address; ignore
+    }
+  }
+  return null;
 }
 
 function scopeFor(doc: Document, url: URL, scope?: JobScope): JobScope | null {
@@ -672,7 +740,8 @@ export const indeedAdapter: SiteAdapter = {
     for (const text of payTexts) {
       const salary = findSalary(text);
       if (salary) {
-        const currency: SalaryRange['currency'] = salary.value.currency ?? siteCurrency(url);
+        const currency: SalaryRange['currency'] =
+          salary.value.currency ?? siteCurrency(url, root.ownerDocument);
         out.salary = { value: { ...salary.value, currency }, confidence };
         break;
       }

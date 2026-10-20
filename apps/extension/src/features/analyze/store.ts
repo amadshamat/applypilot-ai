@@ -12,6 +12,8 @@ interface AnalysisStore {
   state: AnalysisState;
   analyze: (services: AppServices) => Promise<void>;
   restoreCached: (services: AppServices) => Promise<void>;
+  /** Shows an analysis made outside the page, from text the user pasted. */
+  showPasted: (result: JobExtractionResult) => void;
   reset: () => void;
 }
 
@@ -35,5 +37,6 @@ export const useAnalysis = create<AnalysisStore>((set, get) => ({
       set({ state: { status: 'success', result: response.data, fromCache: true } });
     }
   },
+  showPasted: (result) => set({ state: { status: 'success', result, fromCache: false } }),
   reset: () => set({ state: { status: 'idle' } }),
 }));

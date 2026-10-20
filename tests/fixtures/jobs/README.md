@@ -21,6 +21,8 @@ company name and location the report showed.
 | `indeed-embedded-sunstates.html`      | The frame content for the selected Sunstates Security job                                                    | Header fields from the report, single exact pay, one job type              |
 | `indeed-embedded-zs-connections.html` | The frame content for another card, used to test switching jobs                                              | Job switching: never mixing the two jobs                                   |
 | `indeed-homepage-feed.html`           | The third report: the homepage feed, generated class names, no search-page hooks, two "Police Officer" cards | Panel found by the selected card's title, bullet header line, cents in pay |
+| `indeed-search-papermoon.html`        | The fourth report: search page whose details frame is on another Indeed origin (set by the test)             | Blocked frame reported, never guessed; outline for bug reports             |
+| `indeed-embedded-papermoon.html`      | The frame content for the selected PaperMoon Springfield job                                                 | Reading inside the frame: full address, cents pay, part-time               |
 
 The Greenhouse and Indeed fixtures are modeled on those sites' public markup (`data-testid`
 and id hooks), written without access to the live sites from the build environment. Live

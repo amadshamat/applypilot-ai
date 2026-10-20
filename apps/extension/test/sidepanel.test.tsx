@@ -220,6 +220,92 @@ describe('analyze view', () => {
   });
 });
 
+describe('job in a protected Indeed frame (PaperMoon report)', () => {
+  const PAPERMOON = 'e1f2a3b4c5d6e7f8';
+  const SEARCH = `https://www.indeed.com/jobs?q=server+bartender&vjk=${PAPERMOON}`;
+  const FRAME = `https://jobs.indeed.com/viewjob?jk=${PAPERMOON}&viewtype=embedded`;
+
+  /** What the page reports when Chrome keeps the details frame from it. */
+  function blockedResult() {
+    const doc = new JSDOM(readFileSync(resolve(FIXTURES, 'indeed-search-papermoon.html'), 'utf8'), {
+      url: SEARCH,
+    }).window.document;
+    const frame = doc.querySelector('iframe')!;
+    frame.setAttribute('src', FRAME);
+    Object.defineProperty(frame, 'contentDocument', { get: () => null });
+    return extractJob(doc, SEARCH);
+  }
+
+  function frameResult() {
+    return { ...fixtureResult('indeed-embedded-papermoon.html', FRAME), pageUrl: SEARCH };
+  }
+
+  it('asks for Indeed access from a click and analyzes again once granted', async () => {
+    const u = userEvent.setup();
+    let granted = false;
+    const fake = renderPanel(
+      (request) =>
+        request.type === 'job/extract-active-tab'
+          ? ok(granted ? frameResult() : blockedResult())
+          : ok(null),
+      { tabUrl: SEARCH, permission: { granted: false, grantOnRequest: true } },
+    );
+    await u.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    expect(
+      await screen.findByText('Indeed shows this job in a protected frame'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/https:\/\/jobs\.indeed\.com/)).toBeInTheDocument();
+    // Nothing is requested until the user clicks.
+    expect(fake.services.permissions.request).not.toHaveBeenCalled();
+
+    granted = true;
+    await u.click(screen.getByRole('button', { name: /Allow reading Indeed job details/ }));
+    expect(fake.services.permissions.request).toHaveBeenCalledWith('https://*.indeed.com/*');
+    expect(await screen.findByRole('heading', { name: 'Server / Bartender' })).toBeInTheDocument();
+    expect(screen.getAllByText('PaperMoon Springfield').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('Indeed shows this job in a protected frame'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers pasting the job when access is declined', async () => {
+    const u = userEvent.setup();
+    renderPanel(
+      (request) => (request.type === 'job/extract-active-tab' ? ok(blockedResult()) : ok(null)),
+      { tabUrl: SEARCH, permission: { granted: false, grantOnRequest: false } },
+    );
+    await u.click(await screen.findByRole('button', { name: /Analyze this page/ }));
+    await u.click(await screen.findByRole('button', { name: /Allow reading Indeed job details/ }));
+    expect(await screen.findByText(/Access was not granted/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Paste the job instead/ })).toBeInTheDocument();
+  });
+
+  it('analyzes a pasted job and checks the form first', async () => {
+    const u = userEvent.setup();
+    renderPanel(() => ok(null), { tabUrl: SEARCH });
+    await u.click(await screen.findByRole('button', { name: /Paste the job instead/ }));
+    const form = screen.getByRole('form', { name: 'Paste a job' });
+    await u.click(within(form).getByRole('button', { name: 'Analyze pasted job' }));
+    expect(within(form).getByText('Enter the job title.')).toBeInTheDocument();
+    expect(within(form).getByText(/Paste the job description/)).toBeInTheDocument();
+
+    await u.type(within(form).getByLabelText('Job title'), 'Server / Bartender');
+    await u.type(within(form).getByLabelText('Company (optional)'), 'PaperMoon Springfield');
+    await u.click(within(form).getByLabelText('Job description'));
+    await u.paste(
+      'PaperMoon Springfield is a family restaurant looking for a friendly server and bartender for evening shifts.\nJob Type: Part-time\nPay: $15.54 - $17.29 per hour',
+    );
+    await u.click(within(form).getByRole('button', { name: 'Analyze pasted job' }));
+
+    expect(await screen.findByRole('heading', { name: 'Server / Bartender' })).toBeInTheDocument();
+    expect(screen.getByText(/Analyzed from the text you pasted/)).toBeInTheDocument();
+    // A bare $ is not assumed to be US dollars.
+    expect(screen.getByText('15.54 – 17.29 (currency not stated) per hour')).toBeInTheDocument();
+    expect(screen.getByText('Only the text you pasted was read.')).toBeInTheDocument();
+    expect(screen.getAllByText('You entered').length).toBeGreaterThan(0);
+  });
+});
+
 describe('settings view', () => {
   it('saves valid settings and blocks weights that do not total 100', async () => {
     const { services } = renderPanel();

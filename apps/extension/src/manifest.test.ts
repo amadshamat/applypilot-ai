@@ -16,7 +16,11 @@ describe('manifest', () => {
   });
 
   it('asks for local API access only as an optional permission', () => {
-    expect(release.optional_host_permissions).toEqual(['http://127.0.0.1/*', 'http://localhost/*']);
+    expect(release.optional_host_permissions).toEqual([
+      'http://127.0.0.1/*',
+      'http://localhost/*',
+      'https://*.indeed.com/*',
+    ]);
   });
 
   it('keeps a strict extension-page CSP with no remote or eval code', () => {
@@ -29,6 +33,7 @@ describe('manifest', () => {
     expect(createManifest({ e2e: true }).host_permissions).toEqual([
       'http://127.0.0.1/*',
       'http://www.indeed.com/*',
+      'http://jobs.indeed.com/*',
     ]);
   });
 });
