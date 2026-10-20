@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.3.3) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.3.4) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.3.3.zip` from the project files.
+Download `applypilot-ai-extension-0.3.4.zip` from the project files.
 
 ## 2. Extract
 

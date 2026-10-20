@@ -1,6 +1,7 @@
 import {
   indeedJobKey,
   type Confidence,
+  type EmploymentType,
   type ExtractionCheck,
   type SalaryRange,
   type WorkArrangement,
@@ -518,6 +519,11 @@ export function locateSelectedJob(
         },
   );
 
+  // The card may fill gaps only when it is certainly this job: same job id.
+  const sameJobCard =
+    card && confirmed && selectedKey && jobKeysIn(card, url.href).has(selectedKey)
+      ? card
+      : undefined;
   return {
     scope: {
       doc: panel.doc,
@@ -525,6 +531,7 @@ export function locateSelectedJob(
       title: panel.title,
       singleJobDocument: panel.frame || jobPage,
       confirmed,
+      ...(sameJobCard ? { card: sameJobCard } : {}),
     },
     selectedJobId: selectedKey ?? panel.jobKey,
     checks,
@@ -614,6 +621,50 @@ function bulletLine(
     };
   }
   return null;
+}
+
+const PLACE_IN = /^(remote|hybrid(?: work)?|in[- ]person|on[- ]?site) in (.{2,60})$/i;
+
+/**
+ * Location, pay and job type from the selected result card: Indeed shows them
+ * there as short lines and chips ("Alexandria, VA 22305", "$15 - $19 an hour",
+ * "Full-time") even when the details panel puts them somewhere unrecognised.
+ */
+function readCard(card: Element): {
+  location: string | null;
+  arrangement: WorkArrangement | null;
+  pay: string | null;
+  types: EmploymentType[];
+} {
+  const texts = [card, ...card.querySelectorAll('*')]
+    .filter((el) => el.childElementCount === 0)
+    .map((el) => normalizeWhitespace(el.textContent))
+    .filter((t) => t.length > 0 && t.length <= 80);
+  let location: string | null = null;
+  let arrangement: WorkArrangement | null = null;
+  for (const text of texts) {
+    const within = PLACE_IN.exec(text);
+    const label = ARRANGEMENT_LABELS.find(([pattern]) => pattern.test(within?.[1] ?? text));
+    if (within?.[2] && PLACE.test(within[2])) {
+      location = within[2];
+      arrangement = label?.[1] ?? null;
+      break;
+    }
+    if (PLACE.test(text)) {
+      location = text;
+      arrangement = label?.[1] ?? null;
+      break;
+    }
+  }
+  const types = parseEmploymentTypeLabels(
+    texts.filter((t) => t.length <= 30 && parseEmploymentTypeLabels([t]).length > 0),
+  );
+  return {
+    location,
+    arrangement,
+    pay: texts.find((t) => /[$€£¥₹]\s?\d/.test(t)) ?? null,
+    types,
+  };
 }
 
 /** Texts listed under a "Job details" group such as Pay or Job type. */
@@ -753,6 +804,26 @@ export const indeedAdapter: SiteAdapter = {
       .map((t) => t.replace(/^[-–\s]+/, ''));
     const types = parseEmploymentTypeLabels(typeLabels.length > 0 ? typeLabels : headerTypes);
     if (types.length > 0) out.employmentType = { value: types, confidence };
+
+    // Gaps the panel leaves are filled from the selected card of the same job.
+    if (scope.card) {
+      const fromCard = readCard(scope.card);
+      if (!out.location && fromCard.location) {
+        out.location = { value: fromCard.location, confidence: 'medium' };
+      }
+      if (!out.workArrangement && fromCard.arrangement) {
+        out.workArrangement = { value: fromCard.arrangement, confidence: 'medium' };
+      }
+      const salary = !out.salary && fromCard.pay ? findSalary(fromCard.pay) : null;
+      if (salary) {
+        const currency: SalaryRange['currency'] =
+          salary.value.currency ?? siteCurrency(url, scope.card.ownerDocument);
+        out.salary = { value: { ...salary.value, currency }, confidence: 'medium' };
+      }
+      if (!out.employmentType && fromCard.types.length > 0) {
+        out.employmentType = { value: fromCard.types, confidence: 'medium' };
+      }
+    }
 
     const description = descriptionIn(root);
     const descriptionText = description ? nonEmpty(elementToText(description)) : null;

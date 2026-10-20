@@ -46,7 +46,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.3.3' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.3.4' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -231,6 +231,26 @@ test('reads the selected job on the Indeed homepage feed', async ({ context, ext
   await expect(panel.getByText('$74,034.90 – $132,956.10 per year', { exact: true })).toBeVisible();
   await expect(panel.getByText(/No job is open/)).toHaveCount(0);
   await expect(panel.getByText(/Arlington/)).toHaveCount(0);
+});
+
+test('fills location and job type from the selected feed card (CloudKitchens report)', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const job = await context.newPage();
+  await job.goto(
+    `http://www.indeed.com:${port}/jobs/indeed-homepage-cloudkitchens.html?from=gnav-homepage--homepage-frontend&vjk=9a4638c51249e398`,
+  );
+  await job.bringToFront();
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  await expect(panel.getByRole('heading', { name: 'Facility Operations Runner' })).toBeVisible();
+  await expect(panel.getByText('Alexandria, VA 22305', { exact: true })).toBeVisible();
+  await expect(panel.getByText('$15 – $19 per hour', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Full-time').first()).toBeVisible();
+  await expect(panel.getByText('Part-time', { exact: true })).toHaveCount(0);
+  await expect(panel.getByText(/Chantilly|Manassas/)).toHaveCount(0);
 });
 
 test('asks for a toolbar click on pages it has no access to', async ({ context, extensionId }) => {

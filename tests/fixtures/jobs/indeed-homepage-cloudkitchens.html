@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Job Search | Indeed</title>
+</head>
+<body>
+  <!--
+    Regression fixture for the fifth real-world test (2026-10-20, v0.3.3):
+    the homepage feed with "Facility Operations Runner" at CloudKitchens
+    selected. The analysis found the job but no location, and reported
+    Part-time while the card says Full-time. The card shows location, pay and
+    job type as separate lines and chips; the details panel header shows only
+    the company. The panel markup is modeled, not copied: the live page could
+    not be inspected, and the description's mention of part-time shifts is an
+    assumption that reproduces the wrong job type.
+  -->
+  <main class="css-main">
+    <div class="css-feed">
+      <h2 class="css-feedhead">Matches your preferences</h2>
+      <ul class="css-list">
+        <li class="css-item">
+          <div class="css-card">
+            <span class="css-tag">Easily apply</span><span class="css-tag">New</span>
+            <a class="css-link" href="/rc/clk?jk=5b6c7d8e9f0a1b2c&amp;from=hp"><h3 class="css-t">Entry Level Business Representative</h3></a>
+            <div class="css-co">Confidential</div>
+            <div class="css-loc">Chantilly, VA 20152</div>
+            <ul class="css-attrs"><li><span>$63,500 - $65,000 a year</span></li><li>Full-time</li><li>401(k)</li></ul>
+          </div>
+        </li>
+        <li class="css-item">
+          <div class="css-card css-card-selected">
+            <a class="css-link" href="/rc/clk?jk=9a4638c51249e398&amp;from=hp"><h3 class="css-t">Facility Operations Runner</h3></a>
+            <div class="css-co">CloudKitchens</div>
+            <div class="css-loc">Alexandria, VA 22305</div>
+            <ul class="css-attrs"><li><span>$15 - $19 an hour</span></li><li>Full-time</li><li>Pet insurance</li><li>Paid parental leave</li><li>401(k)</li></ul>
+          </div>
+        </li>
+        <li class="css-item">
+          <div class="css-card">
+            <span class="css-tag">Easily apply</span>
+            <a class="css-link" href="/rc/clk?jk=6c7d8e9f0a1b2c3d&amp;from=hp"><h3 class="css-t">Sales Associate</h3></a>
+            <div class="css-co">Lindsay VW of Manassas</div>
+            <div class="css-loc">Manassas, VA 20111</div>
+            <ul class="css-attrs"><li><span>$65,000 - $100,000 a year</span></li><li>Part-time</li></ul>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="css-detail">
+      <div class="css-detailhead">
+        <h2 class="css-dt">Facility Operations Runner</h2>
+        <div class="css-sub"><a href="/cmp/Cloudkitchens">CloudKitchens</a></div>
+        <div class="css-buttons"><button>Apply now</button><button aria-label="Save job">Save</button></div>
+      </div>
+      <div class="css-body">
+        <p><b>About the role</b></p>
+        <p>CloudKitchens is looking for a Facility Operations Runner to keep our delivery kitchen facility running smoothly. You will move orders from kitchens to couriers, restock supplies and keep shared spaces clean and safe. This is an on-site role.</p>
+        <p><b>What you will do</b></p>
+        <ul>
+          <li>Hand off orders to delivery couriers quickly and accurately</li>
+          <li>Restock packaging and cleaning supplies across the facility</li>
+          <li>Report maintenance issues to the facility manager</li>
+        </ul>
+        <p><b>What we look for</b></p>
+        <ul>
+          <li>Comfortable standing and walking for a full shift</li>
+          <li>Able to lift up to 50 pounds</li>
+          <li>Reliable and friendly with a customer-first attitude</li>
+        </ul>
+        <p>We also hire part-time runners for weekend shifts; tell us your availability when you apply.</p>
+        <p>Pay: $15 - $19 per hour</p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,11 +1,11 @@
 # Progress
 
-_Last updated: 2026-10-20 (v0.3.3)_
+_Last updated: 2026-10-20 (v0.3.4)_
 
 ## Current phase
 
 **Phase 3 (Claude integration, tailoring, cover letters, screening drafts): built and tested
-here, waiting for Muhaid's manual test in Chrome.** v0.3.1 to v0.3.3 fix Indeed extraction bugs
+here, waiting for Muhaid's manual test in Chrome.** v0.3.1 to v0.3.4 fix Indeed extraction bugs
 found during that test (below). Phase 4 will not start until Phase 3 is approved. No real (paid)
 Claude request has been made; see "Not yet verified".
 
@@ -14,6 +14,20 @@ upload, profile management, persistence, job matching and suggestions). Phase 1 
 v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### v0.3.4: Indeed feed values from the selected card
+
+Reported by Muhaid on 2026-10-20 with v0.3.3 on the live Indeed homepage feed: "Facility
+Operations Runner" at CloudKitchens was found and every check passed (first confirmed live
+success of the selected-job detection), but the location was "Not found", the job type said
+Part-time while the card says Full-time, and the pay had no currency.
+
+| Fix                                                                                                                                    | Verified by                     |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Location, pay and job type the panel does not show are taken from the selected card, only when the card carries the same job id        | `indeed-selection.test.ts`, e2e |
+| The card's job type chip (Indeed's own field) now wins over a mention in the description, and its pay gets the country site's currency | `indeed-selection.test.ts`, e2e |
+
+The panel's live markup is still unknown; the new fixture models it from Muhaid's screenshot.
 
 ### v0.3.3: Indeed job details in a frame on another origin
 
@@ -124,13 +138,13 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-20, v0.3.3, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-20, v0.3.4, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **381 passed** (job-extraction 108, extension 96, resume-parser 44, ai-core 43,
+- `pnpm test`: **383 passed** (job-extraction 110, extension 96, resume-parser 44, ai-core 43,
   api 42, matching 30, shared 18)
 - `pnpm test:coverage`: 88.0% statements, 80.3% branches, 84.8% functions, 89.8% lines
-- `pnpm test:e2e`: **12 passed**. v0.3.3 adds an Indeed search page whose details frame is on a
+- `pnpm test:e2e`: **13 passed**. v0.3.4 adds the CloudKitchens feed page. v0.3.3 adds an Indeed search page whose details frame is on a
   second hostname (`jobs.indeed.com`, a separate origin the page cannot read); the extension reads
   the selected job from inside the frame (repeated 4 times with the frame-switch test, no flakes).
   v0.3.2 added the homepage feed. New: the reported Indeed page with the selected job in a
@@ -202,7 +216,7 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** load v0.3.3 (remove the old version first), re-check the PaperMoon search page,
+1. **Muhaid:** load v0.3.4 (remove the old version first), re-check the PaperMoon search page,
    a job switch and the homepage feed (section 5a of the install guide, I1 to I7), then test Phase 3 in mock mode (section 7) and decide
    whether to try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft).
 2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser

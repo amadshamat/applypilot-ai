@@ -394,3 +394,45 @@ describe('Indeed: homepage feed without search-page hooks', () => {
     expect(value(extractJob(doc, HOME, { now: NOW }).job.title)).toBe('Police Officer');
   });
 });
+
+describe('Indeed: homepage feed values the panel does not show (CloudKitchens report)', () => {
+  // Regression for the fifth report (2026-10-20, v0.3.3): job found, but no
+  // location, and "Part-time" while the card says Full-time.
+  const KEY = '9a4638c51249e398';
+  const url = `https://www.indeed.com/?from=gnav-homepage--homepage-frontend&vjk=${KEY}`;
+
+  it('fills location, pay and job type from the selected card of the same job', () => {
+    const doc = loadFixture('indeed-homepage-cloudkitchens.html', url);
+    const result = extractJob(doc, url, { now: NOW });
+    expect(result.isJobPosting).toBe(true);
+    expect(value(result.job.title)).toBe('Facility Operations Runner');
+    expect(value(result.job.company)).toBe('CloudKitchens');
+    expect(result.job.location).toMatchObject({
+      value: 'Alexandria, VA 22305',
+      source: 'adapter',
+      confidence: 'medium',
+    });
+    expect(result.job.employmentType).toMatchObject({ value: ['full-time'], source: 'adapter' });
+    expect(value(result.job.salary)).toMatchObject({
+      min: 15,
+      max: 19,
+      period: 'hour',
+      currency: 'USD',
+    });
+    const text = JSON.stringify(result.job);
+    for (const other of ['Chantilly', 'Manassas', '63,500', '65,000', 'Lindsay', 'Confidential']) {
+      expect(text).not.toContain(other);
+    }
+  });
+
+  it('never fills gaps from a card of another job', () => {
+    // The address names the job, but the highlighted card belongs to another one.
+    const other = '6c7d8e9f0a1b2c3d';
+    const doc = loadFixture('indeed-homepage-cloudkitchens.html', url);
+    const card = doc.querySelector(`a[href*="${KEY}"]`)!;
+    card.setAttribute('href', `/rc/clk?jk=${other}&from=hp`);
+    const result = extractJob(doc, url, { now: NOW });
+    expect(JSON.stringify(result.job)).not.toContain('Manassas');
+    expect(JSON.stringify(result.job)).not.toContain('Alexandria');
+  });
+});

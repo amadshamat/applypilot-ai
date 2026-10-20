@@ -32,6 +32,11 @@ export interface JobScope {
   singleJobDocument: boolean;
   /** Whether the container was confirmed to show the job the user selected. */
   confirmed: boolean;
+  /**
+   * The selected result card of this same job (matched by its job id), used
+   * only for values the details panel does not show, such as its location.
+   */
+  card?: Element;
 }
 
 export interface LocateOptions {
