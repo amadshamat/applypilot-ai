@@ -1,0 +1,25 @@
+{
+  "name": "@applypilot/infra",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "AWS CDK (TypeScript) definition of ApplyPilot Cloud. Synthesizing is free and offline; deploying needs Muhaid's approval.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "synth": "pnpm --filter @applypilot/api run build:lambda && cdk synth",
+    "diff": "pnpm --filter @applypilot/api run build:lambda && cdk diff",
+    "deploy": "pnpm --filter @applypilot/api run build:lambda && cdk deploy"
+  },
+  "dependencies": {
+    "@applypilot/ai-core": "workspace:*",
+    "@applypilot/api": "workspace:*",
+    "@applypilot/sync": "workspace:*",
+    "aws-cdk-lib": "2.272.0",
+    "cdk-nag": "3.0.2",
+    "constructs": "10.8.1"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1144.0",
+    "tsx": "4.23.15"
+  }
+}

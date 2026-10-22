@@ -385,3 +385,74 @@ would show job details outside the browser window; they can be added later if wa
 Job titles, companies and notes can come from web pages, and a CSV opened in a spreadsheet will
 run a cell starting with `=`, `+`, `-` or `@` as a formula (CSV injection). Such string cells
 are prefixed with an apostrophe in the export. Numbers (match scores) are written as numbers.
+
+## 047: Cloud sync is opt-in, local-first, and never overwrites without a safeguard
+
+The browser stays the primary copy. Sync is off until the user connects, signs in and turns it
+on, and the extension works fully without it. The sync engine (`packages/sync`) compares three
+copies of each item: the one from the last sync (the "shadow"), this browser's, and the cloud's.
+Only changes are moved; changes on both sides are merged field by field (notes and status
+history are combined), and a real clash, including an edit against a deletion, is parked as a
+conflict until the user picks a side. Before sync changes or deletes anything that already
+existed in the browser, a backup is kept (the last two, restorable from Settings). A run that
+would delete more than five records in either direction stops and asks. A local write is
+refused if the user edited data while the run was in progress (compare-and-set), and retried.
+
+Rejected: last-writer-wins by timestamp (silently loses edits made on a second device, and
+clocks differ) and making the cloud the primary copy (breaks the offline, local-first design
+users already have).
+
+## 048: Versioned writes and a data epoch, not locks
+
+Every cloud item has a version. A push names the version it was based on, and DynamoDB writes
+it only if that is still the current version (a conditional put), so two devices can never
+overwrite each other; the loser re-reads and merges. Deletions are tombstones so other devices
+learn about them. Deleting cloud data starts a new "epoch"; a device still on the old epoch
+cannot upload until the user decides, so deleting cloud data from one device is not undone by
+another device re-uploading everything a minute later.
+
+## 049: Single-table DynamoDB keyed by the token's user id
+
+One table, partition key `USER#<sub>` where `sub` comes only from the verified Cognito access
+token, sort keys `PROFILE`, `APP#<id>`, `META` and rate-limit counters. A request has no way to
+name another user's partition. A sparse local secondary index on `changedAt` serves the change
+feed. Items are gzip-compressed (300 KB stored limit). On-demand capacity: personal-scale
+traffic costs cents and needs no capacity planning.
+
+Rejected: one table per entity (more IAM and more requests for the same data) and Aurora or RDS
+(an always-on database costs money every hour for a handful of users).
+
+## 050: Cognito hosted sign-in with PKCE through chrome.identity
+
+The extension never sees passwords. It opens Cognito's hosted page with
+`chrome.identity.launchWebAuthFlow`, uses the authorization code flow with PKCE (extensions
+cannot keep a client secret), checks the `state` value and the ID token's audience, and keeps
+tokens only in `chrome.storage.session` (memory, not disk, not readable by content scripts).
+The API checks the token twice: API Gateway's Cognito authorizer, then `aws-jwt-verify` in the
+Lambda (`token_use=access`, client id, issuer, signature). The Lite plan is free up to 10,000
+monthly active users.
+
+Rejected: a sign-in form inside the extension (handles passwords, needs the less safe password
+flow) and Google sign-in through `chrome.identity.getAuthToken` (works only in Chrome with a
+Google account, and ties the app to Google).
+
+## 051: Serverless on API Gateway REST and Lambda, built from the existing API code
+
+The cloud API reuses the request/response shape of the Phase 3 local API, so the same code runs
+in tests, on the local test server and in Lambda (thin adapters for each). REST API rather than
+HTTP API because REST supports per-stage throttling, Cognito authorizers with scopes, request
+size limits and WAF directly. Three functions (data, account, optional AI), each with its own
+least-privilege role, so the data function cannot delete Cognito users and only the AI function
+can read the Claude key in Secrets Manager. Node.js on arm64 (cheaper per GB-second). cdk-nag
+AWS Solutions checks run on every synth; each exception is acknowledged in code with a reason.
+
+## 052: Everything is testable without AWS; deployment needs approval
+
+`pnpm cloud:local` runs the real cloud API code with dynalite (an in-memory DynamoDB) and a
+small Cognito-like OAuth server (PKCE, hashed passwords, JWKS, RS256 tokens shaped like
+Cognito's). Unit, integration and e2e tests use them, so Phase 6 was built and tested without
+an AWS account or any charges. The extension needs two new permissions, `identity` (the sign-in
+window) and `unlimitedStorage` (sync keeps a last-synced copy and two backups, which can pass
+Chrome's 10 MB default for 1,000 records); neither shows an install warning. Host access to
+`*.amazonaws.com` and `*.amazoncognito.com` is optional and requested only for the exact hosts
+of the deployment the user connects to.

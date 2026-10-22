@@ -274,26 +274,45 @@ follows the repository; `applications-view.tsx` holds the list, filters, due fol
 Analytics view; `track-buttons.tsx` adds Save to tracker (Analyze) and the user's "I submitted
 it" (Autofill). `background/reminders.ts` sets the toolbar badge.
 
-## Planned backend (Phase 6)
+## Cloud backend and sync (Phase 6)
+
+Optional. Full detail, the AWS diagram, deployment and costs: [docs/AWS.md](docs/AWS.md).
+Built and tested locally; not deployed.
 
 ```mermaid
 flowchart LR
-  EXT[Extension] -- HTTPS + Cognito JWT --> APIGW[API Gateway<br/>usage plans, throttling]
-  APIGW --> L1[Lambda: profiles]
-  APIGW --> L2[Lambda: applications]
-  APIGW --> L3[Lambda: AI generation]
-  L1 --> DDB[(DynamoDB<br/>single table, KMS)]
-  L2 --> DDB
-  L3 --> SM[Secrets Manager<br/>Anthropic key]
-  L3 --> CL[Claude API]
-  L1 & L2 & L3 --> CW[CloudWatch logs + metrics<br/>PII redaction]
-  EXT -- sign in --> COG[Cognito user pool]
+  subgraph Extension
+    Card[Settings: Cloud sync] -- sync/* messages --> Runner[SyncRunner<br/>service worker]
+    Runner --> Engine[SyncEngine<br/>packages/sync]
+    Engine <--> Local[(chrome.storage.local)]
+    Card -- PKCE sign-in --> Auth[CloudAuth<br/>chrome.identity]
+  end
+  Auth --> Cognito[Cognito hosted sign-in]
+  Engine -- CloudClient, HTTPS + JWT --> APIGW[API Gateway REST /v1]
+  APIGW --> Lambda[Lambda data / account / ai]
+  Lambda --> DDB[(DynamoDB)]
 ```
 
-- REST API with per-route Zod validation and a typed error envelope matching the extension's.
-- User-scoped authorization: every DynamoDB key is prefixed with the Cognito `sub`.
-- The Phase 3 API handler (`createApi`) moves into the AI Lambda unchanged; the Node HTTP adapter
-  is replaced by an API Gateway adapter, the bearer token by Cognito, the in-memory daily limit
-  by a DynamoDB counter, and the key moves from `.env` to Secrets Manager.
-- Infrastructure in AWS CDK (TypeScript) with separate dev and prod stacks, least-privilege IAM,
-  and a budget alarm. Nothing will be deployed without explicit approval.
+**Packages.**
+
+| Path                       | Role                                                                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/sync`            | The contract (zod schemas for items, changes, pushes, errors, export), the route table shared by the API and the CDK stack, three-way merge, the `SyncEngine`, and `CloudClient` (HTTP, validates every response)        |
+| `services/api/src/cloud`   | `createCloudApi` (routing, body limit, auth, per-user rate limit, structured errors, privacy-safe logs), `CloudStore` (DynamoDB single table, conditional writes, change feed, deletion with epochs), `jwtAuthenticator` |
+| `services/api/src/lambda`  | API Gateway adapters and the three handlers, bundled with esbuild                                                                                                                                                        |
+| `services/api/src/local`   | `pnpm cloud:local`: dynalite, a Cognito-like OAuth server, the same cloud API                                                                                                                                            |
+| `infra/`                   | The CDK stack and its tests (cdk-nag on synth)                                                                                                                                                                           |
+| `apps/extension/src/cloud` | Connection settings, `CloudAuth`, `ExtensionLocalData` (compare-and-set writes, backups), sync state and status storage, `SyncRunner`, messages                                                                          |
+
+**One sync run.** Pull every change since the stored cursor (paged, with a 30-second overlap so
+a write landing mid-read is not missed). For each item, compare the shadow (last synced copy),
+the local copy and the cloud copy: apply cloud-only changes locally (after a backup if they
+touch existing data), queue local-only changes for upload, merge changes on both sides, and
+park clashes as conflicts. Push up to 50 changes per request, each with its base version. A
+push conflict returns the current cloud copy, which is merged in the next round (up to 3).
+Shadows, the cursor, the epoch and conflicts are saved under `applypilot.syncState`, owned by
+one account at one address.
+
+**When it runs.** Only while sync is on and the user is signed in: every 15 minutes
+(`chrome.alarms`), 30 seconds after a profile or tracker edit, and on Sync now. The service
+worker runs one operation at a time.

@@ -4,6 +4,7 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { useSettings } from '../../hooks/use-settings';
 import { useServices } from '../../services/app-services';
 import { AiConnectionCard } from './ai-connection-card';
+import { CloudSyncCard } from './cloud-sync-card';
 import { DataControls } from './data-controls';
 import { SettingsForm, SettingsLoadError } from './settings-form';
 
@@ -25,6 +26,7 @@ export function SettingsView({ showOpenFullPage = true }: { showOpenFullPage?: b
       {!settings && !error ? <Skeleton className="h-64 w-full" /> : null}
       {settings ? <SettingsForm settings={settings} onSave={save} /> : null}
       <AiConnectionCard />
+      <CloudSyncCard />
       <DataControls />
     </div>
   );

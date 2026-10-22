@@ -9,6 +9,7 @@ import { ProfileRepository } from '../src/storage/profile-repository';
 import { memoryResumeStore } from '../src/storage/resume-store';
 import { SettingsRepository } from '../src/storage/settings-repository';
 import { memoryStore } from '../src/storage/storage-area';
+import { fakeCloudServices, type FakeCloudOptions } from './cloud-fakes';
 
 type Handler = (request: BackgroundRequest) => unknown;
 
@@ -21,6 +22,7 @@ export interface FakeOptions {
   permission?: { granted: boolean; grantOnRequest: boolean };
   /** The active tab's address. Defaults to null (not visible to the extension). */
   tabUrl?: string | null;
+  cloud?: FakeCloudOptions;
 }
 
 const unavailableAi: AiClient = {
@@ -42,6 +44,7 @@ export function fakeServices(
     tab.url = url;
     for (const listener of tab.listeners) listener();
   };
+  const { cloud, account } = fakeCloudServices(localStore, options.cloud);
   const services: AppServices = {
     settings: new SettingsRepository(localStore),
     profile: new ProfileRepository(localStore, () => new Date('2026-10-14T12:00:00Z')),
@@ -63,6 +66,7 @@ export function fakeServices(
         return Promise.resolve(permission.granted);
       }),
     },
+    cloud,
     send: send as unknown as <R extends BackgroundRequest>(r: R) => Promise<ResponseFor<R['type']>>,
     getActiveTabId: () => Promise.resolve(7),
     getActiveTabUrl: () => Promise.resolve(tab.url),
@@ -72,5 +76,5 @@ export function fakeServices(
     },
     openOptionsPage: vi.fn(),
   };
-  return { services, send, navigateTab };
+  return { services, send, navigateTab, account };
 }

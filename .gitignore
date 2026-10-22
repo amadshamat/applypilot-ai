@@ -10,3 +10,9 @@ test-results/
 !.env.example
 .DS_Store
 *.zip
+
+# Local cloud test server data (personal data, this machine only)
+.local-cloud/
+
+# CDK output
+cdk.out/

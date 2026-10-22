@@ -5,22 +5,26 @@ _Draft for review before any public release. Not legal advice._
 ## Summary
 
 ApplyPilot AI helps you understand job postings and prepare applications. In the current version
-(0.5) your data stays in your browser unless you use the optional AI tools. Resumes are read and
+(0.6) your data stays in your browser unless you use the optional AI tools or turn on the
+optional cloud sync. Resumes are read and
 parsed on your device and are never uploaded. The AI tools send data only when **Allow AI
 processing** is on, an ApplyPilot API is connected, and you press Generate after seeing what will
 be sent.
 
 ## What is stored, and where
 
-| Data                                                                                                     | Where                                 | When it is removed                                           |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------ |
-| Settings (theme, AI consent, match weights)                                                              | `chrome.storage.local` on your device | When you delete local data or uninstall                      |
-| The latest job analysis for each tab                                                                     | `chrome.storage.session` (memory)     | When the tab navigates or closes, or the browser exits       |
-| Your profile (contact details, education, experience, skills, certifications, projects, job preferences) | `chrome.storage.local`                | When you delete local data or uninstall                      |
-| Uploaded resume files, their extracted text and parsed drafts                                            | IndexedDB in the extension            | When you delete that resume, delete local data, or uninstall |
-| AI connection (API address and access token)                                                             | `chrome.storage.local`                | When you forget the token, delete local data, or uninstall   |
-| The latest AI draft of each kind for each job (at most 30), with the request that produced it            | `chrome.storage.local`                | When you discard it, delete local data, or uninstall         |
-| Tracked applications: job details you saved or typed, statuses with dates, notes, follow-up reminders    | `chrome.storage.local`                | When you delete one, delete local data, or uninstall         |
+| Data                                                                                                                | Where                                                                 | When it is removed                                           |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Settings (theme, AI consent, match weights)                                                                         | `chrome.storage.local` on your device                                 | When you delete local data or uninstall                      |
+| The latest job analysis for each tab                                                                                | `chrome.storage.session` (memory)                                     | When the tab navigates or closes, or the browser exits       |
+| Your profile (contact details, education, experience, skills, certifications, projects, job preferences)            | `chrome.storage.local`                                                | When you delete local data or uninstall                      |
+| Uploaded resume files, their extracted text and parsed drafts                                                       | IndexedDB in the extension                                            | When you delete that resume, delete local data, or uninstall |
+| AI connection (API address and access token)                                                                        | `chrome.storage.local`                                                | When you forget the token, delete local data, or uninstall   |
+| The latest AI draft of each kind for each job (at most 30), with the request that produced it                       | `chrome.storage.local`                                                | When you discard it, delete local data, or uninstall         |
+| Tracked applications: job details you saved or typed, statuses with dates, notes, follow-up reminders               | `chrome.storage.local`                                                | When you delete one, delete local data, or uninstall         |
+| Cloud sync settings, the last-synced copy of each item, open conflicts, up to two backups (only if you set up sync) | `chrome.storage.local`                                                | When you disconnect, delete local data, or uninstall         |
+| Cloud sign-in tokens (only if you sign in)                                                                          | `chrome.storage.session` (memory)                                     | When you sign out or the browser exits                       |
+| Your profile and tracked applications in ApplyPilot Cloud (only if you turn on sync)                                | The ApplyPilot Cloud deployment you connect (AWS DynamoDB, encrypted) | When you use Delete cloud data or Delete account             |
 
 ## What the extension reads
 
@@ -72,8 +76,28 @@ no copy outside your browser.
 **Logs.** The local API prints the route, status, duration, model and token counts of each
 request. It never logs the content.
 
-Account sync through a hosted ApplyPilot server is planned for a later version; this policy will
-be updated before it ships.
+## Cloud sync (optional)
+
+Off by default. When you connect a deployment, sign in and turn on sync, your profile and
+tracked applications (with statuses, notes and reminders) are copied to that ApplyPilot Cloud
+deployment so your other browsers can sync them. Resume files, AI drafts, settings and the local
+AI token are never uploaded.
+
+- **Account.** Created on Amazon Cognito's sign-in page. ApplyPilot never sees your password.
+  Cognito stores your email address and a password hash.
+- **Who can read it.** Only requests signed with your account's token; every stored item is
+  keyed by your account id. Data is encrypted in transit (HTTPS) and at rest.
+- **Logs.** Each request is logged with its route, status, duration, an error code and a short
+  one-way hash of your account id, kept 30 days. No names, emails, record contents, tokens or IP
+  addresses.
+- **Your controls.** Settings → Cloud sync: **Export cloud data** (everything stored, as JSON),
+  **Delete cloud data** (keeps your account), **Delete account** (data and account), **Sign
+  out**, and turning sync off. Deleting cloud data never deletes what is in your browser.
+- **Backups.** The AWS table keeps point-in-time recovery for 35 days, so a deleted item can
+  remain in AWS backups for up to 35 days before it expires.
+
+Version 0.6 is not deployed to a public server; this section applies to a deployment run by
+whoever operates it (for now, only a deployment you run in your own AWS account).
 
 ## Your controls
 

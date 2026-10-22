@@ -2,6 +2,18 @@ import pkg from '../package.json' with { type: 'json' };
 import { INDEED_FRAMES_ORIGIN } from './lib/host-access';
 
 /**
+ * ApplyPilot Cloud deployments (API Gateway and Cognito hosted sign-in),
+ * Phase 6. Match patterns allow a wildcard only at the start of the host, and
+ * API Gateway addresses carry the region in the middle
+ * (abc.execute-api.ca-central-1.amazonaws.com), hence *.amazonaws.com. Only the
+ * one deployment's exact hosts are ever requested (connectionOrigins).
+ */
+export const CLOUD_HOST_PATTERNS = [
+  'https://*.amazonaws.com/*',
+  'https://*.amazoncognito.com/*',
+] as const;
+
+/**
  * Hosts the e2e browser maps to the local fixture server: Indeed pages and
  * frames, and the sample application forms served under each platform's
  * hostname so platform detection is exercised. Test builds only.
@@ -40,6 +52,13 @@ export interface ManifestOptions {
  *   badge (Phase 5). No install warning; it wakes nothing but the extension.
  * - Optional host access to 127.0.0.1 / localhost, requested only when the
  *   user connects the local ApplyPilot API for AI features (Phase 3).
+ * - `identity`: opens the ApplyPilot Cloud sign-in page in a Chrome window
+ *   (launchWebAuthFlow) for optional cloud sync. It reads no Google account
+ *   data and shows no install warning (Phase 6).
+ * - `unlimitedStorage`: sync keeps a last-synced copy and up to two backups
+ *   of the tracker, which can pass Chrome's 10 MB default. No install warning.
+ * - Optional host access to AWS API Gateway and Cognito addresses, requested
+ *   only for the deployment the user connects to (Phase 6).
  */
 export function createManifest({ e2e }: ManifestOptions): chrome.runtime.ManifestV3 {
   return {
@@ -63,10 +82,23 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     side_panel: { default_path: 'sidepanel.html' },
     options_ui: { page: 'options.html', open_in_tab: true },
     background: { service_worker: 'background.js', type: 'module' },
-    permissions: ['activeTab', 'alarms', 'scripting', 'sidePanel', 'storage'],
+    permissions: [
+      'activeTab',
+      'alarms',
+      'identity',
+      'scripting',
+      'sidePanel',
+      'storage',
+      'unlimitedStorage',
+    ],
     // Indeed frames are requested only from the user's click when a job sits in
     // a frame on another Indeed subdomain (DECISIONS 037).
-    optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', INDEED_FRAMES_ORIGIN],
+    optional_host_permissions: [
+      'http://127.0.0.1/*',
+      'http://localhost/*',
+      INDEED_FRAMES_ORIGIN,
+      ...CLOUD_HOST_PATTERNS,
+    ],
     ...(e2e
       ? {
           host_permissions: [...E2E_HOSTS],

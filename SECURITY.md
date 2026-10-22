@@ -71,9 +71,24 @@ Please open a private security advisory on the GitHub repository rather than a p
 | Posting links open with `rel="noopener noreferrer"`; only http(s) addresses are stored                                  | `application-card.tsx`, `job-records.ts`    |
 | One new permission, `alarms` (no install warning), for the hourly reminder badge                                        | `manifest.ts`, `manifest.test.ts`           |
 
+## Implemented (Phase 6, built and tested locally; not deployed)
+
+| Control                                                                                                                                                                  | Where                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| Sign-in on Cognito's hosted page with code flow + PKCE and a `state` check; the extension never handles passwords                                                        | `cloud/auth.ts`, `auth.test.ts`                 |
+| Tokens only in `chrome.storage.session` (memory, not readable by content scripts); refresh token revoked on sign-out                                                     | `cloud/auth.ts`                                 |
+| Public app client without a secret; callback only to the extension's `chromiumapp.org` address                                                                           | `infra/lib/applypilot-stack.ts`                 |
+| Token checked twice: API Gateway Cognito authorizer, then signature, issuer, `token_use=access` and client id in Lambda                                                  | `cloud/auth.ts` (api), `cloud-api.test.ts`      |
+| Every DynamoDB key built from the token's `sub`; tests prove users cannot read or change each other's data                                                               | `cloud/store.ts`, `cloud-api.test.ts`           |
+| Strict zod validation of every body and response, 1 MB request and 300 KB item limits, structured errors                                                                 | `packages/sync/src/contract.ts`, `cloud/api.ts` |
+| Rate limits: 120 requests per minute per user, API Gateway throttling (20/s, burst 40), daily AI quota, optional WAF                                                     | `cloud/api.ts`, stack                           |
+| Least-privilege IAM: one role per function with exact actions on the table; only the account function can delete Cognito users; only the AI function can read the secret | stack, `stack.test.ts`                          |
+| Encryption: TLS in transit (HSTS header), DynamoDB and Secrets Manager encrypted at rest; point-in-time recovery; deletion protection                                    | stack                                           |
+| Logs hold route template, status, duration, a short user hash and an error code; no names, emails, record contents, tokens or IPs                                        | `cloud/api.ts`, access log format, tests        |
+| The Claude key lives only in Secrets Manager; `pnpm check:bundle` still fails on key-like strings in the extension                                                       | stack, `scripts/check-bundle.mjs`               |
+| Local test server: 127.0.0.1 only, Host and Origin checks, scrypt-hashed passwords, codes single-use and bound to the PKCE verifier                                      | `services/api/src/local`                        |
+| cdk-nag AWS Solutions checks on every synth                                                                                                                              | `infra/bin/app.ts`, `stack.test.ts`             |
+
 ## Planned
 
-- Phase 6: the API key moves to AWS Secrets Manager; Cognito JWT validation, per-user authorization on every item, API Gateway throttling,
-  CORS limited to the extension origin, DynamoDB encryption with retention policies, and log
-  redaction so résumé content and personal identifiers never reach CloudWatch.
 - Phase 7: Chrome Web Store policy review and a third-party dependency review.

@@ -144,3 +144,74 @@ Concepts you should be able to explain from this phase, with where they live in 
   scoping extraction to the selected job (including same-origin iframes), cross-checking it
   against the selection and adding self-check diagnostics, with regression tests in jsdom and
   real Chromium.
+
+# Interview notes: Phase 6 (AWS cloud backend)
+
+What this phase shows for a cloud or DevOps internship, with where to point in the code. Be
+precise in interviews: it is **designed, built and tested, not deployed** (deploying needs an
+AWS account and approval); say so, and offer the CDK synth, the cdk-nag results and the tests.
+
+## Concepts
+
+1. **Infrastructure as code with the AWS CDK** (`infra/lib/applypilot-stack.ts`). One stack in
+   TypeScript; props for region, extension ids, WAF, AI and budget; outputs the three values the
+   extension needs. `cdk synth` and `cdk diff` before any deploy; stateful resources retained and
+   deletion-protected.
+2. **Serverless trade-offs.** API Gateway REST + Lambda + DynamoDB on-demand costs cents at
+   personal scale and nothing when idle. REST chosen over HTTP API for Cognito authorizers with
+   scopes, per-stage throttling and WAF. Know the 29-second integration timeout and cold starts
+   (small esbuild bundles, arm64).
+3. **Identity.** Cognito user pool, hosted sign-in, authorization code flow with PKCE because a
+   browser extension cannot keep a client secret, `state` against CSRF, tokens in memory-only
+   storage, refresh and revocation. Explain access token vs ID token (`token_use`), and why the
+   Lambda re-verifies the JWT after API Gateway did (defense in depth, and the local server).
+4. **Authorization and tenant isolation.** The user id comes only from the token's `sub`; every
+   DynamoDB key starts with `USER#<sub>`, so no request can address another user's data. A test
+   signs in as two users and proves it.
+5. **DynamoDB data modelling.** Single table, partition per user, sort keys per item type, a
+   sparse LSI as a change feed, TTL for rate-limit counters, conditional writes for optimistic
+   concurrency, gzip for large items, point-in-time recovery.
+6. **Distributed data sync.** Three-way merge with a base copy (like git), versions instead of
+   timestamps (clock skew), tombstones for deletes, an epoch so a deleted dataset is not revived
+   by a stale device, and explicit conflicts instead of last-writer-wins. Safeguards: backups
+   before changes, confirmation for mass deletes, compare-and-set local writes.
+7. **Least privilege.** One IAM role per function with exact actions on exact ARNs; only the
+   account function can call `AdminDeleteUser`; only the AI function can read the secret. Show
+   the stack test that asserts no wildcards and no managed policies.
+8. **Security controls.** Encryption in transit and at rest, secrets in Secrets Manager (never
+   in the extension, enforced by a bundle check), strict input validation shared between client
+   and server, structured errors with request ids, throttling and per-user rate limits, optional
+   WAF, CORS limited to the extension, logs without personal data.
+9. **Observability and cost control.** JSON logs queryable in CloudWatch Logs Insights, 30-day
+   retention, alarms on 5xx, 4xx spikes and function errors, SNS email, an AWS Budget. A written
+   cost estimate with the abuse worst case and how throttling caps it (docs/AWS.md).
+10. **Testing cloud code without the cloud.** The same handler code runs in unit tests, on a
+    local server and in Lambda (adapters only differ). dynalite for DynamoDB, a local OAuth
+    server for Cognito, CDK assertions and cdk-nag for the infrastructure, and a Playwright test
+    where two real Chromium browsers sign in through `chrome.identity` and sync.
+
+## Likely questions
+
+- _Why not just store everything in DynamoDB with last-write-wins?_ Two devices editing offline
+  would silently lose one edit; the three-way merge keeps both or asks.
+- _What happens if someone floods the API?_ Unauthenticated requests stop at API Gateway; the
+  stage is throttled at 20 requests/s, users at 120/min, WAF can block per IP, and the budget
+  and 4xx alarm email you. Worst case is bounded (about USD 180/month at full throttle).
+- _How would you deploy to production?_ Separate dev and prod accounts, CDK pipelines or
+  GitHub Actions with OIDC (no long-lived keys), `cdk diff` review on pull requests.
+- _What would you change at scale?_ Provisioned capacity or auto scaling once traffic is steady,
+  an HTTP API or Lambda function URLs for lower cost, Cognito Essentials for more features, and
+  per-user quotas in API Gateway usage plans.
+
+## Resume bullets (only what is built and verified)
+
+- Designed and built an AWS serverless backend in TypeScript with the AWS CDK (API Gateway,
+  Lambda, DynamoDB, Cognito, CloudWatch, Secrets Manager, WAF), passing cdk-nag AWS Solutions
+  checks with least-privilege IAM per function, encryption at rest and budget alarms.
+- Implemented opt-in multi-device sync for a Chrome extension with a three-way merge, optimistic
+  concurrency (DynamoDB conditional writes), explicit conflict resolution and data-loss
+  safeguards, verified by unit tests and a two-browser Playwright test.
+- Added Cognito sign-in to a Manifest V3 extension using the OAuth 2.0 authorization code flow
+  with PKCE, with JWT verification and per-user data isolation proven by tests.
+- Built local stand-ins for DynamoDB and Cognito so the full cloud path (579 unit and
+  integration tests, 20 end-to-end tests) runs offline at zero cost.

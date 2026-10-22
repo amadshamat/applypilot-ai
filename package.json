@@ -23,7 +23,8 @@
     "test:e2e": "pnpm build:e2e && playwright test",
     "build:e2e": "APPLYPILOT_E2E=1 pnpm --filter @applypilot/extension run build",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm check:bundle",
-    "check:bundle": "node scripts/check-bundle.mjs"
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "cloud:local": "pnpm --filter @applypilot/api run cloud:local"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

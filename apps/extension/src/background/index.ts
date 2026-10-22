@@ -2,6 +2,12 @@ import { DEFAULT_SETTINGS, STORAGE_KEYS } from '@applypilot/shared';
 import { ApplicationsRepository } from '../storage/applications-repository';
 import { SettingsRepository } from '../storage/settings-repository';
 import { chromeStore } from '../storage/storage-area';
+import { CloudAuth } from '../cloud/auth';
+import { CloudSettingsRepository } from '../cloud/connection';
+import { ExtensionLocalData } from '../cloud/local-data';
+import { isSyncRequest, syncRequestSchema } from '../cloud/messages';
+import { SyncRunner } from '../cloud/runner';
+import { SyncStateRepository, SyncStatusRepository } from '../cloud/sync-store';
 import { refreshFollowUpBadge } from './reminders';
 import { handleBackgroundMessage, type BackgroundDeps } from './router';
 
@@ -83,6 +89,30 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 chrome.tabs.onRemoved.addListener((tabId) => void session.remove(cacheKey(tabId)));
 
+// Optional cloud sync (Phase 6). Off until the user connects, signs in and
+// turns it on. It runs every 15 minutes and shortly after local edits.
+const cloudSettings = new CloudSettingsRepository(local);
+const sync = new SyncRunner({
+  settings: cloudSettings,
+  auth: new CloudAuth({ session, identity: chrome.identity }),
+  local: new ExtensionLocalData(local),
+  state: new SyncStateRepository(local),
+  status: new SyncStatusRepository(local),
+});
+const SYNC_ALARM = 'applypilot-sync';
+const SYNC_SOON_ALARM = 'applypilot-sync-soon';
+void chrome.alarms.create(SYNC_ALARM, { periodInMinutes: 15, delayInMinutes: 1 });
+const syncSoon = () => void chrome.alarms.create(SYNC_SOON_ALARM, { delayInMinutes: 0.5 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === SYNC_ALARM || alarm.name === SYNC_SOON_ALARM) {
+    void sync
+      .runIfEnabled()
+      .catch((error: unknown) => console.error('[ApplyPilot] sync failed', error));
+  }
+});
+local.subscribe(STORAGE_KEYS.profile, syncSoon);
+local.subscribe(STORAGE_KEYS.applications, syncSoon);
+
 const EXTENSION_ORIGIN = new URL(chrome.runtime.getURL('')).origin;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -94,6 +124,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     new URL(sender.url).origin !== EXTENSION_ORIGIN
   ) {
     return false;
+  }
+  if (isSyncRequest(message)) {
+    const request = syncRequestSchema.safeParse(message);
+    if (!request.success) {
+      sendResponse({
+        ok: false,
+        error: { code: 'INVALID_MESSAGE', message: 'Malformed sync request.' },
+      });
+      return false;
+    }
+    sync
+      .handle(request.data)
+      .then(sendResponse)
+      .catch((error: unknown) => {
+        console.error('[ApplyPilot] sync request failed', error);
+        sendResponse({
+          ok: false,
+          error: { code: 'INTERNAL', message: 'Sync failed unexpectedly.' },
+        });
+      });
+    return true;
   }
   handleBackgroundMessage(message, deps)
     .then(sendResponse)

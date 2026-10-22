@@ -1,0 +1,20 @@
+{
+  "name": "@applypilot/sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloud sync contract (shared by the extension, the API and the CDK stack), three-way merge and the client sync engine.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/shared": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@applypilot/tracking": "workspace:*"
+  }
+}

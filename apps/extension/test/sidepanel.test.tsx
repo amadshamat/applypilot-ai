@@ -342,7 +342,7 @@ describe('settings view', () => {
 
     expect(
       await screen.findByText(
-        /All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts and the API token, was deleted/,
+        /All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts, the API token and cloud sync settings, was deleted/,
       ),
     ).toBeInTheDocument();
     expect(await services.localStore.get('applypilot.example')).toBeUndefined();

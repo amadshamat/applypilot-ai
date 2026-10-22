@@ -5,6 +5,12 @@ import {
   detectResumeType,
   extractResumeText,
 } from '@applypilot/resume-parser/files';
+import { CloudClient } from '@applypilot/sync';
+import { CloudAuth } from '../cloud/auth';
+import { CloudSettingsRepository, type CloudConnection } from '../cloud/connection';
+import { ExtensionLocalData, type BackupSummary } from '../cloud/local-data';
+import { sendSyncRequest, type SyncRequest, type SyncResponse } from '../cloud/messages';
+import { SyncStatusRepository } from '../cloud/sync-store';
 import { AiConnectionRepository } from '../storage/ai-connection-repository';
 import { AiDraftsRepository } from '../storage/ai-drafts-repository';
 import { ApplicationsRepository } from '../storage/applications-repository';
@@ -24,6 +30,24 @@ export interface PermissionService {
   request(origin: string): Promise<boolean>;
 }
 
+/** The account calls Settings makes directly; sync itself runs in the service worker. */
+export type CloudAccountClient = Pick<
+  CloudClient,
+  'account' | 'exportAll' | 'deleteData' | 'deleteAccount'
+>;
+
+/** Optional ApplyPilot Cloud (Phase 6). */
+export interface CloudServices {
+  settings: CloudSettingsRepository;
+  auth: CloudAuth;
+  status: SyncStatusRepository;
+  backups: () => Promise<BackupSummary[]>;
+  client: (connection: CloudConnection) => CloudAccountClient;
+  sync: (request: SyncRequest) => Promise<SyncResponse>;
+  /** Asks for host access to every origin in one prompt (must run from a click). */
+  requestOrigins: (origins: string[]) => Promise<boolean>;
+}
+
 /**
  * Browser-facing dependencies for the React tree. Production wires Chrome APIs;
  * tests pass fakes, so components never call `chrome.*` directly.
@@ -39,6 +63,7 @@ export interface AppServices {
   applications: ApplicationsRepository;
   ai: AiClient;
   permissions: PermissionService;
+  cloud: CloudServices;
   send: <R extends BackgroundRequest>(request: R) => Promise<ResponseFor<R['type']>>;
   getActiveTabId: () => Promise<number | null>;
   /** The active tab's address, or null when the extension may not see it. */
@@ -63,6 +88,8 @@ const readResumeText: ResumeTextReader = async (file) => {
 
 export function createChromeServices(): AppServices {
   const localStore = chromeStore('local');
+  const auth = new CloudAuth({ session: chromeStore('session'), identity: chrome.identity });
+  const localData = new ExtensionLocalData(localStore);
   return {
     settings: new SettingsRepository(localStore),
     profile: new ProfileRepository(localStore),
@@ -76,6 +103,19 @@ export function createChromeServices(): AppServices {
     permissions: {
       contains: (origin) => chrome.permissions.contains({ origins: [origin] }),
       request: (origin) => chrome.permissions.request({ origins: [origin] }),
+    },
+    cloud: {
+      settings: new CloudSettingsRepository(localStore),
+      auth,
+      status: new SyncStatusRepository(localStore),
+      backups: () => localData.backupSummaries(),
+      client: (connection) =>
+        new CloudClient({
+          apiUrl: connection.apiUrl,
+          accessToken: () => auth.accessToken(connection),
+        }),
+      sync: (request) => sendSyncRequest(request),
+      requestOrigins: (origins) => chrome.permissions.request({ origins }),
     },
     send: (request) => sendToBackground(request),
     async getActiveTabId() {

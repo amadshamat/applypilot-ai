@@ -29,5 +29,12 @@ export default defineConfig({
       },
       reuseExistingServer: false,
     },
+    {
+      // ApplyPilot Cloud with local DynamoDB and Cognito stand-ins: no AWS, no charges.
+      command: 'pnpm --filter @applypilot/api exec tsx src/local/main.ts',
+      url: 'http://127.0.0.1:8788/v1/health',
+      env: { APPLYPILOT_CLOUD_PORT: '8788', APPLYPILOT_CLOUD_MEMORY: '1' },
+      reuseExistingServer: false,
+    },
   ],
 });

@@ -34,11 +34,16 @@ export interface ApiRequest {
   /** Lower-case header names. */
   headers: Record<string, string | undefined>;
   body: string;
+  /** Query string parameters (cloud routes only). */
+  query?: Record<string, string | undefined>;
+  /** Set by the transport (API Gateway's request id in AWS). */
+  requestId?: string;
 }
 
 export interface ApiResponse {
   status: number;
   body: unknown;
+  headers?: Record<string, string>;
 }
 
 export interface LogEntry {
@@ -52,10 +57,28 @@ export interface LogEntry {
   estimatedCostUsd?: number | null;
 }
 
+/** Counts AI requests per user per day, so a bug or a runaway loop cannot run up a bill. */
+export interface UsageLimiter {
+  tryConsume(userId: string, now: Date): Promise<boolean>;
+  used(userId: string, now: Date): Promise<number>;
+}
+
+export function inMemoryLimiter(limiter: DailyLimiter): UsageLimiter {
+  return {
+    tryConsume: (_userId, now) => Promise.resolve(limiter.tryConsume(now)),
+    used: (_userId, now) => Promise.resolve(limiter.used(now)),
+  };
+}
+
 export interface ApiDependencies {
   config: ApiConfig;
   provider: AiProvider;
-  limiter?: DailyLimiter;
+  limiter?: UsageLimiter;
+  /**
+   * Replaces the shared-token check (the AWS deployment verifies Cognito
+   * access tokens). Returns the user's id, or null to refuse the request.
+   */
+  authenticate?: (request: ApiRequest) => Promise<string | null>;
   now?: () => Date;
   /** Receives metadata only. Request and response content are never logged. */
   log?: (entry: LogEntry) => void;
@@ -95,13 +118,19 @@ function filterScreening(request: ScreeningRequest) {
 export function createApi({
   config,
   provider,
-  limiter = new DailyLimiter(config.dailyLimit),
+  limiter = inMemoryLimiter(new DailyLimiter(config.dailyLimit)),
+  authenticate = (request) =>
+    Promise.resolve(tokenMatches(request.headers.authorization, config.token) ? 'local' : null),
   now = () => new Date(),
   log = () => undefined,
 }: ApiDependencies) {
   // T ties the task to its request and output types inside the body.
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-  async function generate<T extends AiTask>(task: T, raw: unknown): Promise<ApiResponse> {
+  async function generate<T extends AiTask>(
+    task: T,
+    raw: unknown,
+    userId: string,
+  ): Promise<ApiResponse> {
     const schema = TASK_SCHEMAS[task].request as unknown as z.ZodType<TaskTypes[T]['request']>;
     const parsed = schema.safeParse(raw);
     if (!parsed.success)
@@ -162,7 +191,7 @@ export function createApi({
       };
     }
 
-    if (!limiter.tryConsume(now())) {
+    if (!(await limiter.tryConsume(userId, now()))) {
       return error(
         429,
         'DAILY_LIMIT',
@@ -189,7 +218,8 @@ export function createApi({
   }
 
   async function route(request: ApiRequest): Promise<ApiResponse> {
-    if (!tokenMatches(request.headers.authorization, config.token)) {
+    const userId = await authenticate(request);
+    if (userId === null) {
       return error(401, 'UNAUTHORIZED', 'Missing or wrong access token.');
     }
 
@@ -201,7 +231,7 @@ export function createApi({
         version: config.version,
         provider: provider.kind,
         model: provider.model,
-        requestsToday: limiter.used(now()),
+        requestsToday: await limiter.used(userId, now()),
         dailyLimit: config.dailyLimit,
       };
       return { status: 200, body };
@@ -219,7 +249,7 @@ export function createApi({
     } catch {
       return error(400, 'INVALID_REQUEST', 'The request body is not valid JSON.');
     }
-    return generate(task, raw);
+    return generate(task, raw, userId);
   }
 
   return async function handle(request: ApiRequest): Promise<ApiResponse> {

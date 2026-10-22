@@ -8,19 +8,23 @@ describe('manifest', () => {
     expect([...(release.permissions ?? [])].sort()).toEqual([
       'activeTab',
       'alarms',
+      'identity',
       'scripting',
       'sidePanel',
       'storage',
+      'unlimitedStorage',
     ]);
     expect(release.host_permissions).toBeUndefined();
     expect(release.content_scripts).toBeUndefined();
   });
 
-  it('asks for local API access only as an optional permission', () => {
+  it('asks for local API and cloud access only as optional permissions', () => {
     expect(release.optional_host_permissions).toEqual([
       'http://127.0.0.1/*',
       'http://localhost/*',
       'https://*.indeed.com/*',
+      'https://*.amazonaws.com/*',
+      'https://*.amazoncognito.com/*',
     ]);
   });
 

@@ -7,7 +7,7 @@ import { useServices } from '../../services/app-services';
 
 /** Export and deletion of everything ApplyPilot stores in this browser. */
 export function DataControls() {
-  const { localStore, settings, resumes } = useServices();
+  const { localStore, settings, resumes, cloud } = useServices();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -44,10 +44,12 @@ export function DataControls() {
   const deleteData = async () => {
     await localStore.clear();
     await resumes.clear();
+    // Signs this browser out of ApplyPilot Cloud too. Cloud data is deleted from Cloud sync.
+    await cloud.auth.forget();
     await settings.save(DEFAULT_SETTINGS);
     setConfirming(false);
     setMessage(
-      'All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts and the API token, was deleted. Settings are back to defaults.',
+      'All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts, the API token and cloud sync settings, was deleted. This browser is signed out of ApplyPilot Cloud; cloud data is managed under Cloud sync. Settings are back to defaults.',
     );
   };
 

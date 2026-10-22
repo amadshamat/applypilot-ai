@@ -341,10 +341,80 @@ panel, and send both. Everything here stays in your browser; nothing is sent any
 - [ ] K3. AI Tailor still opens (mock mode if the local API runs).
 - [ ] K4. Autofill still scans and fills the practice form.
 
+## 10. Phase 6 checklist: Cloud sync (v0.6.0)
+
+This uses the **local test server** on your computer. Nothing is sent to AWS and nothing is
+billed. You need the source folder (from the source zip), Node.js 22.13+ and pnpm, as for the
+local AI API.
+
+### A. Start the local cloud
+
+- [ ] A1. In the source folder: `pnpm install` (once), then `pnpm cloud:local`. It prints
+      "ApplyPilot Cloud (local test) running at http://127.0.0.1:8788". Leave it running.
+- [ ] A2. Update the extension to 0.6.0 (see "Updating to a new build" below) and reload it.
+      `chrome://extensions` shows version 0.6.0 and no **Errors** button. Chrome shows no new
+      permission prompt: the new permissions have no install warning.
+
+### B. Off by default
+
+- [ ] B1. Settings shows **Cloud sync (optional)** with a connection form. Nothing is synced and
+      every other tab works as before.
+
+### C. Connect and create an account
+
+- [ ] C1. Click **Use local test server**. Chrome asks for access to 127.0.0.1: choose
+      **Allow**. The card says "Connected to the local test server".
+- [ ] C2. Click **Sign in or create account**. A small Chrome window opens with "ApplyPilot
+      Cloud (local test)". Enter an email (any, it is not checked) and a password of 12+
+      characters, click **Create account**. The window closes and the card says "Signed in as"
+      your email.
+- [ ] C3. Try a wrong password once (sign out, sign in again): the page says the email or
+      password is wrong, without saying which.
+
+### D. Sync between two browsers
+
+- [ ] D1. Turn on **Sync profile and tracker**. The card shows "Up to date." and a time.
+- [ ] D2. In Chrome, add a second profile (profile icon → Add), load the same unpacked
+      extension folder there, connect to the local test server and **Sign in** with the same
+      account, then turn on sync.
+- [ ] D3. Your profile and tracked applications appear in the second profile's tabs.
+- [ ] D4. Add a note in profile 2, press **Sync now** there, then **Sync now** in profile 1: the
+      note appears in profile 1.
+
+### E. Conflicts and safety
+
+- [ ] E1. Change the same application's **job title** in both profiles (open Details → edit),
+      then **Sync now** in profile 1, then in profile 2. Profile 2 lists the record under
+      "Changed on two devices". Neither copy has changed yet.
+- [ ] E2. Click **Use the cloud copy** (or **Keep this browser's copy**). The list clears and
+      both profiles end up with the chosen title after Sync now.
+- [ ] E3. Change _different_ things on the same record in each profile (a note in one, the
+      status in the other), sync both: both changes are kept, no conflict.
+- [ ] E4. Under **Backups taken before sync changed data**, a backup is listed. Restoring asks
+      to confirm first.
+
+### F. Cloud data controls
+
+- [ ] F1. **Export cloud data** downloads a JSON file with your profile and applications.
+- [ ] F2. **Delete cloud data** asks to confirm. After confirming, the card says your cloud data
+      was deleted and sync is off; your tracker in this profile is unchanged.
+- [ ] F3. In the other profile, **Sync now** shows "Your cloud data was deleted elsewhere" and
+      uploads nothing until you choose.
+- [ ] F4. **Delete account** asks to confirm, then signs you out. Signing in again with that
+      email fails until you create the account again.
+- [ ] F5. **Sign out** returns the card to "Sign in or create account".
+
+### G. Nothing else broke
+
+- [ ] G1. Analyze, Profile, AI Tailor (mock), Autofill on the practice form, and the tracker
+      still work with sync on and with sync off.
+- [ ] G2. Stop `pnpm cloud:local` while signed in and press **Sync now**: the card says it could
+      not reach ApplyPilot Cloud, and nothing in the browser changes.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To
-**keep your profile, resumes, tracked applications, settings and AI drafts**, replace the files and reload; do not
+**keep your profile, resumes, tracked applications, settings, AI drafts and sync settings**, replace the files and reload; do not
 remove the extension.
 
 1. Download and extract the new zip.

@@ -50,6 +50,16 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/unbound-method': 'off',
+      // Tests spy on console.log to check what would be logged.
+      'no-console': 'off',
+    },
+  },
+  {
+    // Synthesized CloudFormation templates are untyped JSON; the stack tests read them directly.
+    files: ['infra/test/**'],
+    rules: {
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
     },
   },
   {

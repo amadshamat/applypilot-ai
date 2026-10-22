@@ -1,20 +1,43 @@
 # Progress
 
-_Last updated: 2026-10-22 (v0.5.0)_
+_Last updated: 2026-10-22 (v0.6.0)_
 
 ## Current phase
 
-**Phase 5 (application tracking and analytics): built and tested here, waiting for Muhaid's
-manual test in Chrome.** Phase 4 was approved by Muhaid on 2026-10-22 after the v0.4.1
-practice-form autofill test passed in Chrome, on condition that the remaining Phase 4 safety
-criteria were reviewed first (see "Phase 4 acceptance review" below). Phase 6 (AWS) will not
-start without Muhaid's approval. No real (paid) Claude request has been made and nothing has
-been deployed.
+**Phase 6 (AWS cloud backend, optional sign-in and sync): built and tested locally, waiting for
+Muhaid's test in Chrome.** Phase 5 was approved by Muhaid on 2026-10-22 after all tracker
+features passed in Chrome. Phase 6 was authorized for development only: **nothing has been
+deployed to AWS, no AWS account was created or used, and no paid service was called.** Phase 7
+will not start until Muhaid tests and approves Phase 6.
 
-Phase 3 was approved on 2026-10-22, Phase 2 on 2026-10-14. Phase 1 and the v0.1.1 Indeed fix
-were confirmed earlier.
+Phase 4 was approved on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on 2026-10-14. Phase 1 and
+the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### Phase 6 (v0.6.0): ApplyPilot Cloud on AWS (built, not deployed)
+
+- **Infrastructure as code** (`infra/`, AWS CDK in TypeScript): DynamoDB (on-demand, encrypted,
+  point-in-time recovery), Cognito user pool (Lite plan) with hosted sign-in, API Gateway REST
+  API with a Cognito authorizer and throttling, three Lambda functions with one least-privilege
+  role each, CloudWatch log retention and alarms, SNS alerts and a monthly AWS Budget, Secrets
+  Manager for the Claude key (AI only), optional WAF. cdk-nag AWS Solutions checks pass.
+- **Cloud API** (`services/api/src/cloud`): versioned `/v1` routes for profile, applications,
+  status history, notes, follow-ups, sync, export and account deletion; zod validation shared
+  with the extension; structured errors with request ids; per-user rate limits; logs without
+  personal data; JWT verification on top of the API Gateway authorizer.
+- **Sync** (`packages/sync`): three-way merge, conflicts parked for the user, versioned writes,
+  deletion confirmations, backups before changes, cloud-reset detection.
+- **Extension:** Settings > Cloud sync (optional): connect, sign in or create an account
+  (PKCE through `chrome.identity`), sync on/off, Sync now, conflicts, deletion and reset
+  prompts, export cloud data, delete cloud data, delete account, sign out, restore a backup.
+  Sync runs in the service worker every 15 minutes and shortly after edits, only when on.
+- **Local stand-ins** (`pnpm cloud:local`): the real cloud API with an in-memory DynamoDB
+  (dynalite) and a local Cognito-like sign-in server, so everything is testable without AWS.
+- New permissions: `identity` and `unlimitedStorage` (neither shows an install warning), plus
+  optional host access to `*.amazonaws.com` and `*.amazoncognito.com`, requested only for the
+  deployment the user connects to.
+- Docs: [docs/AWS.md](docs/AWS.md) (architecture diagram, local testing, deployment, cost).
 
 ### Phase 5 (v0.5.0): application tracking and analytics
 
@@ -226,24 +249,27 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-22, v0.5.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-22, v0.6.0, local container, Node 22.22, Chromium 141)
 
-- `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **486 passed** (extension 117, job-extraction 110, autofill 60, ai-core 47,
-  api 45, resume-parser 44, matching 30, shared 18, tracking 15)
-- `pnpm test:coverage`: 87.4% statements, 78.7% branches, 84.6% functions, 89.5% lines
-  (tracking package: 97.5% statements, 99.2% lines)
-- `pnpm test:e2e`: **19 passed**, run twice in a row (`--repeat-each=2`, 38 runs, no flakes);
-  screenshot test skipped by default. New in v0.5.0, in real Chromium: saving an analyzed job,
-  status, note and a due follow-up (toolbar badge shows 1, then clears), the record surviving
-  a new panel, analytics, and a real CSV download; marking a filled practice form as applied
-  from the user's click (submit attempts stay 0). The Phase 4 autofill tests (plain,
-  Workday-style, Greenhouse-style, SmartRecruiters-style, practice form) still pass.
+- `pnpm verify` steps (typecheck including `infra` and `packages/sync`, lint, format check,
+  tests, build, bundle check): pass
+- `pnpm test`: **579 passed** (extension 148, job-extraction 110, api 74, autofill 60, ai-core
+  47, resume-parser 44, matching 30, sync 20, shared 18, tracking 15, infra 13)
+- `pnpm test:coverage`: 86.8% statements, 77.9% branches, 84.9% functions, 88.7% lines
+- `pnpm test:e2e`: **20 passed**, screenshot test skipped by default. New in v0.6.0: two
+  Chromium browsers with the extension create an account and sign in through the real
+  `chrome.identity` flow against `pnpm cloud:local`, sync records both ways, then one deletes
+  the cloud data and the other pauses without uploading. All Phase 1 to 5 tests still pass.
+- `cdk synth`: succeeds with default and all-options settings; cdk-nag reports no unacknowledged
+  findings. The bundled Lambda handlers load and answer in plain Node.
 
 ## Not yet verified
 
-- **Phase 5 in Chrome.** Muhaid's checklist (`docs/INSTALL-CHROME.md`, section 9) is the first
-  manual run, including the toolbar badge on the real toolbar and a CSV opened in a spreadsheet.
+- **Phase 6 in Chrome.** Muhaid's checklist (`docs/INSTALL-CHROME.md`, section 10) against the
+  local test server is the first manual run.
+- **Phase 6 on real AWS.** Not deployed (needs approval). Real DynamoDB, Cognito's hosted page,
+  API Gateway's authorizer and IAM have only been checked through synthesized templates,
+  cdk-nag and local stand-ins.
 - **Phase 4 on live application sites.** No platform is marked verified; only the practice form
   was tested live (passed). Real Workday, Greenhouse, Lever,
   Ashby, SmartRecruiters and Indeed Apply markup may differ from the samples.
@@ -261,13 +287,24 @@ the reported values on the new fixture.
 
 ## Under development
 
-Nothing in progress. Waiting for Phase 5 approval.
+Nothing in progress. Waiting for Muhaid's Phase 6 test and approval.
 
 ## Known bugs and limitations
 
+- **Cloud sync (new in v0.6.0):**
+  - Not deployed; only the local test server works until an approved AWS deployment.
+  - An access token stays valid up to 1 hour after sign-out or account deletion.
+  - Resume files, AI drafts and settings are not synced.
+  - The same job saved separately on two devices before their first sync stays as two records.
+  - The extension still uses the local AI server for drafts; the cloud AI route exists but is
+    not wired into the extension, and API Gateway's 29-second limit can cut off long drafts.
+  - An unpacked extension's id depends on its folder; Cognito's callback must match it, so
+    moving the folder needs a redeploy with the new id.
+  - Local tests use dynalite in place of DynamoDB.
+
 - **Tracker (new in v0.5.0):**
-  - Stored only in this browser profile; there is no sync between computers until a backend
-    exists (Phase 6, with approval). Export CSV or Export data for a copy.
+  - Stored in this browser profile; optional cloud sync arrived in v0.6.0. Export CSV or
+    Export data for a copy.
   - Reminders are a toolbar badge and a list in the tab, not system notifications (that would
     need the `notifications` permission). The badge refreshes hourly, so it can lag up to an
     hour after midnight.
@@ -327,12 +364,12 @@ Nothing in progress. Waiting for Phase 5 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** install v0.5.0 (update with Reload so your profile, resumes and tracker stay), run
-   the Phase 5 checklist, then approve Phase 5 or report issues.
-2. **Optional:** fill a real application on Greenhouse or Lever (submit only if you mean to) so
-   that platform can move from experimental to verified.
-3. **Optional:** try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft;
-   field matching is far smaller). Not done without your approval.
-4. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda; tracker
-   sync would be opt-in). Not started; no deployment without approval.
-5. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.
+1. **Muhaid:** install v0.6.0 (update with Reload so your data stays), start `pnpm cloud:local`,
+   run the Phase 6 checklist, then approve Phase 6 or report issues.
+2. **Decision for Muhaid:** whether to deploy ApplyPilot Cloud to your own AWS account
+   (estimated USD 0.00 to 0.15 per month at personal use; see docs/AWS.md). Not done without
+   your explicit approval.
+3. **Optional:** a real application on Greenhouse or Lever, and real Claude drafts with your own
+   key, as before. Neither is done without your approval.
+4. **Phase 7** (after Phase 6 approval): accessibility audit, performance, Chrome Web Store
+   preparation.

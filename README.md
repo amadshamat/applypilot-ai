@@ -6,13 +6,15 @@ ApplyPilot AI is a Chrome extension (Manifest V3) that acts as a human-in-the-lo
 application copilot. It reads the job posting you are looking at, explains what it found and
 where each detail came from, and scores it against your own profile with an explainable match
 and truthful resume suggestions. With your consent it drafts a tailored resume, a cover letter
-and screening answers with Claude, checked against your profile so nothing is invented. Later
-phases add form filling that you approve field by field, and application tracking.
+and screening answers with Claude, checked against your profile so nothing is invented. It
+fills application forms only with values you approve field by field (never submitting), tracks
+your applications, and can optionally sync your profile and tracker between browsers through
+an AWS serverless backend.
 
-> **Project status: Phase 5 (application tracking and analytics, v0.5.0) built and tested,
-> waiting for manual approval in Chrome.** Phase 4 autofill was approved after a live test on
-> the practice form; every autofill platform stays **experimental** until it is checked on a
-> live application. The AWS backend is **not built yet**. See
+> **Project status: Phase 6 (AWS cloud backend and optional sync, v0.6.0) built and tested
+> locally, waiting for manual approval.** The AWS infrastructure is defined in CDK and tested
+> with local stand-ins, but **has not been deployed**. Phase 5 (tracker) was approved in Chrome;
+> every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
 ![Side panel analyzing a job posting](docs/screenshots/sidepanel-analysis-light.png)
@@ -35,30 +37,31 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 
 ## Features
 
-| Feature                                                                                                         | Status               |
-| --------------------------------------------------------------------------------------------------------------- | -------------------- |
-| MV3 extension with React side panel, six-section navigation, light/dark themes                                  | Done                 |
-| Settings page (theme, AI-processing consent, match weights) with validation                                     | Done                 |
-| Local data export and deletion                                                                                  | Done                 |
-| Typed, runtime-validated messaging between side panel, service worker and page                                  | Done                 |
-| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence | Done                 |
-| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)          | Done                 |
-| Profile editor (education, experience, skills, certifications, projects, preferences) stored locally            | Done                 |
-| Resume upload (PDF, DOCX) parsed on-device, reviewed and corrected before saving, with version history          | Done                 |
-| Explainable 0–100 match score with evidence for every matched skill, gaps, and items to check yourself          | Done                 |
-| Truthful resume suggestions (never invent skills, numbers or experience)                                        | Done                 |
-| Local ApplyPilot API that holds the Claude key server-side, with a free offline mock mode                       | Done                 |
-| AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)  | Done                 |
-| Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                 | Done                 |
-| Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI             | Done                 |
-| Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits              | Done (experimental)  |
-| Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms             | Experimental         |
-| Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer       | Done                 |
-| Optional AI field matching (labels only, no profile data) and AI drafts for open questions                      | Done                 |
-| Application tracker: statuses with history, notes, filters, search, duplicate detection, local storage          | Done                 |
-| Follow-up reminders (toolbar badge and due list) and analytics from your own records                            | Done                 |
-| CSV export of tracked applications, safe to open in spreadsheets                                                | Done                 |
-| AWS backend (API Gateway, Lambda, DynamoDB, Cognito, CDK)                                                       | Phase 6, not started |
+| Feature                                                                                                                  | Status                     |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| MV3 extension with React side panel, six-section navigation, light/dark themes                                           | Done                       |
+| Settings page (theme, AI-processing consent, match weights) with validation                                              | Done                       |
+| Local data export and deletion                                                                                           | Done                       |
+| Typed, runtime-validated messaging between side panel, service worker and page                                           | Done                       |
+| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence          | Done                       |
+| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)                   | Done                       |
+| Profile editor (education, experience, skills, certifications, projects, preferences) stored locally                     | Done                       |
+| Resume upload (PDF, DOCX) parsed on-device, reviewed and corrected before saving, with version history                   | Done                       |
+| Explainable 0–100 match score with evidence for every matched skill, gaps, and items to check yourself                   | Done                       |
+| Truthful resume suggestions (never invent skills, numbers or experience)                                                 | Done                       |
+| Local ApplyPilot API that holds the Claude key server-side, with a free offline mock mode                                | Done                       |
+| AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)           | Done                       |
+| Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                          | Done                       |
+| Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI                      | Done                       |
+| Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits                       | Done (experimental)        |
+| Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms                      | Experimental               |
+| Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer                | Done                       |
+| Optional AI field matching (labels only, no profile data) and AI drafts for open questions                               | Done                       |
+| Application tracker: statuses with history, notes, filters, search, duplicate detection, local storage                   | Done                       |
+| Follow-up reminders (toolbar badge and due list) and analytics from your own records                                     | Done                       |
+| CSV export of tracked applications, safe to open in spreadsheets                                                         | Done                       |
+| Optional account (Cognito hosted sign-in, PKCE) and cloud sync with conflict handling, backups and cloud export/deletion | Done (local; not deployed) |
+| AWS backend in CDK: API Gateway, Lambda, DynamoDB, Cognito, CloudWatch, Secrets Manager, optional WAF                    | Done (not deployed)        |
 
 ## Technology
 
@@ -69,7 +72,9 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
   React Testing Library, Playwright (real Chromium with the built extension), GitHub Actions
 - **AI:** Anthropic Claude (Claude Opus 5.5) through the official `@anthropic-ai/sdk`, called only
   from the local ApplyPilot API (`services/api`, Node.js), with structured outputs and Zod
-- **Planned:** Node.js Lambdas, API Gateway, DynamoDB, Cognito, CloudWatch, AWS CDK
+- **Cloud (Phase 6):** AWS CDK (TypeScript) with cdk-nag, API Gateway REST, Lambda (Node.js,
+  arm64, esbuild), DynamoDB, Cognito, CloudWatch, SNS, AWS Budgets, Secrets Manager, WAF,
+  `aws-jwt-verify`; dynalite and a local OAuth server for offline testing
 
 ## Architecture
 
@@ -90,11 +95,13 @@ flowchart LR
   CS -. reads DOM only .-> Page[Job posting page]
   SP -- consented, previewed request<br/>bearer token --> API[ApplyPilot API<br/>127.0.0.1, services/api]
   API -- key stays here --> CL[Claude API]
-  API -. Phase 6 .-> AWS[API Gateway → Lambda<br/>Cognito, DynamoDB]
+  SW -- optional sync, Cognito JWT --> AWS[ApplyPilot Cloud<br/>API Gateway → Lambda → DynamoDB]
+  SP -- PKCE sign-in --> COG[Cognito hosted sign-in]
 ```
 
-More detail, including the extraction pipeline and planned AWS design, is in
-[ARCHITECTURE.md](ARCHITECTURE.md). Design decisions and their reasoning are in
+More detail, including the extraction pipeline and the sync design, is in
+[ARCHITECTURE.md](ARCHITECTURE.md); the AWS architecture, deployment and costs are in
+[docs/AWS.md](docs/AWS.md). Design decisions and their reasoning are in
 [DECISIONS.md](DECISIONS.md).
 
 ```
@@ -104,7 +111,9 @@ packages/job-extraction/ DOM-only, deterministic job extraction (JSON-LD, adapte
 packages/resume-parser/  PDF/DOCX text extraction and deterministic resume parsing into a profile draft
 packages/matching/       Explainable job-to-profile scoring and truthful suggestions (pure functions)
 packages/ai-core/        AI contracts, versioned prompts, data minimisation, grounding checks, question rules
-services/api/            Local ApplyPilot API: Claude (or mock) provider, auth, limits; Lambda-portable handler
+packages/sync/           Cloud contract, three-way merge, sync engine and HTTP client
+services/api/            Local AI API, the cloud API (DynamoDB store, JWT auth), Lambda handlers, local stand-ins
+infra/                   AWS CDK stack (TypeScript) and its tests
 tests/fixtures/jobs/     Fictional job pages used by unit and e2e tests
 tests/fixtures/resumes/  A fictional resume as text, PDF and DOCX (generated by generate.py)
 tests/e2e/               Playwright tests that load the built extension into Chromium
@@ -150,6 +159,17 @@ If you switch tabs, click the icon again on the new tab before analyzing.
 
 For development, `pnpm dev` rebuilds on change; reload the extension in `chrome://extensions`
 after each build.
+
+### Cloud sync (optional, no AWS needed to try it)
+
+```bash
+pnpm cloud:local   # ApplyPilot Cloud on http://127.0.0.1:8788 with local DynamoDB and Cognito stand-ins
+```
+
+In the extension, open Settings > **Cloud sync (optional)** > **Use local test server**, then
+**Sign in or create account** and turn on **Sync profile and tracker**. Load the extension in a
+second Chrome profile and sign in with the same account to see records sync. Deploying the real
+backend to your own AWS account is described in [docs/AWS.md](docs/AWS.md).
 
 ### Demo
 
@@ -207,8 +227,10 @@ binary.
 
 ## Security and privacy
 
-Minimal permissions (`activeTab`, `scripting`, `sidePanel`, `storage`), no host permissions
-except optional access to `127.0.0.1`/`localhost` for the local API, no remote code, strict CSP,
+Minimal permissions (`activeTab`, `alarms`, `identity`, `scripting`, `sidePanel`, `storage`,
+`unlimitedStorage`; none of the newer ones shows an install warning), no host permissions except
+optional access to `127.0.0.1`/`localhost` for the local API and to the one AWS deployment you
+connect for cloud sync, no remote code, strict CSP,
 and runtime validation of every message and API response. Resumes are read and parsed on your
 device and are never uploaded. AI requests happen only with consent, after a preview, when you
 press Generate, and never include your contact details.
@@ -216,10 +238,19 @@ See [SECURITY.md](SECURITY.md) and the [privacy policy draft](docs/PRIVACY.md).
 
 ## AWS, API and deployment
 
-The ApplyPilot API runs locally for now (`pnpm api`). Its endpoints (`GET /v1/health`,
-`POST /v1/tailor-resume`, `/v1/cover-letter`, `/v1/screening-answers`) are documented in
-[ARCHITECTURE.md](ARCHITECTURE.md#ai-integration-phase-3). The handler is a pure function so the
-same code can run on AWS Lambda in Phase 6. Nothing is deployed to AWS without explicit approval.
+**ApplyPilot Cloud (Phase 6, optional):** sign-in and sync of the profile and tracker between
+browsers, defined with the AWS CDK in TypeScript: API Gateway (REST, Cognito authorizer,
+throttling), Lambda (Node.js, arm64), DynamoDB (on-demand, encrypted, point-in-time recovery),
+Cognito (hosted sign-in, PKCE), CloudWatch alarms, SNS and an AWS Budget, Secrets Manager for
+the Claude key, optional WAF. It is built and tested locally with stand-ins
+(`pnpm cloud:local`) and **not deployed**. Estimated cost at personal use: about USD 0.00 to
+0.15 a month. See [docs/AWS.md](docs/AWS.md) for the diagram, local testing, safe deployment
+and the cost estimate.
+
+The local AI API (`pnpm api`, Phase 3) still serves AI drafts: `GET /v1/health`,
+`POST /v1/tailor-resume`, `/v1/cover-letter`, `/v1/screening-answers`, documented in
+[ARCHITECTURE.md](ARCHITECTURE.md#ai-integration-phase-3). Nothing is deployed to AWS without
+explicit approval.
 
 ## How the match score works
 
@@ -259,7 +290,8 @@ not a hiring prediction.
 - A bare `$` salary is reported with an unknown currency rather than assumed to be USD.
 - Analysis requires a toolbar click per tab because the extension does not request broad host
   access.
-- AI features need the local API running on the same computer; there is no hosted service yet.
+- AI features need the local API running on the same computer; the cloud AI route is built but
+  not used by the extension yet.
 - Grounding checks catch new numbers and known skills, not every possible invented claim (for
   example numbers written as words). Every draft is for you to review and edit.
 - Autofill has been tested only on sample forms written for this project, not on live
@@ -268,12 +300,16 @@ not a hiring prediction.
 - Autofill never clicks Next or Submit: on multi-step forms, move on yourself and scan again.
   Yes/No button questions, CAPTCHAs, closed shadow roots and frames on another origin are
   reported, not filled. Workday and similar sites need you to sign in yourself.
-- The tracker is stored in this browser only (no sync yet). Reminders are a toolbar badge, not
-  system notifications. Only you can mark an application as applied.
+- Reminders are a toolbar badge, not system notifications. Only you can mark an application as
+  applied.
+- Cloud sync is not deployed: it works against the local test server (`pnpm cloud:local`) until
+  ApplyPilot Cloud is deployed to AWS. Resume files are never synced. See
+  [docs/AWS.md](docs/AWS.md#known-limitations).
 
 ## Roadmap
 
-Phases 6 and 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): AWS infrastructure with CDK, and production hardening.
+Phase 7 (accessibility, performance and Chrome Web Store preparation) and the optional AWS
+deployment are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps).
 
 ## Interview notes
 

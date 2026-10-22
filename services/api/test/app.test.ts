@@ -9,7 +9,7 @@ import {
   TASK_SCHEMAS,
   type AiTask,
 } from '@applypilot/ai-core';
-import { createApi, type ApiRequest, type LogEntry } from '../src/app';
+import { createApi, inMemoryLimiter, type ApiRequest, type LogEntry } from '../src/app';
 import { DailyLimiter } from '../src/limiter';
 import { createMockProvider } from '../src/providers/mock';
 import { ProviderError, type AiProvider } from '../src/providers/types';
@@ -32,7 +32,7 @@ function setup(provider: AiProvider = createMockProvider(), dailyLimit = 5) {
   const handle = createApi({
     config: testConfig({ dailyLimit }),
     provider,
-    limiter: new DailyLimiter(dailyLimit),
+    limiter: inMemoryLimiter(new DailyLimiter(dailyLimit)),
     now: () => NOW,
     log,
   });
