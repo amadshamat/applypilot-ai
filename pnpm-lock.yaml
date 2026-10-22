@@ -77,6 +77,9 @@ importers:
       '@applypilot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@applypilot/tracking':
+        specifier: workspace:*
+        version: link:../../packages/tracking
       '@hookform/resolvers':
         specifier: 5.9.1
         version: 5.9.1(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.0))(zod@4.6.7)
@@ -209,6 +212,12 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
+
+  packages/tracking:
+    dependencies:
+      '@applypilot/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   services/api:
     dependencies:

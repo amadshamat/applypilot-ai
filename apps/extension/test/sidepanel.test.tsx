@@ -63,8 +63,8 @@ describe('side panel navigation', () => {
     expect(screen.getByRole('tab', { name: 'Analyze' })).toHaveAttribute('aria-selected', 'true');
 
     await userEvent.click(screen.getByRole('tab', { name: 'Applications' }));
-    expect(screen.getByRole('tabpanel')).toHaveTextContent('Application tracking');
-    expect(screen.getByText(/Not built yet · Phase 5/)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing tracked yet')).toBeInTheDocument();
+    expect(screen.queryByText(/Not built yet/)).not.toBeInTheDocument();
   });
 
   it('supports arrow-key navigation between tabs', async () => {
@@ -342,7 +342,7 @@ describe('settings view', () => {
 
     expect(
       await screen.findByText(
-        /All local ApplyPilot data, including your profile, resumes, AI drafts and the API token, was deleted/,
+        /All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts and the API token, was deleted/,
       ),
     ).toBeInTheDocument();
     expect(await services.localStore.get('applypilot.example')).toBeUndefined();

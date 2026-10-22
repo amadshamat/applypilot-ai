@@ -9,10 +9,10 @@ and truthful resume suggestions. With your consent it drafts a tailored resume, 
 and screening answers with Claude, checked against your profile so nothing is invented. Later
 phases add form filling that you approve field by field, and application tracking.
 
-> **Project status: Phase 4 (assisted autofill, v0.4.1) built and tested, waiting for manual
-> approval in Chrome.** Every autofill platform is **experimental** until it is checked on a live
-> application. Tracking and the AWS backend are **not built yet**, and the extension says so in
-> its UI. See
+> **Project status: Phase 5 (application tracking and analytics, v0.5.0) built and tested,
+> waiting for manual approval in Chrome.** Phase 4 autofill was approved after a live test on
+> the practice form; every autofill platform stays **experimental** until it is checked on a
+> live application. The AWS backend is **not built yet**. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
 ![Side panel analyzing a job posting](docs/screenshots/sidepanel-analysis-light.png)
@@ -55,7 +55,9 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 | Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms             | Experimental         |
 | Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer       | Done                 |
 | Optional AI field matching (labels only, no profile data) and AI drafts for open questions                      | Done                 |
-| Application tracking and analytics                                                                              | Phase 5, not started |
+| Application tracker: statuses with history, notes, filters, search, duplicate detection, local storage          | Done                 |
+| Follow-up reminders (toolbar badge and due list) and analytics from your own records                            | Done                 |
+| CSV export of tracked applications, safe to open in spreadsheets                                                | Done                 |
 | AWS backend (API Gateway, Lambda, DynamoDB, Cognito, CDK)                                                       | Phase 6, not started |
 
 ## Technology
@@ -266,11 +268,12 @@ not a hiring prediction.
 - Autofill never clicks Next or Submit: on multi-step forms, move on yourself and scan again.
   Yes/No button questions, CAPTCHAs, closed shadow roots and frames on another origin are
   reported, not filled. Workday and similar sites need you to sign in yourself.
+- The tracker is stored in this browser only (no sync yet). Reminders are a toolbar badge, not
+  system notifications. Only you can mark an application as applied.
 
 ## Roadmap
 
-Phases 5 to 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): tracking and
-analytics, AWS infrastructure with CDK, and production hardening.
+Phases 6 and 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): AWS infrastructure with CDK, and production hardening.
 
 ## Interview notes
 

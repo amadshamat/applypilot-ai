@@ -16,7 +16,7 @@ function instruction(
 }
 
 describe('fillForm on a plain application', () => {
-  it('fills text, selects, radios and checkboxes and never submits', async () => {
+  it('fills text and selects, refuses sensitive radios and boxes even if asked, never submits', async () => {
     const { dom, doc } = loadApplication(
       'generic-application.html',
       'https://careers.northwind.example/apply/42',
@@ -42,13 +42,14 @@ describe('fillForm on a plain application', () => {
       ],
       FAST,
     );
+    // The side panel never sends these two; the fill step refuses them anyway.
     expect(report.results.map((r) => r.status)).toEqual([
       'filled',
       'filled',
       'filled',
       'filled',
-      'filled',
-      'filled',
+      'skipped',
+      'skipped',
     ]);
     expect(
       (doc.getElementById('first-name') as HTMLInputElement | null)?.value ??
@@ -63,7 +64,8 @@ describe('fillForm on a plain application', () => {
     );
     expect(
       (doc.querySelector('input[name="veteran"][value="no"]') as HTMLInputElement).checked,
-    ).toBe(true);
+    ).toBe(false);
+    expect((doc.querySelector('input[name="privacy"]') as HTMLInputElement).checked).toBe(false);
     expect((dom.window as unknown as { submitCount: number }).submitCount).toBe(0);
   });
 
@@ -91,6 +93,77 @@ describe('fillForm on a plain application', () => {
     // Once filling is over, the user's own submission works again.
     form.requestSubmit();
     expect(submitted).toBe(1);
+  });
+
+  it('blocks a script clicking the submit button while filling', async () => {
+    const doc = htmlPage(
+      '<form><input aria-label="Email" type="email"><button id="go">Submit application</button></form>',
+    );
+    const form = doc.querySelector('form')!;
+    let submitted = 0;
+    form.addEventListener('submit', (e) => {
+      submitted += 1;
+      e.preventDefault();
+    });
+    doc.querySelector('input')?.addEventListener('input', () => doc.getElementById('go')?.click());
+    const scan = scanForm(doc);
+    const report = await fillForm(
+      doc,
+      [instruction(scan, 'Email', { type: 'text', value: 'a@b.co' })],
+      FAST,
+    );
+    expect(report.results[0]?.status).toBe('filled');
+    expect(report.blockedSubmissions).toBeGreaterThanOrEqual(1);
+    expect(submitted).toBe(0);
+  });
+
+  it('refuses targets the page swapped in after the scan: passwords, hidden and sensitive fields', async () => {
+    const doc = htmlPage(`
+      <form>
+        <label for="n">Nickname</label><input id="n">
+        <label for="p">Password</label><input id="p" type="password">
+        <input id="h" type="hidden" aria-label="Notes">
+        <label for="i">Note</label><input id="i" style="display:none">
+        <label for="q">Question</label><input id="q">
+      </form>`);
+    const scan = scanForm(doc);
+    const nick = instruction(scan, 'Nickname', { type: 'text', value: 'avery@example.com' });
+    const question = instruction(scan, 'Question', { type: 'text', value: 'Yes' });
+    // A page script copies the scanned field's ref onto other inputs.
+    const copy = (id: string) => ({
+      ...nick,
+      ref: (() => {
+        const el = doc.getElementById(id)!;
+        el.setAttribute('data-applypilot-ref', `${nick.ref}-${id}`);
+        return `${nick.ref}-${id}`;
+      })(),
+    });
+    // And relabels a harmless field as a work authorization question.
+    doc.querySelector('label[for="q"]')!.textContent =
+      'Are you legally authorized to work in the United States?';
+    const report = await fillForm(
+      doc,
+      [
+        copy('p'),
+        copy('h'),
+        copy('i'),
+        question,
+        { ...nick, label: 'Will you require visa sponsorship?' },
+      ],
+      FAST,
+    );
+    expect(report.results.map((r) => r.status)).toEqual([
+      'skipped',
+      'skipped',
+      'skipped',
+      'skipped',
+      'skipped',
+    ]);
+    expect(report.results[0]?.message).toMatch(/never fills password/);
+    expect(report.results[3]?.message).toMatch(/work authorization/);
+    for (const id of ['n', 'p', 'h', 'i', 'q']) {
+      expect((doc.getElementById(id) as HTMLInputElement).value).toBe('');
+    }
   });
 
   it('reports fields that changed or disappeared since the scan', async () => {

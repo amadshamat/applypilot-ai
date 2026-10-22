@@ -5,7 +5,7 @@ _Draft for review before any public release. Not legal advice._
 ## Summary
 
 ApplyPilot AI helps you understand job postings and prepare applications. In the current version
-(0.4) your data stays in your browser unless you use the optional AI tools. Resumes are read and
+(0.5) your data stays in your browser unless you use the optional AI tools. Resumes are read and
 parsed on your device and are never uploaded. The AI tools send data only when **Allow AI
 processing** is on, an ApplyPilot API is connected, and you press Generate after seeing what will
 be sent.
@@ -20,6 +20,7 @@ be sent.
 | Uploaded resume files, their extracted text and parsed drafts                                            | IndexedDB in the extension            | When you delete that resume, delete local data, or uninstall |
 | AI connection (API address and access token)                                                             | `chrome.storage.local`                | When you forget the token, delete local data, or uninstall   |
 | The latest AI draft of each kind for each job (at most 30), with the request that produced it            | `chrome.storage.local`                | When you discard it, delete local data, or uninstall         |
+| Tracked applications: job details you saved or typed, statuses with dates, notes, follow-up reminders    | `chrome.storage.local`                | When you delete one, delete local data, or uninstall         |
 
 ## What the extension reads
 

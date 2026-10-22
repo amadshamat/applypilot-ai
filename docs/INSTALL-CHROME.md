@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.4.1) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.5.0) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.4.1.zip` from the project files.
+Download `applypilot-ai-extension-0.5.0.zip` from the project files.
 
 ## 2. Extract
 
@@ -31,7 +31,7 @@ applypilot-ai-extension/
 └── icons/
 ```
 
-Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.4.1`). Open it and choose
+Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.5.0`). Open it and choose
 the `applypilot-ai-extension` folder inside.
 
 ## 4. Load it in Chrome
@@ -171,7 +171,7 @@ extensions cannot scan `file://` pages here, so serve it from your own computer:
 
 ### B. Sample forms (safe, nothing is sent anywhere)
 
-In the source folder (`applypilot-ai-source-0.4.1`, after `pnpm install`), run
+In the source folder (`applypilot-ai-source-0.5.0`, after `pnpm install`), run
 `node tests/e2e/fixture-server.mjs` and keep the window open. For each form below: open the
 address, click the ApplyPilot toolbar icon on that tab, open **Autofill**, click **Scan this
 form**.
@@ -249,10 +249,102 @@ Greenhouse or Lever internship). Sign in yourself where a site needs it.
 
 When a live platform passes E1 to E5, report it so it can be marked **Verified** in PROGRESS.md.
 
+## 9. Phase 5 checklist: Application tracker (v0.5.0)
+
+Tick each box as you go. If anything fails, note the step number, take a screenshot of the side
+panel, and send both. Everything here stays in your browser; nothing is sent anywhere.
+
+### B. Save a job from Analyze
+
+- [ ] B1. Open a real job posting (for example an Indeed job), click the toolbar icon, then
+      **Analyze this page**.
+- [ ] B2. Under the match card, the **Track this job** card shows **Save to tracker**. Click it.
+- [ ] B3. The card now says **In your tracker** with "Status: Saved".
+- [ ] B4. Click **Open**: the **Tracker** tab (Applications) opens on that job, with its title, company,
+      location, "Match N" and an **Open the posting** link that opens the right page.
+- [ ] B5. Analyze the same job again: it says **In your tracker** (no duplicate).
+- [ ] B6. Save two or three different jobs the same way.
+
+### C. Statuses, notes and history
+
+- [ ] C1. Change a job's status to **Applied**, then to **Interview**.
+- [ ] C2. Open **Details**: the **Status history** lists Saved, Applied and Interview with dates.
+- [ ] C3. Add a note, then delete it. Add another and keep it.
+- [ ] C4. Close the side panel and open it again: the statuses and the note are still there.
+
+### D. Add by hand
+
+- [ ] D1. Click **Add**, leave the title empty and click **Add**: "Enter the job title."
+- [ ] D2. Type an address that is not a link: "Enter a full web address…".
+- [ ] D3. Fill in a title and company, pick a status and add it. It appears in the list.
+- [ ] D4. Add the same title and company again: it says you already track it and shows it.
+
+### E. Follow-up reminders
+
+- [ ] E1. On one job, open **Details**, pick yesterday's date as the **Follow-up date**, type a
+      note, and click **Save reminder**.
+- [ ] E2. **Follow-ups due (1)** appears at the top with the job and your note.
+- [ ] E3. The ApplyPilot toolbar icon shows a small **1** badge; hovering it says "1 follow-up
+      due".
+- [ ] E4. Click **Done** on the reminder: the list and the badge disappear.
+- [ ] E5. On another job, click **In 1 week**: the card shows "Follow up" with that date and no
+      badge appears today.
+
+### F. Filters and search
+
+- [ ] F1. **Filter by status**: "Open" hides Rejected and Withdrawn jobs; "Closed" shows only
+      them; a single status shows only that one.
+- [ ] F2. **Search**: a company name, a word from a note, and two words together each find the
+      right jobs.
+- [ ] F3. **Follow-up due** shows only jobs with a reminder due today or earlier.
+- [ ] F4. **Sort by** Company, Applied date and Follow-up date reorder the list sensibly.
+- [ ] F5. "Showing X of Y" matches what you see.
+
+### G. Analytics
+
+- [ ] G1. Click **Analytics**. Tracked, Applied, Response rate, Interview rate, Offers, Days to
+      first answer and Average match score appear.
+- [ ] G2. The numbers match your records (for example: 3 applied, 1 moved to Interview → response
+      rate 33%).
+- [ ] G3. With nothing applied for yet, rates say "No data", not 0%.
+- [ ] G4. **By status**, **Applications sent per week** and **Where the jobs came from** list the
+      right counts.
+
+### H. CSV export
+
+- [ ] H1. Click **CSV**. A file `applypilot-applications-<date>.csv` downloads.
+- [ ] H2. Open it in Excel, Numbers or Google Sheets: one row per job, columns for status,
+      dates, follow-up, match score, address, status history and notes; accents look right.
+- [ ] H3. Optional safety check: add a job by hand titled `=1+1`, export, and open the CSV. The
+      cell shows `'=1+1` or `=1+1` as text, never `2`.
+
+### I. Mark applied after autofill
+
+- [ ] I1. Serve and open the practice form as before
+      (`http://127.0.0.1:8000/practice-application.html`), scan and fill it.
+- [ ] I2. Under the fill results, **Did you submit it?** appears. Nothing was added to the
+      tracker yet.
+- [ ] I3. Click **I submitted it: mark as applied**. It says the job is marked Applied.
+- [ ] I4. **Open in tracker** shows "Apply for Cloud Support Intern" with status Applied.
+- [ ] I5. The practice page still says **Submit attempts: 0**.
+
+### J. Your data
+
+- [ ] J1. Settings → **Export data**: the JSON file includes `applypilot.applications`.
+- [ ] J2. Optional (deletes everything, export first): **Delete all local data** empties the
+      tracker and removes the badge.
+
+### K. Nothing else broke
+
+- [ ] K1. Analyze still works on Indeed (search results page and a job page).
+- [ ] K2. Profile editing and resume upload still work.
+- [ ] K3. AI Tailor still opens (mock mode if the local API runs).
+- [ ] K4. Autofill still scans and fills the practice form.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To
-**keep your profile, resumes, settings and AI drafts**, replace the files and reload; do not
+**keep your profile, resumes, tracked applications, settings and AI drafts**, replace the files and reload; do not
 remove the extension.
 
 1. Download and extract the new zip.

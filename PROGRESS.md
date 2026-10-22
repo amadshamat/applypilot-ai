@@ -1,17 +1,59 @@
 # Progress
 
-_Last updated: 2026-10-22 (v0.4.1)_
+_Last updated: 2026-10-22 (v0.5.0)_
 
 ## Current phase
 
-**Phase 4 (assisted autofill): built and tested here, waiting for Muhaid's manual test in
-Chrome.** Phase 3 was approved by Muhaid on 2026-10-22 after testing in Chrome, together with
-the v0.3.4 Indeed checklist. Phase 5 will not start until Phase 4 is approved. No real (paid)
-Claude request has been made; see "Not yet verified".
+**Phase 5 (application tracking and analytics): built and tested here, waiting for Muhaid's
+manual test in Chrome.** Phase 4 was approved by Muhaid on 2026-10-22 after the v0.4.1
+practice-form autofill test passed in Chrome, on condition that the remaining Phase 4 safety
+criteria were reviewed first (see "Phase 4 acceptance review" below). Phase 6 (AWS) will not
+start without Muhaid's approval. No real (paid) Claude request has been made and nothing has
+been deployed.
 
-Phase 2 was approved on 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
+Phase 3 was approved on 2026-10-22, Phase 2 on 2026-10-14. Phase 1 and the v0.1.1 Indeed fix
+were confirmed earlier.
 
 ## Completed and verified
+
+### Phase 5 (v0.5.0): application tracking and analytics
+
+| Feature                                                                                                                                                                                                                                                                | Verified by                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Tracked applications stored as validated records in `chrome.storage.local` (`applypilot.applications`, up to 1,000); entries a later version wrote are kept untouched, not dropped                                                                                     | `applications.test.tsx` (repository), e2e (survives a new panel)     |
+| Statuses: Saved, Preparing, Ready to apply, Applied, Assessment, Interview, Offer, Rejected, Withdrawn, with a dated status history                                                                                                                                    | `tracking.test.ts`, `applications.test.tsx`, e2e                     |
+| **Save to tracker** under an analyzed job, with its title, company, location, pay, address and the match score at that moment; a job already tracked shows its status instead (duplicates found by posting identity, address, or company and title)                    | `applications.test.tsx`, e2e                                         |
+| **I submitted it: mark as applied** after an autofill fill. ApplyPilot cannot know whether a form was sent, so it never marks anything applied by itself                                                                                                               | `applications.test.tsx`, e2e (practice form, 0 submit attempts)      |
+| Add an application by hand (validated title and address), edit status, notes (add, delete), delete with confirmation                                                                                                                                                   | `applications.test.tsx`                                              |
+| Filtering by status (all, open, closed, each stage), search across title, company, location and notes, "follow-up due", and sorting (updated, applied, follow-up, company)                                                                                             | `tracking.test.ts`, `applications.test.tsx`                          |
+| Follow-up reminders: a date and note per application, "In 1 week", a "Follow-ups due" list with Done, a toolbar badge with the count (refreshed on change, at browser start and hourly via `alarms`), and a hint for applications quiet for two weeks (suggested only) | `tracking.test.ts`, `reminders.test.ts`, e2e (badge 1, then cleared) |
+| Analytics from stored records only: totals, open, applied, response, interview and offer rates (shown as "No data" rather than 0% when nothing was applied for), median days to first answer, average match score, by status, per week, by platform                    | `tracking.test.ts`, `applications.test.tsx`, e2e                     |
+| CSV export (UTF-8 with BOM, CRLF, RFC 4180 quoting); cells starting with `=`, `+`, `-`, `@`, tab or CR get an apostrophe, so a formula planted in a job title cannot run in a spreadsheet                                                                              | `tracking.test.ts`, `applications.test.tsx`, e2e (real download)     |
+| Data controls: Export data includes the tracker; Delete all local data removes it                                                                                                                                                                                      | `sidepanel.test.tsx`                                                 |
+
+### Phase 4 acceptance review (2026-10-22)
+
+- **Verified live by Muhaid:** the v0.4.1 practice form
+  (`tests/fixtures/applications/practice-application.html`) was scanned and the approved fields
+  were filled correctly in Chrome. **Passed.**
+- **Reviewed and covered by tests before this release:** sensitive questions locked in the
+  review and never built into fill instructions; never clicking submit-like controls; page
+  submits blocked while filling and the guard removed afterwards; refusing a tab that moved to
+  another page; passwords never scanned; labels-only AI field matching that cannot return
+  sensitive kinds (extension and API); validated messages at the service worker.
+- **Gaps found and closed in v0.5.0:**
+  1. The fill step trusted the page's ref attributes. A page script could copy a scanned
+     field's ref onto a password, hidden or invisible input, or relabel a field as a work
+     authorization question after the scan. The content script now re-checks every instruction
+     at fill time and skips sensitive questions (by the instruction's label and the field's
+     current label), password and hidden inputs, and text fields that are no longer visible.
+     Defence in depth: the side panel never sends these. Test: `fill.test.ts`.
+  2. A page script calling `submitButton.click()` during a fill was blocked by the guard but
+     not covered by a test. Test added: `fill.test.ts`.
+  3. The content script's own checks (answers only this extension, rejects malformed requests,
+     never reads passwords) had no direct test. Test added: `content/index.test.ts`.
+- **Still not verifiable here:** live application sites (all platforms stay experimental) and
+  a real Claude request (needs Muhaid's key and approval).
 
 ### v0.4.1: practice form and two locking fixes
 
@@ -184,25 +226,26 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-22, v0.4.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-22, v0.5.0, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **456 passed** (job-extraction 110, extension 108, autofill 57, api 45,
-  ai-core 44, resume-parser 44, matching 30, shared 18)
-- `pnpm test:coverage`: 86.8% statements, 78.2% branches, 84.4% functions, 89.0% lines
-  (autofill package: 86.8% statements, 91.1% lines)
-- `pnpm test:e2e`: **16 passed**, run twice in a row (`--repeat-each=2`, 32 runs, no flakes). New
-  in v0.4.0, each in real Chromium against the sample forms served under the platforms'
-  hostnames: a plain form (resume file attached, sensitive fields and password untouched, no
-  submission); a Workday-style form over two steps (the user presses Save and Continue; no
-  step change by ApplyPilot); a Greenhouse-style form with react-select typeaheads (a school
-  missing from the list is reported, not guessed) and a SmartRecruiters-style form built from
-  web components. Screenshot test skipped by default.
+- `pnpm test`: **486 passed** (extension 117, job-extraction 110, autofill 60, ai-core 47,
+  api 45, resume-parser 44, matching 30, shared 18, tracking 15)
+- `pnpm test:coverage`: 87.4% statements, 78.7% branches, 84.6% functions, 89.5% lines
+  (tracking package: 97.5% statements, 99.2% lines)
+- `pnpm test:e2e`: **19 passed**, run twice in a row (`--repeat-each=2`, 38 runs, no flakes);
+  screenshot test skipped by default. New in v0.5.0, in real Chromium: saving an analyzed job,
+  status, note and a due follow-up (toolbar badge shows 1, then clears), the record surviving
+  a new panel, analytics, and a real CSV download; marking a filled practice form as applied
+  from the user's click (submit attempts stay 0). The Phase 4 autofill tests (plain,
+  Workday-style, Greenhouse-style, SmartRecruiters-style, practice form) still pass.
 
 ## Not yet verified
 
-- **Phase 4 on live application sites.** No platform is marked verified. Muhaid's checklist
-  (`docs/INSTALL-CHROME.md`, section 8) is the first live test. Real Workday, Greenhouse, Lever,
+- **Phase 5 in Chrome.** Muhaid's checklist (`docs/INSTALL-CHROME.md`, section 9) is the first
+  manual run, including the toolbar badge on the real toolbar and a CSV opened in a spreadsheet.
+- **Phase 4 on live application sites.** No platform is marked verified; only the practice form
+  was tested live (passed). Real Workday, Greenhouse, Lever,
   Ashby, SmartRecruiters and Indeed Apply markup may differ from the samples.
 - **A real Claude request.** No paid call has been made. The request shape is verified against
   the real SDK and a fake API, but output quality, latency and actual cost per draft need
@@ -218,11 +261,23 @@ the reported values on the new fixture.
 
 ## Under development
 
-Nothing in progress. Waiting for Phase 4 approval.
+Nothing in progress. Waiting for Phase 5 approval.
 
 ## Known bugs and limitations
 
-- **Autofill (new in v0.4.0):**
+- **Tracker (new in v0.5.0):**
+  - Stored only in this browser profile; there is no sync between computers until a backend
+    exists (Phase 6, with approval). Export CSV or Export data for a copy.
+  - Reminders are a toolbar badge and a list in the tab, not system notifications (that would
+    need the `notifications` permission). The badge refreshes hourly, so it can lag up to an
+    hour after midnight.
+  - "Applied" is set only by the user; ApplyPilot cannot see whether a site accepted a
+    submission. A record created after autofill has the form's title and no company unless the
+    job was analyzed on the same site first.
+  - Analytics are counts over the user's own records, not benchmarks, and are only as complete
+    as the statuses kept up to date.
+
+- **Autofill (v0.4.0):**
   - No platform is verified live yet; all are experimental.
   - A form inside a frame from another site (an embedded Greenhouse board, for example) cannot
     be read; the tab offers a link to open the form on its own.
@@ -272,13 +327,12 @@ Nothing in progress. Waiting for Phase 4 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** install v0.4.1 (update with Reload so your profile stays), run the Phase 4
-   checklist on the sample forms and on one or two real applications you intend to submit
-   yourself, then approve Phase 4 or report issues. Platforms move to "verified" only from those
-   live runs.
-2. **Optional:** try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft;
+1. **Muhaid:** install v0.5.0 (update with Reload so your profile, resumes and tracker stay), run
+   the Phase 5 checklist, then approve Phase 5 or report issues.
+2. **Optional:** fill a real application on Greenhouse or Lever (submit only if you mean to) so
+   that platform can move from experimental to verified.
+3. **Optional:** try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft;
    field matching is far smaller). Not done without your approval.
-3. **Phase 5:** application tracker and analytics (not started; waits for Phase 4 approval).
-4. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda). No
-   deployment without approval.
+4. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda; tracker
+   sync would be opt-in). Not started; no deployment without approval.
 5. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.

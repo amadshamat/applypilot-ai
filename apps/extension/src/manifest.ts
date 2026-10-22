@@ -36,6 +36,8 @@ export interface ManifestOptions {
  *   the extension never sees browsing history.
  * - `sidePanel`: the main UI.
  * - `storage`: settings and local data.
+ * - `alarms`: re-checks follow-up reminders once an hour to update the toolbar
+ *   badge (Phase 5). No install warning; it wakes nothing but the extension.
  * - Optional host access to 127.0.0.1 / localhost, requested only when the
  *   user connects the local ApplyPilot API for AI features (Phase 3).
  */
@@ -61,7 +63,7 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     side_panel: { default_path: 'sidepanel.html' },
     options_ui: { page: 'options.html', open_in_tab: true },
     background: { service_worker: 'background.js', type: 'module' },
-    permissions: ['activeTab', 'scripting', 'sidePanel', 'storage'],
+    permissions: ['activeTab', 'alarms', 'scripting', 'sidePanel', 'storage'],
     // Indeed frames are requested only from the user's click when a job sits in
     // a frame on another Indeed subdomain (DECISIONS 037).
     optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', INDEED_FRAMES_ORIGIN],

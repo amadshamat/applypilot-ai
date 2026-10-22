@@ -59,6 +59,18 @@ Please open a private security advisory on the GitHub repository rather than a p
 | Scan results and fill results validated with Zod; page text treated as untrusted and length-limited       | `shared/src/schemas/autofill.ts`                |
 | AI field matching sends labels only; answers restricted to non-sensitive profile kinds, review-only       | `ai.ts`, `ai-core/src/mapping.ts`, `app.ts`     |
 
+## Implemented (Phase 5, and the Phase 4 review)
+
+| Control                                                                                                                 | Where                                       |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Fill step re-checks each instruction on the live page: skips sensitive questions, password, hidden and invisible inputs | `autofill/src/fill.ts`, DECISIONS 043       |
+| Content script answers only this extension and only schema-valid requests                                               | `content/index.ts`, `content/index.test.ts` |
+| Tracker records validated on every read and write; unreadable entries kept, never silently dropped                      | `applications-repository.ts`                |
+| Tracker data stays in `chrome.storage.local`; no network calls; included in Export data and Delete all                  | `data-controls.tsx`                         |
+| CSV export neutralises formula cells (CSV injection) from page-sourced text                                             | `tracking/src/csv.ts`, `tracking.test.ts`   |
+| Posting links open with `rel="noopener noreferrer"`; only http(s) addresses are stored                                  | `application-card.tsx`, `job-records.ts`    |
+| One new permission, `alarms` (no install warning), for the hourly reminder badge                                        | `manifest.ts`, `manifest.test.ts`           |
+
 ## Planned
 
 - Phase 6: the API key moves to AWS Secrets Manager; Cognito JWT validation, per-user authorization on every item, API Gateway throttling,

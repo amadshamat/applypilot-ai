@@ -19,4 +19,5 @@ export const STORAGE_KEYS = {
   profile: 'applypilot.profile',
   aiConnection: 'applypilot.aiConnection',
   aiDrafts: 'applypilot.aiDrafts',
+  applications: 'applypilot.applications',
 } as const;

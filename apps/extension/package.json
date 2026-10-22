@@ -1,6 +1,6 @@
 {
   "name": "@applypilot/extension",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "ApplyPilot AI Chrome extension (Manifest V3).",
@@ -15,6 +15,7 @@
     "@applypilot/autofill": "workspace:*",
     "@applypilot/job-extraction": "workspace:*",
     "@applypilot/matching": "workspace:*",
+    "@applypilot/tracking": "workspace:*",
     "@applypilot/resume-parser": "workspace:*",
     "@applypilot/shared": "workspace:*",
     "@hookform/resolvers": "5.9.1",

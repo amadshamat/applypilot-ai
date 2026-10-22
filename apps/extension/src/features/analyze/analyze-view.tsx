@@ -13,6 +13,7 @@ import { JobDetails } from './job-details';
 import { MatchCard } from './match-card';
 import { StaleAnalysisAlert } from './stale-analysis-alert';
 import { useAnalysis } from './store';
+import { SaveJobCard } from '../applications/track-buttons';
 import { useStaleAnalysis } from './use-stale-analysis';
 
 const ERROR_TITLES = {
@@ -124,6 +125,7 @@ export function AnalyzeView() {
           <JobDetails result={state.result} />
           <ExtractionChecks result={state.result} />
           <MatchCard job={state.result.job} />
+          {stale ? null : <SaveJobCard result={state.result} />}
         </>
       ) : null}
     </div>

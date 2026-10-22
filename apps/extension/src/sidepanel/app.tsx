@@ -4,12 +4,12 @@ import { useSettings } from '../hooks/use-settings';
 import { useTheme } from '../hooks/use-theme';
 import { AiView } from '../features/ai/ai-view';
 import { AnalyzeView } from '../features/analyze/analyze-view';
+import { ApplicationsView } from '../features/applications/applications-view';
 import { AutofillView } from '../features/autofill/autofill-view';
 import { NavBar } from '../features/navigation/nav-bar';
 import { useNavigation } from '../features/navigation/store';
 import type { ViewId } from '../features/navigation/views';
 import { ProfileView } from '../features/profile/profile-view';
-import { RoadmapView } from '../features/roadmap/roadmap-view';
 import { SettingsView } from '../features/settings/settings-view';
 
 function CurrentView({ view }: { view: ViewId }) {
@@ -24,8 +24,8 @@ function CurrentView({ view }: { view: ViewId }) {
       return <AiView />;
     case 'settings':
       return <SettingsView />;
-    default:
-      return <RoadmapView feature="applications" />;
+    case 'applications':
+      return <ApplicationsView />;
   }
 }
 

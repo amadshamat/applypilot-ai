@@ -1,7 +1,9 @@
 import type { FillInstruction, FillReport, FillStatus } from '@applypilot/shared';
+import { classifyQuestion } from '@applypilot/ai-core';
 import {
   REF_ATTRIBUTE,
   deepQueryAll,
+  groupLabel,
   isInput,
   isSelect,
   isSubmitLike,
@@ -215,6 +217,41 @@ function labelStillMatches(el: Element, expected: string): boolean {
   const before = normalize(expected);
   if (!before || !now) return true;
   return now === before || now.includes(before) || before.includes(now);
+}
+
+const PERSONAL_ID = /\b(social security|ssn|date of birth|birth ?date)\b/i;
+
+/**
+ * The fill step re-checks every instruction on its own, because the page is
+ * untrusted and may have changed (or tampered with the ref attributes) since
+ * the scan: it refuses sensitive questions, password and hidden inputs, and
+ * fields that are no longer visible.
+ */
+function refusal(instruction: FillInstruction, members: Element[]): string | null {
+  const [anchor] = members;
+  if (!anchor) return null;
+  const group = instruction.control === 'radio-group' || instruction.control === 'checkbox-group';
+  const current = group ? groupLabel(anchor, members) : labelFor(anchor);
+  for (const text of [instruction.label, current]) {
+    if (!text) continue;
+    const question = classifyQuestion(text);
+    if (question.category === 'sensitive' || PERSONAL_ID.test(text)) {
+      return `This asks about ${question.topic || 'personal identification'}. ApplyPilot never fills it; answer it yourself.`;
+    }
+  }
+  if (isInput(anchor)) {
+    const type = anchor.type.toLowerCase();
+    if (type === 'password') return 'ApplyPilot never fills password fields.';
+    if (type === 'hidden') return 'The field is hidden. Scan again.';
+  }
+  if (
+    (isInput(anchor) || isTextArea(anchor)) &&
+    TEXT_LIKE.includes(instruction.control) &&
+    !isVisible(anchor)
+  ) {
+    return 'The field is hidden now. Scan again.';
+  }
+  return null;
 }
 
 async function fillOne(
@@ -468,6 +505,11 @@ export async function fillForm(
           status: 'failed',
           message: 'The field is no longer on the page. Scan again.',
         });
+        continue;
+      }
+      const refused = refusal(instruction, members);
+      if (refused) {
+        results.push({ ref: instruction.ref, status: 'skipped', message: refused });
         continue;
       }
       const [anchor] = members;

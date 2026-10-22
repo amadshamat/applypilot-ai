@@ -4,6 +4,7 @@ import type { AppServices } from '../src/services/app-services';
 import type { AiClient } from '../src/services/ai-client';
 import { AiConnectionRepository } from '../src/storage/ai-connection-repository';
 import { AiDraftsRepository } from '../src/storage/ai-drafts-repository';
+import { ApplicationsRepository } from '../src/storage/applications-repository';
 import { ProfileRepository } from '../src/storage/profile-repository';
 import { memoryResumeStore } from '../src/storage/resume-store';
 import { SettingsRepository } from '../src/storage/settings-repository';
@@ -53,6 +54,7 @@ export function fakeServices(
     localStore,
     aiConnection: new AiConnectionRepository(localStore),
     aiDrafts: new AiDraftsRepository(localStore),
+    applications: new ApplicationsRepository(localStore),
     ai: options.ai ?? unavailableAi,
     permissions: {
       contains: vi.fn(() => Promise.resolve(permission.granted)),

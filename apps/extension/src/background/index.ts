@@ -1,9 +1,13 @@
-import { DEFAULT_SETTINGS } from '@applypilot/shared';
+import { DEFAULT_SETTINGS, STORAGE_KEYS } from '@applypilot/shared';
+import { ApplicationsRepository } from '../storage/applications-repository';
 import { SettingsRepository } from '../storage/settings-repository';
 import { chromeStore } from '../storage/storage-area';
+import { refreshFollowUpBadge } from './reminders';
 import { handleBackgroundMessage, type BackgroundDeps } from './router';
 
-const settings = new SettingsRepository(chromeStore('local'));
+const local = chromeStore('local');
+const settings = new SettingsRepository(local);
+const applications = new ApplicationsRepository(local);
 const session = chromeStore('session');
 const cacheKey = (tabId: number) => `job-analysis:${tabId}`;
 
@@ -52,6 +56,24 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
   if (reason === 'install') void settings.save(DEFAULT_SETTINGS);
 });
+
+// Follow-up reminders: the toolbar badge counts follow-ups due today or earlier.
+// It is refreshed when the tracker changes, when the browser starts, and hourly
+// so a reminder appears on its day without the panel being opened.
+const FOLLOW_UP_ALARM = 'applypilot-follow-ups';
+const refreshBadge = () =>
+  void refreshFollowUpBadge(applications, {
+    setText: (text) => chrome.action.setBadgeText({ text }),
+    setColor: (color) => chrome.action.setBadgeBackgroundColor({ color }),
+    setTitle: (title) => chrome.action.setTitle({ title }),
+  }).catch((error: unknown) => console.error('[ApplyPilot] follow-up badge failed', error));
+void chrome.alarms.create(FOLLOW_UP_ALARM, { periodInMinutes: 60, delayInMinutes: 1 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === FOLLOW_UP_ALARM) refreshBadge();
+});
+chrome.runtime.onStartup.addListener(refreshBadge);
+local.subscribe(STORAGE_KEYS.applications, refreshBadge);
+refreshBadge();
 
 // Cached analyses are per page load: drop them on navigation, on in-page address
 // changes (Indeed switches the selected job that way) and on tab close.

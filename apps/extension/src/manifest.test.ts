@@ -7,6 +7,7 @@ describe('manifest', () => {
   it('requests only the permissions the features need', () => {
     expect([...(release.permissions ?? [])].sort()).toEqual([
       'activeTab',
+      'alarms',
       'scripting',
       'sidePanel',
       'storage',

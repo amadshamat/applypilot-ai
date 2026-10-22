@@ -22,6 +22,8 @@ import { Input, Select, Textarea } from '../../components/ui/field';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useAiConnection } from '../../hooks/use-ai-connection';
 import { useSettings } from '../../hooks/use-settings';
+import { MarkAppliedCard } from '../applications/track-buttons';
+import { useAnalysis } from '../analyze/store';
 import { useNavigation } from '../navigation/store';
 import { useProfile } from '../profile/use-profile';
 import { groupOf, isLocked, summarize, valueText, type ReviewRow, type RowGroup } from './review';
@@ -312,6 +314,7 @@ export function AutofillView() {
   const profile = profileState?.status === 'ok' ? profileState.profile : null;
   const autofill = useAutofill(profile, connection, settings?.allowAiProcessing === true);
   const [showLocked, setShowLocked] = useState(true);
+  const analysis = useAnalysis((s) => s.state);
 
   if (!profileState) {
     return (
@@ -523,12 +526,36 @@ export function AutofillView() {
             </Alert>
           ) : null}
           {fillState.status === 'done' ? (
-            <FillResults report={fillState.report} rows={rows} />
+            <>
+              <FillResults report={fillState.report} rows={rows} />
+              <MarkAppliedCard
+                scan={scanState.scan}
+                analysis={sameSiteAnalysis(analysis, scanState.scan)}
+              />
+            </>
           ) : null}
         </>
       ) : null}
     </div>
   );
+}
+
+/** The analyzed job, when it was read on the same site as the form (job page and form often differ by subdomain). */
+function siteOf(url: string): string {
+  try {
+    return new URL(url).hostname.split('.').slice(-2).join('.');
+  } catch {
+    return '';
+  }
+}
+
+function sameSiteAnalysis(
+  analysis: ReturnType<typeof useAnalysis.getState>['state'],
+  scan: FormScan,
+) {
+  if (analysis.status !== 'success') return null;
+  const site = siteOf(scan.url);
+  return site && siteOf(analysis.result.pageUrl) === site ? analysis.result : null;
 }
 
 function FillResults({

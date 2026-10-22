@@ -26,6 +26,7 @@ Anything marked **planned** has not been built.
 | `@applypilot/resume-parser`  | PDF/DOCX text extraction and deterministic resume parsing                     | shared                 |
 | `@applypilot/matching`       | Pure job-to-profile scoring, evidence and truthful suggestions                | shared                 |
 | `@applypilot/autofill`       | Pure DOM form scanning, field classification, proposals and filling           | shared                 |
+| `@applypilot/tracking`       | Application records, filters, reminders, analytics and CSV export (pure)      | shared                 |
 | `@applypilot/ai-core`        | AI contracts, versioned prompts, data minimisation, grounding, question rules | shared                 |
 | `@applypilot/api`            | Local API (`services/api`): auth, limits, Claude or mock provider             | ai-core, Anthropic SDK |
 | `@applypilot/extension`      | MV3 extension: UI, service worker, content script, storage                    | all packages but api   |
@@ -241,6 +242,37 @@ worker asks, after a user click.
 **API.** `POST /v1/map-fields` takes `{fields: [...]}` (1–40), needs no job, drops sensitive
 labels, and returns `{mappings: [{fieldId, kind, confidence}]}` in the usual task envelope. The
 mock provider maps by keyword offline. Existing endpoints are unchanged.
+
+## Application tracking (Phase 5)
+
+```mermaid
+flowchart LR
+  AN[Analyze tab<br/>Save to tracker] --> HOOK[useApplications]
+  AF[Autofill tab<br/>I submitted it] --> HOOK
+  TR[Applications tab<br/>add, status, notes, follow-up] --> HOOK
+  HOOK --> REPO[ApplicationsRepository<br/>chrome.storage.local]
+  REPO -- storage change --> SW[Service worker<br/>badge refresh]
+  ALARM[chrome.alarms hourly] --> SW
+  SW --> BADGE[Toolbar badge: follow-ups due]
+  REPO --> CSV[CSV export / analytics<br/>@applypilot/tracking]
+```
+
+**Package** (`packages/tracking`, pure, no Chrome dependency). `records.ts` creates records and
+applies immutable, validated changes (status with history, notes, follow-ups, job edits) and
+finds duplicates by posting identity, address, or company and title. `views.ts` filters, sorts
+and lists due follow-ups and quiet applications. `analytics.ts` computes counts, rates (null
+when there is nothing to divide by), median days to first answer and weekly totals.
+`csv.ts` writes RFC 4180 CSV with formula cells neutralised (DECISIONS 046).
+
+**Data.** `ApplicationRecord` (`packages/shared/src/schemas/application.ts`): the job (title,
+company, location, address, identity key, platform, pay text), source (analyzed, autofill,
+manual), status, status history, notes, follow-up, match score at save time, timestamps. Days
+are the user's local calendar days; instants are ISO timestamps.
+
+**Extension** (`apps/extension/src/features/applications`). `use-applications.ts` loads and
+follows the repository; `applications-view.tsx` holds the list, filters, due follow-ups and the
+Analytics view; `track-buttons.tsx` adds Save to tracker (Analyze) and the user's "I submitted
+it" (Autofill). `background/reminders.ts` sets the toolbar badge.
 
 ## Planned backend (Phase 6)
 

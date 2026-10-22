@@ -7,6 +7,7 @@ import {
 } from '@applypilot/resume-parser/files';
 import { AiConnectionRepository } from '../storage/ai-connection-repository';
 import { AiDraftsRepository } from '../storage/ai-drafts-repository';
+import { ApplicationsRepository } from '../storage/applications-repository';
 import { ProfileRepository } from '../storage/profile-repository';
 import { indexedDbResumeStore, type ResumeStore } from '../storage/resume-store';
 import { SettingsRepository } from '../storage/settings-repository';
@@ -35,6 +36,7 @@ export interface AppServices {
   localStore: KeyValueStore;
   aiConnection: AiConnectionRepository;
   aiDrafts: AiDraftsRepository;
+  applications: ApplicationsRepository;
   ai: AiClient;
   permissions: PermissionService;
   send: <R extends BackgroundRequest>(request: R) => Promise<ResponseFor<R['type']>>;
@@ -69,6 +71,7 @@ export function createChromeServices(): AppServices {
     localStore,
     aiConnection: new AiConnectionRepository(localStore),
     aiDrafts: new AiDraftsRepository(localStore),
+    applications: new ApplicationsRepository(localStore),
     ai: createAiClient(),
     permissions: {
       contains: (origin) => chrome.permissions.contains({ origins: [origin] }),

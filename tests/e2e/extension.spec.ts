@@ -57,7 +57,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.4.1' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.5.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -68,7 +68,7 @@ test('side panel renders and navigates', async ({ context, extensionId }) => {
   const panel = await openPanel(context, extensionId);
   await expect(panel.getByRole('tab')).toHaveCount(6);
   await panel.getByRole('tab', { name: 'Applications' }).click();
-  await expect(panel.getByRole('tabpanel')).toContainText('Not built yet');
+  await expect(panel.getByRole('tabpanel')).toContainText('Nothing tracked yet');
   await panel.getByRole('tab', { name: 'Profile' }).click();
   await expect(panel.getByRole('heading', { name: 'Your profile' })).toBeVisible();
   await panel.getByRole('tab', { name: 'Settings' }).click();
@@ -556,4 +556,81 @@ test('autofill: the downloadable practice form fills and locks the right fields,
   await expect(form.locator('#certify')).not.toBeChecked();
   await expect(form.locator('#attempts')).toHaveText('0');
   expect(await pageCounter(form, 'submitCount')).toBe(0);
+});
+
+// ---- Phase 5: application tracking ----------------------------------------------
+
+test('tracker: saves an analyzed job, tracks it, reminds, survives a reload and exports CSV', async ({
+  context,
+  extensionId,
+}) => {
+  let panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  await panel.getByRole('tab', { name: 'Analyze' }).click();
+  const job = await context.newPage();
+  await job.goto(`${FIXTURES}/jobs/json-ld-cloud-intern.html`);
+  await job.bringToFront();
+  await panel.getByRole('button', { name: 'Analyze this page' }).click();
+  const tracker = panel.getByLabel('Application tracker');
+  await tracker.getByRole('button', { name: 'Save to tracker' }).click();
+  await expect(tracker).toContainText('In your tracker');
+  await tracker.getByRole('button', { name: 'Open' }).click();
+
+  const card = panel.getByRole('article', { name: 'Cloud Engineering Intern at Northwind Cloud' });
+  await expect(card).toContainText(/Match \d+/);
+  await card.getByLabel('Status for Cloud Engineering Intern').selectOption('applied');
+  await card.getByLabel('New note').fill('Applied through the careers site');
+  await card.getByRole('button', { name: 'Add note' }).click();
+  // A follow-up dated in the past is due now: the panel and the toolbar badge say so.
+  await card.getByLabel('Follow-up date').fill('2026-01-05');
+  await card.getByRole('button', { name: 'Save reminder' }).click();
+  await expect(panel.getByText('Follow-ups due (1)')).toBeVisible();
+  await expect.poll(() => panel.evaluate(() => chrome.action.getBadgeText({}))).toBe('1');
+
+  // Everything is in chrome.storage.local: a new panel shows the same record.
+  await panel.close();
+  panel = await openPanel(context, extensionId);
+  await panel.getByRole('tab', { name: 'Applications' }).click();
+  const again = panel.getByRole('article', { name: 'Cloud Engineering Intern at Northwind Cloud' });
+  await expect(again).toContainText('Applied');
+  await again.getByRole('button', { name: 'Details' }).click();
+  await expect(again).toContainText('Applied through the careers site');
+
+  await panel.getByRole('button', { name: 'Analytics' }).click();
+  await expect(panel.getByRole('region', { name: 'Analytics' })).toContainText('Applied');
+
+  const download = panel.waitForEvent('download');
+  await panel.getByRole('button', { name: 'Export CSV' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^applypilot-applications-\d{4}-\d{2}-\d{2}\.csv$/);
+  const { readFile } = await import('node:fs/promises');
+  const csv = await readFile(await file.path(), 'utf8');
+  expect(csv).toContain('Cloud Engineering Intern,Northwind Cloud');
+  expect(csv).toContain('Applied through the careers site');
+
+  await panel.getByRole('button', { name: 'List' }).click();
+  await panel
+    .getByRole('button', { name: 'Mark follow-up done: Cloud Engineering Intern' })
+    .click();
+  await expect.poll(() => panel.evaluate(() => chrome.action.getBadgeText({}))).toBe('');
+});
+
+test('tracker: marks a filled application as applied only from the user click', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  const form = await openForm(context, '127.0.0.1', 'practice-application.html');
+  await scanForm(panel);
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields$/ }).click();
+  const card = panel.getByLabel('Track this application');
+  await expect(card).toContainText('Did you submit it?');
+  await card.getByRole('button', { name: 'I submitted it: mark as applied' }).click();
+  await expect(card).toContainText('is marked Applied in your tracker');
+  await card.getByRole('button', { name: 'Open in tracker' }).click();
+  await expect(
+    panel.getByRole('article', { name: 'Apply for Cloud Support Intern' }),
+  ).toContainText('Applied');
+  await expect(form.locator('#attempts')).toHaveText('0');
 });

@@ -47,7 +47,7 @@ export function DataControls() {
     await settings.save(DEFAULT_SETTINGS);
     setConfirming(false);
     setMessage(
-      'All local ApplyPilot data, including your profile, resumes, AI drafts and the API token, was deleted. Settings are back to defaults.',
+      'All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts and the API token, was deleted. Settings are back to defaults.',
     );
   };
 
@@ -87,8 +87,8 @@ export function DataControls() {
       </div>
       {confirming ? (
         <p className="text-xs text-danger">
-          This permanently removes your profile, uploaded resumes, AI drafts, settings and saved
-          data from this browser.
+          This permanently removes your profile, uploaded resumes, tracked applications, AI drafts,
+          settings and saved data from this browser.
         </p>
       ) : null}
       {message ? (

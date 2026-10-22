@@ -343,3 +343,45 @@ constructor, so `instanceof` checks fail for elements from another frame (and in
 was how this showed up: every field was classified as a listbox button). Guards compare
 `tagName` instead, and values are set through the element's own prototype setter with
 `Reflect.set`, which React-controlled inputs need to notice the change.
+
+## 043: The fill step re-checks every instruction against the live page
+
+Found in the Phase 4 acceptance review. The side panel already refuses sensitive fields, but the
+content script filled whatever element carried the instruction's ref attribute, and the page,
+which is untrusted, can change those attributes or labels after the scan. Before each field,
+the fill step now skips sensitive questions (classified from the instruction's label and from
+the field's current label), password and hidden inputs, and text fields that are no longer
+visible. The check repeats rules the side panel applies, on purpose: the panel is the main
+gate, the page-side check is the backstop.
+
+## 044: The tracker lives in local storage as one validated list
+
+Applications are stored under `applypilot.applications` in `chrome.storage.local` as one array
+(1,000 at most), validated record by record. A record that does not parse (for example one a
+newer version wrote) is kept as it is and written back on every save, rather than dropped.
+`chrome.storage.local` was chosen over IndexedDB because the records are small, the existing
+export and delete controls already cover it, and storage change events keep every open panel
+and the service worker in sync. All tracking logic (status changes, duplicates, filters,
+reminders, analytics, CSV) is a pure package, `@applypilot/tracking`, tested without a browser.
+
+Rejected: a database per record (more code, no benefit at this size) and any server copy before
+Phase 6 is approved.
+
+## 045: Only the user marks an application as applied
+
+ApplyPilot never submits a form and cannot tell whether a site accepted one, so the tracker
+never moves a record to Applied by itself. After a fill, the Autofill tab asks "Did you submit
+it?" and offers a button. The analyzed job is used for the record only when it was read on the
+same site as the form; otherwise the record gets the form's title and address and no company,
+rather than borrowing details from an unrelated analysis.
+
+## 046: Reminders are a badge, not notifications; CSV cells cannot run formulas
+
+Follow-up reminders show as a count on the toolbar icon and a list in the tab. The badge is
+refreshed when the tracker changes, at browser start and hourly through `chrome.alarms`, which
+adds no install warning. System notifications would need the `notifications` permission and
+would show job details outside the browser window; they can be added later if wanted.
+
+Job titles, companies and notes can come from web pages, and a CSV opened in a spreadsheet will
+run a cell starting with `=`, `+`, `-` or `@` as a formula (CSV injection). Such string cells
+are prefixed with an apostrophe in the export. Numbers (match scores) are written as numbers.
