@@ -312,7 +312,7 @@ function collect(root: Element, skipped: { count: number }): Candidate[] {
         el: container,
         members,
         control: 'radio-group',
-        label: groupLabel(container) || (members.length === 1 ? labelFor(first) : ''),
+        label: groupLabel(container, members) || (members.length === 1 ? labelFor(first) : ''),
         options,
         optionsComplete: true,
         currentValue: clean(options[members.findIndex((m) => m.checked)]?.label),
@@ -333,7 +333,7 @@ function collect(root: Element, skipped: { count: number }): Candidate[] {
         el: container,
         members,
         control: 'checkbox-group',
-        label: groupLabel(container),
+        label: groupLabel(container, members),
         options,
         optionsComplete: true,
         currentValue: members

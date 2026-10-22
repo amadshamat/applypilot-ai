@@ -61,7 +61,7 @@ const RULES: readonly Rule[] = [
     topic: 'pay expectations',
     category: 'personal',
     pattern:
-      /\b(salary|compensation|pay (?:expectation|requirement|range|rate)|desired pay|hourly rate|expected (?:pay|wage)|wage)/i,
+      /\b(salary|compensation|pay (?:expectation|requirement|range|rate)|(?:desired|expected|requested) (?:hourly |annual |base )?(?:pay|wage|rate)|hourly (?:pay|rate)|wage)/i,
   },
   {
     topic: 'availability',

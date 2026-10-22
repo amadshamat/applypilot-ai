@@ -174,6 +174,32 @@ describe('scanForm details', () => {
     expect(labels).toEqual(['Preferred email', 'Phone number', 'LinkedIn URL']);
   });
 
+  it('names a radio group by its question, not by a section legend shared with other fields', () => {
+    // Regression (practice form, 2026-10-22): the legend "Eligibility" named the
+    // work authorization radios, which hid the question and left it unlocked.
+    const doc = htmlPage(`
+      <form>
+        <fieldset><legend>Eligibility</legend>
+          <p><strong>Are you legally authorized to work in the United States?</strong></p>
+          <label><input type="radio" name="auth" value="yes"> Yes</label>
+          <label><input type="radio" name="auth" value="no"> No</label>
+          <label for="s">Will you require visa sponsorship?</label><select id="s"><option>No</option></select>
+        </fieldset>
+        <fieldset><legend>Do you have a driver's license?</legend>
+          <label><input type="radio" name="dl" value="yes"> Yes</label>
+          <label><input type="radio" name="dl" value="no"> No</label>
+        </fieldset>
+      </form>`);
+    const fields = scanForm(doc).fields;
+    const auth = fields.find((f) => f.control === 'radio-group' && f.name === 'auth');
+    expect(auth?.label).toBe('Are you legally authorized to work in the United States?');
+    expect(classifyField(auth!)).toMatchObject({
+      kind: 'manual.sensitive',
+      topic: 'work authorization',
+    });
+    expect(fields.find((f) => f.name === 'dl')?.label).toBe("Do you have a driver's license?");
+  });
+
   it('notices CAPTCHAs and application frames from other sites', () => {
     const doc = htmlPage(`
       <form><input name="a" aria-label="A"><input name="b" aria-label="B"></form>

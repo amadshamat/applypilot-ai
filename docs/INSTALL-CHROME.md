@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.4.0) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.4.1) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.4.0.zip` from the project files.
+Download `applypilot-ai-extension-0.4.1.zip` from the project files.
 
 ## 2. Extract
 
@@ -31,7 +31,7 @@ applypilot-ai-extension/
 └── icons/
 ```
 
-Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.4.0`). Open it and choose
+Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.4.1`). Open it and choose
 the `applypilot-ai-extension` folder inside.
 
 ## 4. Load it in Chrome
@@ -156,9 +156,22 @@ Tick each box as you go (update first, as in "Updating to a new build" below). I
 panel and the page, and send both. **Never submit a real application during this test unless you
 actually mean to apply.** ApplyPilot itself never clicks Submit, Apply or Next.
 
+### Practice form (quickest start)
+
+`practice-application.html` (in the project files, and in the source under
+`tests/fixtures/applications/`) is a single practice form that cannot submit anything. Chrome
+extensions cannot scan `file://` pages here, so serve it from your own computer:
+
+1. Put the file in a folder of its own, for example `~/Downloads/applypilot-practice`.
+2. In Terminal: `cd ~/Downloads/applypilot-practice` then
+   `python3 -m http.server 8000 --bind 127.0.0.1` (keep the window open; Ctrl+C stops it).
+3. In Chrome open `http://127.0.0.1:8000/practice-application.html`.
+4. Click the ApplyPilot toolbar icon on that tab, open **Autofill**, click **Scan this form**,
+   review, then **Fill N approved fields**. The page should still say "Submit attempts: 0".
+
 ### B. Sample forms (safe, nothing is sent anywhere)
 
-In the source folder (`applypilot-ai-source-0.4.0`, after `pnpm install`), run
+In the source folder (`applypilot-ai-source-0.4.1`, after `pnpm install`), run
 `node tests/e2e/fixture-server.mjs` and keep the window open. For each form below: open the
 address, click the ApplyPilot toolbar icon on that tab, open **Autofill**, click **Scan this
 form**.

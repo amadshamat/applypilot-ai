@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-22 (v0.4.0)_
+_Last updated: 2026-10-22 (v0.4.1)_
 
 ## Current phase
 
@@ -12,6 +12,21 @@ Claude request has been made; see "Not yet verified".
 Phase 2 was approved on 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### v0.4.1: practice form and two locking fixes
+
+- Added `tests/fixtures/applications/practice-application.html`, a standalone practice form to
+  open in Chrome (no submission address; `form-action 'none'` and a cancelled submit handler;
+  submit attempts shown on the page). Covered by an e2e test.
+- **Fixed:** a radio group inside a fieldset shared with other fields (legend "Eligibility")
+  was named by the legend, so "Are you legally authorized to work…" was not recognised and was
+  left unlocked as "not recognised", where the user could type a value. Legends now name a
+  group only when the fieldset holds nothing else; otherwise the text before the first option
+  is used. Regression test in `scan.test.ts`.
+- **Fixed:** "Desired hourly pay" (and "expected hourly rate") was not recognised as a pay
+  question. Regression tests in `ai-core.test.ts`.
+- `file://` pages are still not supported (scan says "regular web pages (http or https)"); serve
+  local forms from `http://127.0.0.1`.
 
 ### Phase 4 (v0.4.0): assisted autofill
 
@@ -257,7 +272,7 @@ Nothing in progress. Waiting for Phase 4 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** install v0.4.0 (update with Reload so your profile stays), run the Phase 4
+1. **Muhaid:** install v0.4.1 (update with Reload so your profile stays), run the Phase 4
    checklist on the sample forms and on one or two real applications you intend to submit
    yourself, then approve Phase 4 or report issues. Platforms move to "verified" only from those
    live runs.

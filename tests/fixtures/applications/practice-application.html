@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No network at all: no scripts, styles, images or fonts from anywhere, no
+      fetch or XHR, and form-action 'none' makes the browser refuse to submit
+      this form anywhere, even if the submit handler below were removed.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Apply: Cloud Support Intern | Practice Form</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 680px;
+        margin: 1.5rem auto;
+        padding: 0 1rem;
+        line-height: 1.4;
+        color: #1d2433;
+      }
+      .banner {
+        background: #fff4d6;
+        border: 1px solid #e0b84c;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+      }
+      fieldset {
+        border: 1px solid #ccd3e0;
+        border-radius: 6px;
+        margin-top: 1.25rem;
+        padding: 0.5rem 1rem 1rem;
+      }
+      legend {
+        font-weight: 700;
+      }
+      label {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      label.inline {
+        display: inline;
+        font-weight: 400;
+        margin-right: 1rem;
+      }
+      input:not([type='radio']):not([type='checkbox']),
+      select,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.4rem;
+        font: inherit;
+      }
+      .row {
+        display: flex;
+        gap: 0.75rem;
+      }
+      .row > div {
+        flex: 1;
+      }
+      #status {
+        margin-top: 1rem;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="banner">
+      <strong>Practice form for testing ApplyPilot AI.</strong> It has no submission address and
+      cannot send anything: the page blocks every submit and makes no network requests. Submit
+      attempts are counted below. Expected after ApplyPilot fills it: <strong>0</strong>.
+    </p>
+
+    <h1>Apply for Cloud Support Intern</h1>
+    <p>Acme Cloud Co. (practice) · Remote</p>
+
+    <form id="application" novalidate>
+      <fieldset>
+        <legend>Personal information</legend>
+        <div class="row">
+          <div>
+            <label for="first_name">First name *</label>
+            <input id="first_name" name="first_name" autocomplete="given-name" required />
+          </div>
+          <div>
+            <label for="last_name">Last name *</label>
+            <input id="last_name" name="last_name" autocomplete="family-name" required />
+          </div>
+        </div>
+        <label for="email">Email *</label>
+        <input id="email" name="email" type="email" autocomplete="email" required />
+        <label for="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel" />
+        <div class="row">
+          <div>
+            <label for="city">City</label>
+            <input id="city" name="city" />
+          </div>
+          <div>
+            <label for="state">State</label>
+            <select id="state" name="state">
+              <option value="">Select...</option>
+              <option value="CA">California</option>
+              <option value="IL">Illinois</option>
+              <option value="NY">New York</option>
+              <option value="TX">Texas</option>
+              <option value="VA">Virginia</option>
+              <option value="WA">Washington</option>
+            </select>
+          </div>
+        </div>
+        <label for="postal">ZIP code</label>
+        <input id="postal" name="postal_code" autocomplete="postal-code" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Links</legend>
+        <label for="linkedin">LinkedIn profile</label>
+        <input
+          id="linkedin"
+          name="linkedin"
+          type="url"
+          placeholder="https://www.linkedin.com/in/..."
+        />
+        <label for="github">GitHub</label>
+        <input id="github" name="github" type="url" placeholder="https://github.com/..." />
+        <label for="portfolio">Portfolio or personal website</label>
+        <input id="portfolio" name="portfolio" type="url" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Resume</legend>
+        <label for="resume">Resume/CV (PDF or DOCX) *</label>
+        <input id="resume" name="resume" type="file" accept=".pdf,.docx" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Education</legend>
+        <label for="school">School or university</label>
+        <input id="school" name="school" />
+        <label for="degree">Degree</label>
+        <select id="degree" name="degree">
+          <option value="">Select...</option>
+          <option>High school diploma</option>
+          <option>Associate's degree</option>
+          <option>Bachelor's degree</option>
+          <option>Master's degree</option>
+          <option>Doctorate</option>
+        </select>
+        <label for="field_of_study">Field of study</label>
+        <input id="field_of_study" name="field_of_study" />
+        <div class="row">
+          <div>
+            <label for="grad_month">Graduation month</label>
+            <select id="grad_month" name="grad_month">
+              <option value="">Month</option>
+              <option>January</option>
+              <option>February</option>
+              <option>March</option>
+              <option>April</option>
+              <option>May</option>
+              <option>June</option>
+              <option>July</option>
+              <option>August</option>
+              <option>September</option>
+              <option>October</option>
+              <option>November</option>
+              <option>December</option>
+            </select>
+          </div>
+          <div>
+            <label for="grad_year">Graduation year</label>
+            <input id="grad_year" name="grad_year" inputmode="numeric" />
+          </div>
+        </div>
+        <label for="gpa">GPA (optional)</label>
+        <input id="gpa" name="gpa" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Work experience 1</legend>
+        <label for="job1_title">Job title</label>
+        <input id="job1_title" name="experience[0][title]" />
+        <label for="job1_company">Company</label>
+        <input id="job1_company" name="experience[0][company]" />
+        <label for="job1_location">Location</label>
+        <input id="job1_location" name="experience[0][location]" />
+        <div class="row">
+          <div>
+            <label for="job1_start">Start date</label>
+            <input id="job1_start" name="experience[0][start]" type="month" />
+          </div>
+          <div>
+            <label for="job1_end">End date</label>
+            <input id="job1_end" name="experience[0][end]" type="month" />
+          </div>
+        </div>
+        <label
+          ><input type="checkbox" id="job1_current" name="experience[0][current]" /> I currently
+          work here</label
+        >
+        <label for="job1_description">Description</label>
+        <textarea id="job1_description" name="experience[0][description]" rows="3"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Work experience 2</legend>
+        <label for="job2_title">Job title</label>
+        <input id="job2_title" name="experience[1][title]" />
+        <label for="job2_company">Company</label>
+        <input id="job2_company" name="experience[1][company]" />
+        <label for="job2_location">Location</label>
+        <input id="job2_location" name="experience[1][location]" />
+        <div class="row">
+          <div>
+            <label for="job2_start">Start date</label>
+            <input id="job2_start" name="experience[1][start]" type="month" />
+          </div>
+          <div>
+            <label for="job2_end">End date</label>
+            <input id="job2_end" name="experience[1][end]" type="month" />
+          </div>
+        </div>
+        <label
+          ><input type="checkbox" id="job2_current" name="experience[1][current]" /> I currently
+          work here</label
+        >
+        <label for="job2_description">Description</label>
+        <textarea id="job2_description" name="experience[1][description]" rows="3"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Screening questions</legend>
+        <label for="q_why">Why are you interested in this internship?</label>
+        <textarea id="q_why" name="q_why" rows="4"></textarea>
+        <label for="q_project"
+          >Describe a cloud or IT project you worked on and your role in it.</label
+        >
+        <textarea id="q_project" name="q_project" rows="4"></textarea>
+        <label for="q_aws_years">How many years of experience do you have with AWS?</label>
+        <input id="q_aws_years" name="q_aws_years" />
+        <label for="q_start">When can you start?</label>
+        <input id="q_start" name="q_start" />
+        <label for="q_salary">Desired hourly pay</label>
+        <input id="q_salary" name="q_salary" />
+        <label for="q_source">How did you hear about this job?</label>
+        <select id="q_source" name="q_source">
+          <option value="">Select...</option>
+          <option>LinkedIn</option>
+          <option>Indeed</option>
+          <option>Career fair</option>
+          <option>Referral</option>
+        </select>
+      </fieldset>
+
+      <fieldset>
+        <legend>Eligibility</legend>
+        <p><strong>Are you legally authorized to work in the United States? *</strong></p>
+        <label class="inline"><input type="radio" name="work_auth" value="yes" /> Yes</label>
+        <label class="inline"><input type="radio" name="work_auth" value="no" /> No</label>
+        <label for="sponsorship">Will you now or in the future require visa sponsorship?</label>
+        <select id="sponsorship" name="sponsorship">
+          <option value="">Select...</option>
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+      </fieldset>
+
+      <fieldset>
+        <legend>Voluntary self-identification</legend>
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender">
+          <option value="">Select...</option>
+          <option>Female</option>
+          <option>Male</option>
+          <option>Non-binary</option>
+          <option>Decline to self-identify</option>
+        </select>
+        <label for="veteran">Veteran status</label>
+        <select id="veteran" name="veteran">
+          <option value="">Select...</option>
+          <option>I am a protected veteran</option>
+          <option>I am not a protected veteran</option>
+          <option>Decline to self-identify</option>
+        </select>
+        <label for="disability">Disability status</label>
+        <select id="disability" name="disability">
+          <option value="">Select...</option>
+          <option>Yes, I have a disability</option>
+          <option>No, I do not have a disability</option>
+          <option>I do not want to answer</option>
+        </select>
+      </fieldset>
+
+      <fieldset>
+        <legend>Agreement</legend>
+        <label
+          ><input type="checkbox" id="certify" name="certify" /> I certify that the information in
+          this application is true and complete. *</label
+        >
+      </fieldset>
+
+      <p>
+        <button type="submit" id="submit">Submit application</button>
+      </p>
+      <p id="status" role="status">
+        Submit attempts: <span id="attempts">0</span> <span id="note"></span>
+      </p>
+    </form>
+
+    <script>
+      // Every submit is cancelled and counted. Nothing leaves the page.
+      window.submitCount = 0;
+      document.getElementById('application').addEventListener('submit', function (event) {
+        event.preventDefault();
+        window.submitCount += 1;
+        document.getElementById('attempts').textContent = String(window.submitCount);
+        document.getElementById('note').textContent = '(blocked: this practice form never submits)';
+      });
+    </script>
+  </body>
+</html>

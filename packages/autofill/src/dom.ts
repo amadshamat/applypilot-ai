@@ -146,18 +146,28 @@ export function labelFor(el: Element): string {
   return nearbyText(el);
 }
 
-/** The name of a group of radios or checkboxes: legend, group label, or nearby text. */
-export function groupLabel(container: Element): string {
+/**
+ * The name of a group of radios or checkboxes: legend, group label, or nearby text.
+ * A legend names the group only when its fieldset holds nothing but the group:
+ * a section legend such as "Eligibility" is not the question, and treating it as
+ * one would hide a work authorization question behind a harmless name.
+ */
+export function groupLabel(container: Element, members: Element[] = []): string {
   const root = rootOf(container);
   const labelledBy = byIds(root, container.getAttribute('aria-labelledby'));
   if (labelledBy) return labelledBy;
   const aria = clean(container.getAttribute('aria-label'));
   if (aria) return aria;
-  const legend = container.matches('fieldset')
-    ? container.querySelector(':scope > legend')
-    : container.closest('fieldset')?.querySelector(':scope > legend');
-  if (legend) return textWithoutControls(legend);
-  return nearbyText(container);
+  const fieldset = container.matches('fieldset') ? container : container.closest('fieldset');
+  const legend = fieldset?.querySelector(':scope > legend');
+  const onlyGroup =
+    members.length === 0 ||
+    [...(fieldset?.querySelectorAll('input, select, textarea') ?? [])].every((c) =>
+      members.includes(c),
+    );
+  if (legend && onlyGroup) return textWithoutControls(legend);
+  const [first] = members;
+  return (onlyGroup ? '' : first ? nearbyText(first) : '') || nearbyText(container);
 }
 
 export function describedBy(el: Element): string {

@@ -9,7 +9,7 @@ and truthful resume suggestions. With your consent it drafts a tailored resume, 
 and screening answers with Claude, checked against your profile so nothing is invented. Later
 phases add form filling that you approve field by field, and application tracking.
 
-> **Project status: Phase 4 (assisted autofill, v0.4.0) built and tested, waiting for manual
+> **Project status: Phase 4 (assisted autofill, v0.4.1) built and tested, waiting for manual
 > approval in Chrome.** Every autofill platform is **experimental** until it is checked on a live
 > application. Tracking and the AWS backend are **not built yet**, and the extension says so in
 > its UI. See

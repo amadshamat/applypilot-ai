@@ -57,7 +57,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.4.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.4.1' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -515,4 +515,45 @@ test('autofill: handles react-select style typeaheads and web components', async
     ),
   ).toBe('Jordan');
   expect(await pageCounter(smart, 'stepChanges')).toBe(0);
+});
+
+test('autofill: the downloadable practice form fills and locks the right fields, never submits', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  const form = await openForm(context, '127.0.0.1', 'practice-application.html');
+  await scanForm(panel);
+
+  await expect(panel.getByText('Apply for Cloud Support Intern')).toBeVisible();
+  const manual = panel.getByRole('region', { name: 'You answer these on the page' });
+  for (const label of [
+    'Are you legally authorized to work in the United States? *',
+    'Will you now or in the future require visa sponsorship?',
+    'Desired hourly pay',
+    'Gender',
+    'Disability status',
+  ]) {
+    await expect(manual.getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(manual.getByRole('checkbox')).toHaveCount(0);
+  await expect(panel.getByRole('region', { name: 'Open questions' })).toContainText(
+    'Why are you interested in this internship?',
+  );
+
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toContainText('0 failed');
+
+  await expect(form.locator('#email')).toHaveValue('jordan.rivera@example.com');
+  await expect(form.locator('#github')).toHaveValue('https://github.com/jrivera-dev');
+  await expect(form.locator('#school')).toHaveValue('University of Toronto');
+  await expect(form.locator('#job1_company')).toHaveValue('Northwind Logistics');
+  await expect(form.locator('#job2_title')).toHaveValue('IT Support Assistant');
+  await expect(form.locator('input[name="work_auth"]:checked')).toHaveCount(0);
+  await expect(form.locator('#gender')).toHaveValue('');
+  await expect(form.locator('#q_salary')).toHaveValue('');
+  await expect(form.locator('#certify')).not.toBeChecked();
+  await expect(form.locator('#attempts')).toHaveText('0');
+  expect(await pageCounter(form, 'submitCount')).toBe(0);
 });
