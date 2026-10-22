@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-20 (v0.3.4)_
+_Last updated: 2026-10-22 (v0.3.4)_
 
 ## Current phase
 
@@ -14,6 +14,9 @@ upload, profile management, persistence, job matching and suggestions). Phase 1 
 v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+**Verified live (2026-10-22):** Muhaid ran the v0.3.4 Indeed checklist in Chrome (search results
+page, homepage feed, switching jobs, paste fallback, other sites) and reported that it passed.
 
 ### v0.3.4: Indeed feed values from the selected card
 
@@ -162,12 +165,8 @@ the reported values on the new fixture.
   Muhaid's own key and approval.
 - Phase 3 in desktop Google Chrome by hand, including Chrome's permission prompt for
   127.0.0.1 (checklist in `docs/INSTALL-CHROME.md`, section 7).
-- **The Indeed fixes (v0.3.1 to v0.3.3) on live Indeed.** They are tested on fixtures modeled on
-  Indeed's markup, with the panel inline, in a same-origin frame and in a cross-origin frame.
-  Indeed's live markup could not be inspected from here, so the cause of the PaperMoon report is
-  inferred. If it still fails, "Copy details for a bug report" now includes the page's outline.
-- Chrome's prompt for the optional Indeed access, by hand (automation cannot click it; the e2e
-  build has the access granted up front).
+- Chrome's prompt for the optional Indeed access, by hand, unless it appeared during Muhaid's
+  checklist run (automation cannot click it; the e2e build has the access granted up front).
 - Running the local API on Windows or macOS (tested on Linux).
 
 - Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
@@ -216,9 +215,9 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** load v0.3.4 (remove the old version first), re-check the PaperMoon search page,
-   a job switch and the homepage feed (section 5a of the install guide, I1 to I7), then test Phase 3 in mock mode (section 7) and decide
-   whether to try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft).
+1. **Muhaid:** test Phase 3 in mock mode (section 7 of the install guide) and decide whether to
+   try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft). Then approve
+   Phase 3 or report issues.
 2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser
    struggles with; prompt caching once real usage shows repeated prefixes.
 3. **Phase 4:** autofill preview and per-field approval (will also read screening questions from
