@@ -7,6 +7,9 @@ import {
   ok,
   responseSchemas,
   type BackgroundRequest,
+  type FillInstruction,
+  type FillReport,
+  type FormScan,
   type JobExtractionResult,
   type Result,
 } from '@applypilot/shared';
@@ -65,7 +68,82 @@ export async function handleBackgroundMessage(
       return ok(await cachedFor(request.tabId, deps));
     case 'job/extract-active-tab':
       return extractActiveTab(deps);
+    case 'autofill/scan':
+      return scanActiveTab(deps);
+    case 'autofill/fill':
+      return fillActiveTab(request.pageUrl, request.instructions, deps);
   }
+}
+
+/** The active tab, checked to be a web page the extension may read, with the content script in place. */
+async function readyTab(deps: BackgroundDeps): Promise<Result<{ id: number; url: string }>> {
+  const tab = await deps.getActiveTab();
+  if (!tab) return fail('NO_ACTIVE_TAB', 'No active tab was found in this window.');
+  if (!tab.url) return fail('PERMISSION_REQUIRED', PERMISSION_MESSAGE);
+  if (RESTRICTED_URL.test(tab.url) || WEB_STORE.test(tab.url) || !/^https?:/i.test(tab.url)) {
+    return fail(
+      'UNSUPPORTED_PAGE',
+      'ApplyPilot can only work on regular web pages (http or https).',
+    );
+  }
+  try {
+    await deps.injectContentScript(tab.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return isPermissionError(message)
+      ? fail('PERMISSION_REQUIRED', PERMISSION_MESSAGE)
+      : fail('SCAN_FAILED', `Could not reach the page: ${message}`);
+  }
+  return ok({ id: tab.id, url: tab.url });
+}
+
+async function scanActiveTab(deps: BackgroundDeps): Promise<Result<FormScan>> {
+  const tab = await readyTab(deps);
+  if (!tab.ok) return tab;
+  let reply: unknown;
+  try {
+    reply = await deps.sendToTab(tab.data.id, { type: 'content/scan-form' }, 0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return fail('SCAN_FAILED', `The page did not respond: ${message}`);
+  }
+  // The scan comes from inside an untrusted page, so it is validated like any input.
+  const response = responseSchemas['content/scan-form'].safeParse(reply);
+  if (!response.success) return fail('SCAN_FAILED', 'The page returned an unexpected result.');
+  return response.data;
+}
+
+/** Same page: same origin and path. The hash and query may change as a form moves between steps. */
+function samePage(a: string, b: string): boolean {
+  try {
+    const x = new URL(a);
+    const y = new URL(b);
+    return x.origin === y.origin && x.pathname === y.pathname;
+  } catch {
+    return false;
+  }
+}
+
+async function fillActiveTab(
+  pageUrl: string,
+  instructions: FillInstruction[],
+  deps: BackgroundDeps,
+): Promise<Result<FillReport>> {
+  const tab = await readyTab(deps);
+  if (!tab.ok) return tab;
+  if (!samePage(pageUrl, tab.data.url)) {
+    return fail('PAGE_CHANGED', 'This tab now shows a different page. Scan the form again.');
+  }
+  let reply: unknown;
+  try {
+    reply = await deps.sendToTab(tab.data.id, { type: 'content/fill-form', instructions }, 0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return fail('FILL_FAILED', `The page did not respond: ${message}`);
+  }
+  const response = responseSchemas['content/fill-form'].safeParse(reply);
+  if (!response.success) return fail('FILL_FAILED', 'The page returned an unexpected result.');
+  return response.data;
 }
 
 /**

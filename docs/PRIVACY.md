@@ -5,7 +5,7 @@ _Draft for review before any public release. Not legal advice._
 ## Summary
 
 ApplyPilot AI helps you understand job postings and prepare applications. In the current version
-(0.3) your data stays in your browser unless you use the optional AI tools. Resumes are read and
+(0.4) your data stays in your browser unless you use the optional AI tools. Resumes are read and
 parsed on your device and are never uploaded. The AI tools send data only when **Allow AI
 processing** is on, an ApplyPilot API is connected, and you press Generate after seeing what will
 be sent.
@@ -33,6 +33,12 @@ still reads only when you click Analyze, and you can remove the access at any ti
 extension's details page in `chrome://extensions` (Site access). If you paste a job instead, only
 the text you paste is read.
 
+**Autofill.** When you click **Scan this form** in the Autofill tab, ApplyPilot reads the form
+on the current tab: field labels, options and current values. It never reads password fields.
+It changes only the fields you approved, and only when you click **Fill**. It never clicks
+Submit, Apply or Next. Answers come from your saved profile and resume on your device; nothing
+is sent anywhere unless you use one of the optional AI buttons below.
+
 **Copy details for a bug report** copies the page address, how each field was found, and, when
 no job was found, an outline of the page's element names and frame addresses. It contains no text
 from the page.
@@ -49,6 +55,12 @@ education, certifications and skill names; your name only for cover letters; the
 for a cover letter; and the screening questions you paste. Never sent: email, phone, location,
 links, GPA, job preferences, salary expectations, resume files, and screening questions about
 work authorization, legal matters, demographics, pay or availability.
+
+**Autofill AI help.** **Match fields with AI** sends only the labels, hints, section names and
+options of form fields ApplyPilot could not recognise, and nothing from your profile. **Draft
+answers with AI Tailor** sends the form's open questions with the same profile data as
+screening drafts. Questions about work authorization, demographics, pay, consent or similar are
+never sent.
 
 **To whom.** To the ApplyPilot API you run on your own computer (`127.0.0.1`). In mock mode
 nothing goes further. With Claude enabled, the API forwards the request to Anthropic, the AI

@@ -4,6 +4,7 @@ import { useSettings } from '../hooks/use-settings';
 import { useTheme } from '../hooks/use-theme';
 import { AiView } from '../features/ai/ai-view';
 import { AnalyzeView } from '../features/analyze/analyze-view';
+import { AutofillView } from '../features/autofill/autofill-view';
 import { NavBar } from '../features/navigation/nav-bar';
 import { useNavigation } from '../features/navigation/store';
 import type { ViewId } from '../features/navigation/views';
@@ -17,12 +18,14 @@ function CurrentView({ view }: { view: ViewId }) {
       return <AnalyzeView />;
     case 'resume':
       return <ProfileView />;
+    case 'autofill':
+      return <AutofillView />;
     case 'tailor':
       return <AiView />;
     case 'settings':
       return <SettingsView />;
     default:
-      return <RoadmapView feature={view} />;
+      return <RoadmapView feature="applications" />;
   }
 }
 

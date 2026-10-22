@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cloud Platform Intern @ Acme</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 680px;
+        margin: 2rem auto;
+      }
+      label,
+      .label {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      input[type='file'] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample application modeled on the public markup of an Ashby job board
+    application tab: a single-page React app without a <form> element,
+    system fields with _systemfield_ ids, a hidden file input behind an
+    "Upload File" button, a location typeahead, yes/no questions drawn as
+    two buttons, and the optional EEOC survey. Written for tests; not copied
+    from a live page. The Submit button increments window.submitCount.
+  -->
+    <div id="root">
+      <h1 class="ashby-job-posting-heading">Cloud Platform Intern</h1>
+      <div role="tablist">
+        <a role="tab" href="#overview">Overview</a
+        ><a role="tab" aria-selected="true" href="#application">Application</a>
+      </div>
+      <div class="ashby-application-form-container">
+        <div class="ashby-application-form-field-entry">
+          <label for="_systemfield_name" class="ashby-application-form-question-title"
+            >Name<span>*</span></label
+          >
+          <input
+            id="_systemfield_name"
+            name="_systemfield_name"
+            type="text"
+            required
+            placeholder="Type here..."
+          />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="_systemfield_email" class="ashby-application-form-question-title"
+            >Email<span>*</span></label
+          >
+          <input
+            id="_systemfield_email"
+            name="_systemfield_email"
+            type="email"
+            required
+            placeholder="hello@example.com..."
+          />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="_systemfield_resume" class="ashby-application-form-question-title"
+            >Resume<span>*</span></label
+          >
+          <button type="button" class="upload">Upload File</button>
+          <input
+            id="_systemfield_resume"
+            name="_systemfield_resume"
+            type="file"
+            accept=".pdf,.doc,.docx,.odt,.rtf"
+            required
+          />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="loc" class="ashby-application-form-question-title">Location</label>
+          <input
+            id="loc"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls="loc-list"
+            placeholder="Start typing..."
+          />
+          <div id="loc-list" role="listbox"></div>
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="q-linkedin" class="ashby-application-form-question-title"
+            >LinkedIn Profile</label
+          >
+          <input id="q-linkedin" name="q-linkedin" type="text" />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="q-github" class="ashby-application-form-question-title">GitHub Profile</label>
+          <input id="q-github" name="q-github" type="text" />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <div class="label">Are you currently authorized to work in the US?<span>*</span></div>
+          <div class="yesno">
+            <button type="button" class="yes">Yes</button
+            ><button type="button" class="no">No</button>
+          </div>
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="q-why" class="ashby-application-form-question-title">Why Acme?</label>
+          <textarea id="q-why" name="q-why"></textarea>
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label for="q-grad" class="ashby-application-form-question-title"
+            >Expected graduation date</label
+          >
+          <input id="q-grad" name="q-grad" type="date" />
+        </div>
+        <div class="ashby-application-form-field-entry">
+          <label class="ashby-application-form-question-title"
+            ><input type="checkbox" name="q-consent" required /> I consent to Acme storing my
+            information for this application.</label
+          >
+        </div>
+        <h3>U.S. Equal Employment Opportunity Survey</h3>
+        <fieldset>
+          <legend>Gender</legend>
+          <label><input type="radio" name="eeoc-gender" value="Male" /> Male</label>
+          <label><input type="radio" name="eeoc-gender" value="Female" /> Female</label>
+          <label
+            ><input type="radio" name="eeoc-gender" value="Decline" /> Decline to
+            self-identify</label
+          >
+        </fieldset>
+        <button type="button" class="ashby-application-form-submit-button" id="submit">
+          Submit Application
+        </button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        window.submitCount = 0;
+        document.getElementById('submit').addEventListener('click', function () {
+          window.submitCount += 1;
+        });
+        document.querySelectorAll('.yesno button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            b.parentElement.dataset.answer = b.textContent;
+          });
+        });
+        var loc = document.getElementById('loc');
+        var list = document.getElementById('loc-list');
+        var places = ['Springfield, VA, USA', 'Springfield, IL, USA', 'Seattle, WA, USA'];
+        loc.addEventListener('input', function () {
+          var q = loc.value.toLowerCase();
+          setTimeout(function () {
+            list.innerHTML = '';
+            places
+              .filter(function (p) {
+                return q && p.toLowerCase().indexOf(q.split(',')[0]) >= 0;
+              })
+              .forEach(function (p) {
+                var o = document.createElement('div');
+                o.setAttribute('role', 'option');
+                o.textContent = p;
+                o.addEventListener('click', function () {
+                  loc.value = p;
+                  list.innerHTML = '';
+                });
+                list.appendChild(o);
+              });
+          }, 80);
+        });
+      })();
+    </script>
+  </body>
+</html>

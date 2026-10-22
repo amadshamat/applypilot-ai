@@ -14,9 +14,16 @@ import { z } from 'zod';
 const line = (max: number) => z.string().trim().max(max);
 const lines = (maxItems: number, maxChars: number) => z.array(line(maxChars)).max(maxItems);
 
-export const AI_TASKS = ['tailor-resume', 'cover-letter', 'screening-answers'] as const;
+export const AI_TASKS = [
+  'tailor-resume',
+  'cover-letter',
+  'screening-answers',
+  'map-fields',
+] as const;
 export const aiTaskSchema = z.enum(AI_TASKS);
 export type AiTask = z.infer<typeof aiTaskSchema>;
+/** Tasks that draft text for one job from the candidate's profile. */
+export type JobAiTask = Exclude<AiTask, 'map-fields'>;
 
 export const refSchema = z.string().regex(/^[EPDC]\d{1,2}$/);
 
@@ -121,6 +128,60 @@ export const screeningRequestSchema = z.object({
 });
 export type ScreeningRequest = z.infer<typeof screeningRequestSchema>;
 
+/**
+ * Profile fields an application form field may ask for. The autofill engine
+ * maps most fields with rules; only fields it cannot place are sent to the
+ * model, which picks one of these kinds or "none". Sensitive and personal
+ * kinds are deliberately absent, so a model can never route a profile value
+ * into a question the user must answer themselves.
+ */
+export const MAPPABLE_FIELD_KINDS = [
+  'name.full',
+  'name.first',
+  'name.last',
+  'email',
+  'phone',
+  'location.full',
+  'location.city',
+  'location.state',
+  'location.country',
+  'location.postal',
+  'link.linkedin',
+  'link.github',
+  'link.portfolio',
+  'current.employer',
+  'current.title',
+  'experience.employer',
+  'experience.title',
+  'experience.location',
+  'experience.description',
+  'education.school',
+  'education.degree',
+  'education.field',
+  'education.gpa',
+  'skills',
+  'certifications',
+  'summary',
+] as const;
+export type MappableFieldKind = (typeof MAPPABLE_FIELD_KINDS)[number];
+
+export const formFieldContextSchema = z.object({
+  id: z.string().regex(/^F\d{1,2}$/),
+  /** Untrusted page text. The prompt fences it off as data. */
+  label: line(300).min(1),
+  hint: line(300),
+  section: line(200),
+  control: line(30),
+  options: lines(20, 100),
+});
+export type FormFieldContext = z.infer<typeof formFieldContextSchema>;
+
+/** Only the form's own labels are sent: no profile data and no job. */
+export const mapFieldsRequestSchema = z.object({
+  fields: z.array(formFieldContextSchema).min(1).max(40),
+});
+export type MapFieldsRequest = z.infer<typeof mapFieldsRequestSchema>;
+
 // ---- Model outputs -----------------------------------------------------------
 // Kept to plain objects, strings, arrays and enums so the same schemas work as
 // structured-output formats. Business rules are enforced afterwards by
@@ -167,16 +228,30 @@ export const screeningAnswersSchema = z.object({
 });
 export type ScreeningAnswers = z.infer<typeof screeningAnswersSchema>;
 
+export const fieldMappingsSchema = z.object({
+  mappings: z.array(
+    z.object({
+      fieldId: z.string(),
+      /** One of MAPPABLE_FIELD_KINDS, or "none" when no profile field fits. */
+      kind: z.string(),
+      confidence: z.enum(['high', 'medium', 'low']),
+    }),
+  ),
+});
+export type FieldMappings = z.infer<typeof fieldMappingsSchema>;
+
 export interface TaskTypes {
   'tailor-resume': { request: TailorResumeRequest; output: TailoredResume };
   'cover-letter': { request: CoverLetterRequest; output: CoverLetter };
   'screening-answers': { request: ScreeningRequest; output: ScreeningAnswers };
+  'map-fields': { request: MapFieldsRequest; output: FieldMappings };
 }
 
 export const TASK_SCHEMAS = {
   'tailor-resume': { request: tailorResumeRequestSchema, output: tailoredResumeSchema },
   'cover-letter': { request: coverLetterRequestSchema, output: coverLetterSchema },
   'screening-answers': { request: screeningRequestSchema, output: screeningAnswersSchema },
+  'map-fields': { request: mapFieldsRequestSchema, output: fieldMappingsSchema },
 } as const satisfies Record<AiTask, { request: z.ZodType; output: z.ZodType }>;
 
 // ---- Responses ---------------------------------------------------------------
@@ -201,7 +276,7 @@ export function taskResponseSchema<T extends z.ZodType>(output: T) {
     model: z.string(),
     output,
     usage: usageSchema.nullable(),
-    /** Screening questions the server declined to draft, with the reason. */
+    /** Screening questions (or form fields) the server declined to send, with the reason. */
     skipped: z.array(z.object({ questionId: z.string(), reason: z.string() })),
     generatedAt: z.iso.datetime(),
   });

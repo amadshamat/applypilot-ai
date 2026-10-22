@@ -1,11 +1,29 @@
 import pkg from '../package.json' with { type: 'json' };
 import { INDEED_FRAMES_ORIGIN } from './lib/host-access';
 
+/**
+ * Hosts the e2e browser maps to the local fixture server: Indeed pages and
+ * frames, and the sample application forms served under each platform's
+ * hostname so platform detection is exercised. Test builds only.
+ */
+export const E2E_HOSTS = [
+  'http://127.0.0.1/*',
+  'http://www.indeed.com/*',
+  'http://jobs.indeed.com/*',
+  'http://smartapply.indeed.com/*',
+  'http://job-boards.greenhouse.io/*',
+  'http://jobs.lever.co/*',
+  'http://jobs.ashbyhq.com/*',
+  'http://jobs.smartrecruiters.com/*',
+  'http://acme.wd5.myworkdayjobs.com/*',
+] as const;
+
 export interface ManifestOptions {
   /**
    * End-to-end test builds only: grants access to the local fixture server
-   * (127.0.0.1, and www.indeed.com which the e2e browser maps to it) so
-   * Playwright can exercise extraction without a toolbar click. Never set for
+   * (127.0.0.1, and the hostnames in E2E_HOSTS which the e2e browser maps to
+   * it) so Playwright can exercise extraction and autofill without a toolbar
+   * click. Never set for
    * release builds.
    */
   e2e: boolean;
@@ -49,11 +67,7 @@ export function createManifest({ e2e }: ManifestOptions): chrome.runtime.Manifes
     optional_host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', INDEED_FRAMES_ORIGIN],
     ...(e2e
       ? {
-          host_permissions: [
-            'http://127.0.0.1/*',
-            'http://www.indeed.com/*',
-            'http://jobs.indeed.com/*',
-          ],
+          host_permissions: [...E2E_HOSTS],
         }
       : {}),
     content_security_policy: {

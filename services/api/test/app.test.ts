@@ -260,3 +260,60 @@ describe('limits and failures', () => {
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/Northwind|Avery/);
   });
 });
+
+describe('map-fields', () => {
+  const body = {
+    fields: [
+      {
+        id: 'F1',
+        label: 'Handle on the code hosting site',
+        hint: '',
+        section: '',
+        control: 'text',
+        options: [],
+      },
+      {
+        id: 'F2',
+        label: 'Do you require visa sponsorship?',
+        hint: '',
+        section: '',
+        control: 'select',
+        options: ['Yes', 'No'],
+      },
+      { id: 'F3', label: 'Favourite colour', hint: '', section: '', control: 'text', options: [] },
+    ],
+  };
+
+  it('needs no job, sends only non-sensitive labels, and returns profile kinds', async () => {
+    const { handle, generate } = setup();
+    const res = await handle(post('/v1/map-fields', body));
+    expect(res.status).toBe(200);
+    const parsed = taskResponseSchema(TASK_SCHEMAS['map-fields'].output).parse(res.body);
+    expect(parsed.skipped).toEqual([
+      { questionId: 'F2', reason: 'This field asks something only you can answer.' },
+    ]);
+    expect(generate).toHaveBeenCalledWith('map-fields', {
+      fields: [body.fields[0], body.fields[2]],
+    });
+    expect(parsed.output.mappings).toEqual([
+      { fieldId: 'F1', kind: 'link.github', confidence: 'medium' },
+      { fieldId: 'F3', kind: 'none', confidence: 'low' },
+    ]);
+  });
+
+  it('does not call the provider when every field is sensitive', async () => {
+    const { handle, generate } = setup();
+    const res = await handle(post('/v1/map-fields', { fields: [body.fields[1]] }));
+    expect(res.status).toBe(200);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('rejects candidate data or oversized requests', async () => {
+    const { handle } = setup();
+    const tooMany = {
+      fields: Array.from({ length: 41 }, (_, i) => ({ ...body.fields[0], id: `F${i + 1}` })),
+    };
+    expect((await handle(post('/v1/map-fields', tooMany))).status).toBe(400);
+    expect((await handle(post('/v1/map-fields', { fields: [] }))).status).toBe(400);
+  });
+});

@@ -2,7 +2,7 @@ import {
   PROMPTS,
   formatUsd,
   worstCaseCostUsd,
-  type AiTask,
+  type JobAiTask,
   type CandidateContext,
   type HealthResponse,
   type TaskTypes,
@@ -33,7 +33,7 @@ function candidateSummary(candidate: CandidateContext): string {
  * Shows exactly what a request will contain before the user sends it, and
  * what it may cost. Nothing is sent until the user presses Generate.
  */
-export function SendPreview<T extends AiTask>({
+export function SendPreview<T extends JobAiTask>({
   task,
   request,
   health,

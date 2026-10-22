@@ -1,11 +1,11 @@
 # Install and test ApplyPilot AI in Google Chrome
 
-This loads the current build (0.3.4) as an unpacked extension. You need desktop Google Chrome 116 or
+This loads the current build (0.4.0) as an unpacked extension. You need desktop Google Chrome 116 or
 newer (check at `chrome://settings/help`).
 
 ## 1. Download
 
-Download `applypilot-ai-extension-0.3.4.zip` from the project files.
+Download `applypilot-ai-extension-0.4.0.zip` from the project files.
 
 ## 2. Extract
 
@@ -31,7 +31,7 @@ applypilot-ai-extension/
 └── icons/
 ```
 
-Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.2.0`). Open it and choose
+Windows "Extract All" adds an outer folder (`applypilot-ai-extension-0.4.0`). Open it and choose
 the `applypilot-ai-extension` folder inside.
 
 ## 4. Load it in Chrome
@@ -150,39 +150,133 @@ $0.05–$0.25; the preview shows the upper bound first, and each draft shows its
 that the drafts read naturally, stay truthful, and that any "Check:" flags make sense. Never put
 the key anywhere in the extension.
 
+## 8. Phase 4 checklist: Autofill (v0.4.0)
+
+Tick each box as you go (update first, as in "Updating to a new build" below). If anything fails, note the step number, take a screenshot of the side
+panel and the page, and send both. **Never submit a real application during this test unless you
+actually mean to apply.** ApplyPilot itself never clicks Submit, Apply or Next.
+
+### B. Sample forms (safe, nothing is sent anywhere)
+
+In the source folder (`applypilot-ai-source-0.4.0`, after `pnpm install`), run
+`node tests/e2e/fixture-server.mjs` and keep the window open. For each form below: open the
+address, click the ApplyPilot toolbar icon on that tab, open **Autofill**, click **Scan this
+form**.
+
+**B1. Generic form:** `http://127.0.0.1:4173/applications/generic-application.html`
+
+- [ ] Title "Apply for Cloud Engineering Intern", platform "Application form" with an
+      **Experimental** badge.
+- [ ] **Ready to fill** shows your name, email and phone, each with a source such as
+      "Profile · Email" and a confidence.
+- [ ] **You answer these on the page** lists Gender, Veteran status, Desired salary and the work
+      authorization question, with a lock and no checkbox.
+- [ ] Untick one field (for example Phone), edit another value, type something into a
+      **Missing from your profile** field.
+- [ ] Click **Fill N approved fields**. The results card says what was filled; the unticked field
+      stays empty on the page; the edited value is what appears on the page.
+- [ ] Your resume shows as attached in the file field.
+- [ ] The page does **not** show "Submitted!" and stayed on the same page.
+- [ ] Copy button next to a field copies its value (paste it somewhere to check).
+
+**B2. Workday-style, multi-step:** `.../applications/workday-application.html`
+
+- [ ] The summary shows "Step 1 of 4" and the notice "More steps may follow".
+- [ ] The Country and State dropdowns fill correctly; the page stays on step 1.
+- [ ] Click the page's own **Next**, then **Scan again**: step 2 fields appear, with your
+      experience entries mapped to the matching blocks.
+- [ ] Nothing reaches "Application submitted".
+
+**B3. Greenhouse-style:** `.../applications/greenhouse-application.html`
+
+- [ ] Typeahead dropdowns (school, degree) are filled, or a clear "No option matching…" message
+      appears for a value that is not in the list.
+- [ ] Demographic questions are in **You answer these on the page**.
+
+**B4. Others:** `lever-application.html`, `ashby-application.html`,
+`smartrecruiters-application.html`, `indeed-apply.html`
+
+- [ ] Each scans without errors and fills the basic contact fields.
+- [ ] Lever: the CAPTCHA notice appears and nothing touches it.
+- [ ] Ashby: Yes/No button questions are listed under **Not recognised or not supported**.
+- [ ] Indeed: the read-only email is counted as skipped, not changed.
+
+### C. Errors and safety
+
+- [ ] C1. Scan, then navigate the same tab to another page and click **Fill**: it refuses with
+      "This tab now shows a different page. Scan the form again."
+- [ ] C2. On `chrome://extensions` or a new tab page, **Scan this form** shows a clear message,
+      not a crash.
+- [ ] C3. On a page you have not clicked the toolbar icon for, the scan asks you to click it.
+- [ ] C4. A login page: the password field is never shown, filled or read.
+
+### D. AI help (optional, mock mode is free)
+
+Only with `pnpm api` running in mock mode and **Allow AI processing** on.
+
+- [ ] D1. **Match fields with AI** appears only when consent is on and the API is connected.
+- [ ] D2. After clicking it, matched fields appear under **Check these**, marked "AI-matched", and
+      are **not** ticked.
+- [ ] D3. **Draft answers with AI Tailor** fills open questions with drafts marked for review;
+      sensitive questions stay locked.
+- [ ] D4. With AI processing off, neither AI button is shown.
+
+### E. Live sites (experimental, do not submit)
+
+Pick one or two real job applications you are willing to fill but not send (for example a
+Greenhouse or Lever internship). Sign in yourself where a site needs it.
+
+- [ ] E1. Platform name is right and the badge says **Experimental**.
+- [ ] E2. Most contact, link and education fields are proposed with the right values.
+- [ ] E3. Sensitive questions are locked.
+- [ ] E4. **Fill** changes only the ticked fields, and the site does not show errors such as
+      "required" on fields that look filled (if it does, note which).
+- [ ] E5. Nothing is submitted and the page does not move to another step by itself.
+- [ ] E6. Note any field that was wrong, missing or not recognised, with the site name.
+
+When a live platform passes E1 to E5, report it so it can be marked **Verified** in PROGRESS.md.
+
 ## Updating to a new build
 
-Chrome keeps running the files in the folder you loaded, so updating means replacing them.
+Chrome keeps running the files in the folder you loaded, so updating means replacing them. To
+**keep your profile, resumes, settings and AI drafts**, replace the files and reload; do not
+remove the extension.
 
 1. Download and extract the new zip.
-2. Open `chrome://extensions` and find the **ApplyPilot AI** card.
-3. Either click **Remove** and then **Load unpacked** with the new `applypilot-ai-extension`
-   folder, or copy the new folder's contents over the old folder's contents and click the
-   circular **Reload** arrow on the card.
-4. Check that the card shows the new version number.
-5. Reload any job tabs that were open before the update (Ctrl+R or Cmd+R), so nothing from the
-   old version is left on the page.
-6. Click the ApplyPilot toolbar icon on the job tab again before analyzing.
+2. Copy everything inside the new `applypilot-ai-extension` folder over the contents of the
+   folder Chrome already loads (the one you picked in **Load unpacked**), replacing all files.
+3. Open `chrome://extensions` and click the circular **Reload** arrow on the **ApplyPilot AI**
+   card.
+4. Check that the card shows the new version number and no **Errors** button.
+5. Reload any job or application tabs that were open before the update (Ctrl+R or Cmd+R), so
+   nothing from the old version is left on the page.
+6. Click the ApplyPilot toolbar icon on the tab again before analyzing or scanning.
 
-Removing the extension also deletes its saved settings, profile and resumes. Reloading keeps
-them. Before removing, use Settings → **Export data** if you want a copy.
+Your data lives in the extension's own storage, which Chrome keys to the extension's id. Loading
+from the same folder keeps the same id, so Reload keeps everything. **Remove** (or loading the
+new build from a different folder) starts with empty storage. If you must remove it, use
+Settings → **Export data** first.
 
 ## Troubleshooting
 
-| Problem                                                     | Fix                                                                                                                                                  |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Manifest file is missing or unreadable"                    | You picked the outer folder. Select the one that directly contains `manifest.json`                                                                   |
-| Clicking the icon does nothing                              | Update Chrome to 116+. Then open `chrome://extensions`, click **Errors** on the ApplyPilot card, and send the text                                   |
-| "Permission needed for this page"                           | Click the ApplyPilot toolbar icon while that tab is open, then analyze again. Access is granted per tab, by design                                   |
-| Wrong or missing values on a real posting                   | Expected sometimes outside Greenhouse and Indeed. Open **How this was read**, click **Copy details for a bug report**, and send it with a screenshot |
-| "The selected job changed"                                  | You picked another job on the page after analyzing. Click **Analyze selected job**                                                                   |
-| "The job details panel is still showing a different job"    | Indeed had not finished loading the job you clicked. Wait until its details appear on the right, then analyze again                                  |
-| "Indeed shows this job in a protected frame"                | Click **Allow reading Indeed job details** and accept Chrome's prompt, or use **Paste the job instead**                                              |
-| Still "No job is open" on Indeed with a job open            | Open **How this was read**, click **Copy details for a bug report**, and send it. It includes an outline of the page's structure, but no job text    |
-| "Disable developer mode extensions" popup at Chrome startup | Normal for unpacked extensions; choose to keep it                                                                                                    |
-| After a new build                                           | See "Updating to a new build" above                                                                                                                  |
-| "Could not reach the ApplyPilot API"                        | Start it with `pnpm api` in the source folder and keep the window open; check the address in Settings                                                |
-| "Missing or wrong access token"                             | Copy `APPLYPILOT_LOCAL_TOKEN` from `services/api/.env` into Settings → AI connection again                                                           |
-| `pnpm api` says "not configured"                            | Run `pnpm api:setup` first; it creates `services/api/.env`                                                                                           |
-| "The Claude API rejected the API key"                       | Check `ANTHROPIC_API_KEY` in `services/api/.env`, then restart `pnpm api`                                                                            |
-| "The daily limit … has been reached"                        | It resets at midnight, or raise `APPLYPILOT_DAILY_LIMIT` and restart                                                                                 |
+| Problem                                                        | Fix                                                                                                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Manifest file is missing or unreadable"                       | You picked the outer folder. Select the one that directly contains `manifest.json`                                                                   |
+| Clicking the icon does nothing                                 | Update Chrome to 116+. Then open `chrome://extensions`, click **Errors** on the ApplyPilot card, and send the text                                   |
+| "Permission needed for this page"                              | Click the ApplyPilot toolbar icon while that tab is open, then analyze again. Access is granted per tab, by design                                   |
+| Wrong or missing values on a real posting                      | Expected sometimes outside Greenhouse and Indeed. Open **How this was read**, click **Copy details for a bug report**, and send it with a screenshot |
+| "The selected job changed"                                     | You picked another job on the page after analyzing. Click **Analyze selected job**                                                                   |
+| "The job details panel is still showing a different job"       | Indeed had not finished loading the job you clicked. Wait until its details appear on the right, then analyze again                                  |
+| "Indeed shows this job in a protected frame"                   | Click **Allow reading Indeed job details** and accept Chrome's prompt, or use **Paste the job instead**                                              |
+| Still "No job is open" on Indeed with a job open               | Open **How this was read**, click **Copy details for a bug report**, and send it. It includes an outline of the page's structure, but no job text    |
+| "Disable developer mode extensions" popup at Chrome startup    | Normal for unpacked extensions; choose to keep it                                                                                                    |
+| Autofill: "ApplyPilot needs your permission to read this page" | Click the toolbar icon while the form's tab is open, then **Scan this form** again                                                                   |
+| Autofill: "This tab now shows a different page"                | The page changed after the scan (for example a new step). Click **Scan again**                                                                       |
+| Autofill: a field looks filled but the site says "required"    | Type the value yourself, or use the field's copy button and paste it. Send the site name and the field's label                                       |
+| Autofill: "The form is inside a frame from another site"       | Use the link in the notice to open the form in its own tab, then scan there                                                                          |
+| After a new build                                              | See "Updating to a new build" above                                                                                                                  |
+| "Could not reach the ApplyPilot API"                           | Start it with `pnpm api` in the source folder and keep the window open; check the address in Settings                                                |
+| "Missing or wrong access token"                                | Copy `APPLYPILOT_LOCAL_TOKEN` from `services/api/.env` into Settings → AI connection again                                                           |
+| `pnpm api` says "not configured"                               | Run `pnpm api:setup` first; it creates `services/api/.env`                                                                                           |
+| "The Claude API rejected the API key"                          | Check `ANTHROPIC_API_KEY` in `services/api/.env`, then restart `pnpm api`                                                                            |
+| "The daily limit … has been reached"                           | It resets at midnight, or raise `APPLYPILOT_DAILY_LIMIT` and restart                                                                                 |

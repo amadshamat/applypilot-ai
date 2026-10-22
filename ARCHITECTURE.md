@@ -25,6 +25,7 @@ Anything marked **planned** has not been built.
 | `@applypilot/job-extraction` | Pure DOM extraction: takes a `Document` and URL, returns a validated result   | shared                 |
 | `@applypilot/resume-parser`  | PDF/DOCX text extraction and deterministic resume parsing                     | shared                 |
 | `@applypilot/matching`       | Pure job-to-profile scoring, evidence and truthful suggestions                | shared                 |
+| `@applypilot/autofill`       | Pure DOM form scanning, field classification, proposals and filling           | shared                 |
 | `@applypilot/ai-core`        | AI contracts, versioned prompts, data minimisation, grounding, question rules | shared                 |
 | `@applypilot/api`            | Local API (`services/api`): auth, limits, Claude or mock provider             | ai-core, Anthropic SDK |
 | `@applypilot/extension`      | MV3 extension: UI, service worker, content script, storage                    | all packages but api   |
@@ -192,6 +193,54 @@ connection, a non-empty profile and an analyzed job. Each tool shows "What will 
 the exact JSON and a worst-case cost, then the reviewed draft with its model, prompt version,
 tokens and cost. The latest draft per task and job is kept in `chrome.storage.local` (30 at
 most) and re-reviewed when shown. Nothing is pasted into the page.
+
+## Autofill (Phase 4)
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant SP as Side panel (Autofill tab)
+  participant SW as Service worker
+  participant CS as Content script (page)
+  U->>SP: Scan this form
+  SP->>SW: autofill/scan
+  SW->>CS: content/scan-form (after activeTab injection)
+  CS-->>SW: FormScan (fields, steps, notices)
+  SW-->>SP: FormScan, validated with Zod
+  SP->>SP: classify + propose from the local profile
+  U->>SP: edit, approve or deselect each field
+  U->>SP: Fill N approved fields
+  SP->>SW: autofill/fill {pageUrl, instructions}
+  SW->>SW: same origin and path as the scan?
+  SW->>CS: content/fill-form
+  CS-->>SW: per-field results (validated)
+  SW-->>SP: results; nothing submitted
+```
+
+**Package** (`packages/autofill`, no Chrome dependency, tested in jsdom and Chromium).
+
+- `scan.ts` finds the form with the most fields, walks open shadow roots and same-origin
+  frames in page order, and reads each field's label, section, hint, options, required mark and
+  current value. Passwords, read-only and disabled fields are counted as skipped; hidden fields
+  and honeypots are ignored. It also reports steps, CAPTCHAs, frames on another origin, Yes/No
+  button questions and whether a Next or Submit button exists.
+- `classify.ts` runs the deterministic rules (DECISIONS 038). `propose.ts` turns the profile
+  into values with a source and confidence, formats dates and matches options (`options.ts`).
+- `fill.ts` applies approved instructions: prototype setters and input/change/blur events for
+  React, clicks for options, radios and checkboxes, typing for typeaheads, `DataTransfer` for the
+  resume. It never clicks submit-like controls and blocks submits while it runs (DECISIONS 039).
+- `ai.ts` builds the labels-only `map-fields` request and turns its answer into review-only
+  classifications (DECISIONS 040). `platforms.ts` names the platform and its support status.
+
+**Extension** (`apps/extension/src/features/autofill`). `use-autofill.ts` holds the scan, the
+review rows and the fill state; `review.ts` is the pure logic for rows, approval and building
+fill instructions (locked rows are never included); `autofill-view.tsx` renders the groups,
+editors, copy buttons and results. The content script only scans and fills when the service
+worker asks, after a user click.
+
+**API.** `POST /v1/map-fields` takes `{fields: [...]}` (1–40), needs no job, drops sensitive
+labels, and returns `{mappings: [{fieldId, kind, confidence}]}` in the usual task envelope. The
+mock provider maps by keyword offline. Existing endpoints are unchanged.
 
 ## Planned backend (Phase 6)
 

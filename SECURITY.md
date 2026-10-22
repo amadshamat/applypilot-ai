@@ -46,11 +46,21 @@ Please open a private security advisory on the GitHub repository rather than a p
 | Errors are mapped to safe messages; unexpected errors are hidden; logs never contain request content                   | `app.ts`, `anthropic.ts`                                       |
 | The access token is excluded from data exports                                                                         | `data-controls.tsx`                                            |
 
+## Implemented (Phase 4)
+
+| Control                                                                                                   | Where                                           |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Scanning and filling only after a click in the side panel, on the active tab granted by the toolbar click | `background/router.ts`, `content/index.ts`      |
+| No new permissions; no `host_permissions` in release builds                                               | `manifest.ts`, `manifest.test.ts`               |
+| Never clicks submit or advance controls; blocks page submits and untrusted submit clicks while filling    | `autofill/src/fill.ts`, `dom.ts`, DECISIONS 039 |
+| Fill refused when the tab moved to another page since the scan                                            | `router.ts` (`PAGE_CHANGED`), `router.test.ts`  |
+| Passwords, read-only and disabled fields are never read or written; CAPTCHAs are never touched            | `scan.ts`, `scan.test.ts`                       |
+| Sensitive questions locked: no proposal, no approval, never in fill instructions, never sent to AI        | `classify.ts`, `review.ts`, `mapping.ts`        |
+| Scan results and fill results validated with Zod; page text treated as untrusted and length-limited       | `shared/src/schemas/autofill.ts`                |
+| AI field matching sends labels only; answers restricted to non-sensitive profile kinds, review-only       | `ai.ts`, `ai-core/src/mapping.ts`, `app.ts`     |
+
 ## Planned
 
-- Phase 4: autofill never submits forms, never clicks submit or apply buttons, never fills
-  passwords, legal attestations, eligibility, sponsorship or demographic questions, and only
-  changes fields the user approved.
 - Phase 6: the API key moves to AWS Secrets Manager; Cognito JWT validation, per-user authorization on every item, API Gateway throttling,
   CORS limited to the extension origin, DynamoDB encryption with retention policies, and log
   redaction so résumé content and personal identifiers never reach CloudWatch.

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { scanForm } from '@applypilot/autofill';
 import { extractJob } from '@applypilot/job-extraction';
 import { ok, type JobExtractionResult } from '@applypilot/shared';
 import {
@@ -282,5 +283,108 @@ describe('handleBackgroundMessage', () => {
     await expect(
       handleBackgroundMessage({ type: 'job/get-cached', tabId: 9 }, deps),
     ).resolves.toEqual({ ok: true, data: null });
+  });
+});
+
+describe('autofill messages', () => {
+  const scan = () => {
+    document.body.innerHTML =
+      '<form><input aria-label="Email" type="email"><input aria-label="Name"></form>';
+    return scanForm(document, { now: () => new Date('2026-10-22T00:00:00Z') });
+  };
+  const instruction = {
+    ref: 'f1',
+    control: 'email' as const,
+    label: 'Email',
+    action: { type: 'text' as const, value: 'a@b.co' },
+  };
+
+  it('scans the active tab through the content script and validates the reply', async () => {
+    const result = scan();
+    const deps = makeDeps({ sendToTab: vi.fn(() => Promise.resolve(ok(result))) });
+    await expect(handleBackgroundMessage({ type: 'autofill/scan' }, deps)).resolves.toEqual(
+      ok(result),
+    );
+    expect(deps.sendToTab).toHaveBeenCalledWith(3, { type: 'content/scan-form' }, 0);
+
+    const bad = makeDeps({
+      sendToTab: vi.fn(() => Promise.resolve({ ok: true, data: { fields: 'x' } })),
+    });
+    await expect(handleBackgroundMessage({ type: 'autofill/scan' }, bad)).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'SCAN_FAILED' },
+    });
+  });
+
+  it('refuses restricted pages and pages it may not read', async () => {
+    const chromePage = makeDeps({
+      getActiveTab: () => Promise.resolve({ id: 1, url: 'chrome://settings' }),
+    });
+    await expect(
+      handleBackgroundMessage({ type: 'autofill/scan' }, chromePage),
+    ).resolves.toMatchObject({
+      error: { code: 'UNSUPPORTED_PAGE' },
+    });
+    const hidden = makeDeps({ getActiveTab: () => Promise.resolve({ id: 1 }) });
+    await expect(handleBackgroundMessage({ type: 'autofill/scan' }, hidden)).resolves.toMatchObject(
+      {
+        error: { code: 'PERMISSION_REQUIRED', message: PERMISSION_MESSAGE },
+      },
+    );
+  });
+
+  it('fills only on the page that was scanned', async () => {
+    const report = {
+      results: [{ ref: 'f1', status: 'filled' as const, message: '' }],
+      blockedSubmissions: 0,
+      newFields: 0,
+      filledAt: '2026-10-22T00:00:00.000Z',
+    };
+    const deps = makeDeps({ sendToTab: vi.fn(() => Promise.resolve(ok(report))) });
+    await expect(
+      handleBackgroundMessage(
+        {
+          type: 'autofill/fill',
+          pageUrl: 'https://careers.example.com/jobs/1#step2',
+          instructions: [instruction],
+        },
+        deps,
+      ),
+    ).resolves.toEqual(ok(report));
+    expect(deps.sendToTab).toHaveBeenCalledWith(
+      3,
+      { type: 'content/fill-form', instructions: [instruction] },
+      0,
+    );
+
+    const moved = makeDeps();
+    await expect(
+      handleBackgroundMessage(
+        {
+          type: 'autofill/fill',
+          pageUrl: 'https://other.example.com/apply',
+          instructions: [instruction],
+        },
+        moved,
+      ),
+    ).resolves.toMatchObject({ ok: false, error: { code: 'PAGE_CHANGED' } });
+    expect(moved.sendToTab).not.toHaveBeenCalled();
+  });
+
+  it('rejects fill requests that are malformed or empty', async () => {
+    for (const message of [
+      { type: 'autofill/fill', pageUrl: 'https://careers.example.com/jobs/1', instructions: [] },
+      {
+        type: 'autofill/fill',
+        pageUrl: 'https://careers.example.com/jobs/1',
+        instructions: [{ ...instruction, action: { type: 'click', selector: '#submit' } }],
+      },
+      { type: 'autofill/submit' },
+    ]) {
+      await expect(handleBackgroundMessage(message, makeDeps())).resolves.toMatchObject({
+        ok: false,
+        error: { code: 'INVALID_MESSAGE' },
+      });
+    }
   });
 });

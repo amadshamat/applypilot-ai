@@ -1,0 +1,24 @@
+{
+  "name": "@applypilot/autofill",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Application form detection, field classification, profile mapping and safe filling.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@applypilot/ai-core": "workspace:*",
+    "@applypilot/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

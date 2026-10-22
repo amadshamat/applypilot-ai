@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cloud Operations Intern - Acme - SmartRecruiters</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 680px;
+        margin: 2rem auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample application modeled on the public structure of a SmartRecruiters
+    one-click apply page: fields are web components whose inputs live inside
+    open shadow roots, with a "Next" button between steps. Written for tests;
+    not copied from a live page. Next and Submit clicks are counted in
+    window.stepChanges and window.submitCount.
+  -->
+    <main>
+      <h1 class="job-title">Cloud Operations Intern</h1>
+      <oc-personal-information>
+        <h2>Personal information</h2>
+        <sr-input data-label="First name" data-name="firstName" data-required="true"></sr-input>
+        <sr-input data-label="Last name" data-name="lastName" data-required="true"></sr-input>
+        <sr-input
+          data-label="Email"
+          data-name="email"
+          data-type="email"
+          data-required="true"
+        ></sr-input>
+        <sr-input
+          data-label="Confirm your email"
+          data-name="confirmEmail"
+          data-type="email"
+          data-required="true"
+        ></sr-input>
+        <sr-input data-label="City" data-name="location"></sr-input>
+        <sr-input data-label="Phone number" data-name="phoneNumber" data-type="tel"></sr-input>
+      </oc-personal-information>
+      <oc-experience>
+        <h2>Experience</h2>
+        <p>No experience added yet.</p>
+        <button type="button" class="add">+ Add</button>
+      </oc-experience>
+      <oc-web-links>
+        <h2>On the web</h2>
+        <sr-input data-label="LinkedIn" data-name="linkedin" data-type="url"></sr-input>
+        <sr-input data-label="Website" data-name="website" data-type="url"></sr-input>
+      </oc-web-links>
+      <oc-message>
+        <h2>Message to the Hiring Team</h2>
+        <sr-textarea
+          data-label="Message to the Hiring Team"
+          data-name="hiringManagerMessage"
+        ></sr-textarea>
+      </oc-message>
+      <sr-checkbox
+        data-label="I agree to the privacy policy and terms of use"
+        data-name="consent"
+        data-required="true"
+      ></sr-checkbox>
+      <button type="button" id="next" data-test="footer-next">Next</button>
+    </main>
+    <script>
+      (function () {
+        window.submitCount = 0;
+        window.stepChanges = 0;
+        var n = 0;
+        function define(tag, render) {
+          customElements.define(
+            tag,
+            class extends HTMLElement {
+              connectedCallback() {
+                if (this.shadowRoot) return;
+                var root = this.attachShadow({ mode: 'open' });
+                n += 1;
+                root.innerHTML = render(this.dataset, 'sr-' + n);
+              }
+            },
+          );
+        }
+        function req(d) {
+          return d.required === 'true' ? ' required aria-required="true"' : '';
+        }
+        define('sr-input', function (d, id) {
+          return (
+            '<label for="' +
+            id +
+            '">' +
+            d.label +
+            (d.required === 'true' ? ' *' : '') +
+            '</label>' +
+            '<input id="' +
+            id +
+            '" name="' +
+            d.name +
+            '" type="' +
+            (d.type || 'text') +
+            '"' +
+            req(d) +
+            '>'
+          );
+        });
+        define('sr-textarea', function (d, id) {
+          return (
+            '<label for="' +
+            id +
+            '">' +
+            d.label +
+            '</label><textarea id="' +
+            id +
+            '" name="' +
+            d.name +
+            '"></textarea>'
+          );
+        });
+        define('sr-checkbox', function (d, id) {
+          return (
+            '<input type="checkbox" id="' +
+            id +
+            '" name="' +
+            d.name +
+            '"' +
+            req(d) +
+            '><label for="' +
+            id +
+            '">' +
+            d.label +
+            '</label>'
+          );
+        });
+        document.getElementById('next').addEventListener('click', function () {
+          window.stepChanges += 1;
+        });
+      })();
+    </script>
+  </body>
+</html>

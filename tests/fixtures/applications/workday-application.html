@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Apply - Cloud Support Intern - Acme Corp Careers</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+      }
+      label {
+        display: block;
+        margin-top: 0.6rem;
+        font-weight: 600;
+      }
+      [role='listbox'] {
+        border: 1px solid #888;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        background: #fff;
+      }
+      [role='option'] {
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      [role='option']:hover {
+        background: #eef;
+      }
+      .step[hidden],
+      [role='listbox'][hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample multi-step application modeled on Workday's public markup:
+    data-automation-id hooks, custom dropdowns (a button that opens a listbox),
+    a typeahead combobox, repeated work experience blocks, a conditional
+    question, and Next buttons that only the user may click. window.submitCount
+    and window.stepChanges record anything that submits or advances.
+  -->
+    <div data-automation-id="applyFlowPage">
+      <h1>Cloud Support Intern</h1>
+      <ol data-automation-id="progressBar">
+        <li aria-current="step">My Information</li>
+        <li>My Experience</li>
+        <li>Application Questions</li>
+        <li>Review</li>
+      </ol>
+      <p data-automation-id="stepIndicator">Step <span id="step-now">1</span> of 4</p>
+
+      <section class="step" data-step="1">
+        <h2>My Information</h2>
+        <label for="hear-btn">How Did You Hear About Us? *</label>
+        <button
+          type="button"
+          id="hear-btn"
+          aria-haspopup="listbox"
+          aria-controls="hear-list"
+          data-automation-id="sourceDropdown"
+          aria-required="true"
+        >
+          Select One
+        </button>
+        <h3>Legal Name</h3>
+        <label for="fn">First Name *</label>
+        <input id="fn" data-automation-id="legalNameSection_firstName" aria-required="true" />
+        <label for="ln">Last Name *</label>
+        <input id="ln" data-automation-id="legalNameSection_lastName" aria-required="true" />
+        <div id="referral-slot"></div>
+        <h3>Address</h3>
+        <label for="country-btn">Country *</label>
+        <button
+          type="button"
+          id="country-btn"
+          aria-haspopup="listbox"
+          aria-controls="country-list"
+          data-automation-id="countryDropdown"
+        >
+          Select One
+        </button>
+        <label for="city">City</label>
+        <input id="city" data-automation-id="addressSection_city" />
+        <label for="state-btn">State</label>
+        <button
+          type="button"
+          id="state-btn"
+          aria-haspopup="listbox"
+          aria-controls="state-list"
+          data-automation-id="addressSection_countryRegion"
+        >
+          Select One
+        </button>
+        <label for="zip">Postal Code</label>
+        <input id="zip" data-automation-id="addressSection_postalCode" />
+        <label for="em">Email Address *</label>
+        <input id="em" type="email" data-automation-id="email" />
+        <label for="dev-btn">Phone Device Type</label>
+        <button
+          type="button"
+          id="dev-btn"
+          aria-haspopup="listbox"
+          aria-controls="device-list"
+          data-automation-id="phone-device-type"
+        >
+          Select One
+        </button>
+        <label for="ph">Phone Number</label>
+        <input id="ph" data-automation-id="phone-number" />
+      </section>
+
+      <section class="step" data-step="2" hidden>
+        <h2>Work Experience</h2>
+        <div id="jobs">
+          <div class="job-block" data-automation-id="workExperienceSection">
+            <h3>Work Experience 1</h3>
+            <label for="t1">Job Title *</label><input id="t1" data-automation-id="jobTitle" />
+            <label for="c1">Company *</label><input id="c1" data-automation-id="company" />
+            <label for="l1">Location</label><input id="l1" data-automation-id="location" />
+            <label
+              ><input type="checkbox" id="cur1" data-automation-id="currentlyWorkHere" /> I
+              currently work here</label
+            >
+            <label for="fm1">From (Month)</label
+            ><input id="fm1" data-automation-id="dateSectionMonth-input" placeholder="MM" />
+            <label for="fy1">From (Year)</label
+            ><input id="fy1" data-automation-id="dateSectionYear-input" placeholder="YYYY" />
+            <label for="d1">Role Description</label
+            ><textarea id="d1" data-automation-id="description"></textarea>
+          </div>
+          <div class="job-block" data-automation-id="workExperienceSection">
+            <h3>Work Experience 2</h3>
+            <label for="t2">Job Title *</label><input id="t2" data-automation-id="jobTitle" />
+            <label for="c2">Company *</label><input id="c2" data-automation-id="company" />
+            <label for="l2">Location</label><input id="l2" data-automation-id="location" />
+            <label
+              ><input type="checkbox" id="cur2" data-automation-id="currentlyWorkHere" /> I
+              currently work here</label
+            >
+            <label for="fm2">From (Month)</label
+            ><input id="fm2" data-automation-id="dateSectionMonth-input" placeholder="MM" />
+            <label for="fy2">From (Year)</label
+            ><input id="fy2" data-automation-id="dateSectionYear-input" placeholder="YYYY" />
+            <label for="d2">Role Description</label
+            ><textarea id="d2" data-automation-id="description"></textarea>
+          </div>
+        </div>
+        <button type="button" data-automation-id="add-button">Add Another</button>
+        <h2>Education</h2>
+        <label for="school">School or University</label
+        ><input id="school" data-automation-id="school" />
+        <label for="degree-btn">Degree</label>
+        <button
+          type="button"
+          id="degree-btn"
+          aria-haspopup="listbox"
+          aria-controls="degree-list"
+          data-automation-id="degree"
+        >
+          Select One
+        </button>
+        <label for="fos">Field of Study</label>
+        <input
+          id="fos"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-controls="fos-list"
+          data-automation-id="fieldOfStudy"
+        />
+        <ul id="fos-list" role="listbox" hidden></ul>
+        <h2>Websites</h2>
+        <label for="li">LinkedIn</label><input id="li" data-automation-id="linkedinQuestion" />
+      </section>
+
+      <section class="step" data-step="3" hidden>
+        <h2>Application Questions</h2>
+        <label for="spons-btn"
+          >Will you now or in the future require sponsorship for employment visa status? *</label
+        >
+        <button
+          type="button"
+          id="spons-btn"
+          aria-haspopup="listbox"
+          aria-controls="yesno-list"
+          data-automation-id="sponsorship"
+        >
+          Select One
+        </button>
+        <div role="radiogroup" aria-labelledby="worked-q">
+          <p id="worked-q">Have you previously worked for Acme Corp?</p>
+          <div role="radio" aria-checked="false" tabindex="0" data-value="yes">Yes</div>
+          <div role="radio" aria-checked="false" tabindex="0" data-value="no">No</div>
+        </div>
+        <label for="why">Why are you interested in this role?</label>
+        <textarea id="why" data-automation-id="whyInterested"></textarea>
+      </section>
+
+      <section class="step" data-step="4" hidden>
+        <h2>Review</h2>
+        <p>Check your application, then submit.</p>
+        <button type="button" id="submit" data-automation-id="bottom-navigation-next-button">
+          Submit
+        </button>
+      </section>
+
+      <div>
+        <button type="button" id="back" data-automation-id="bottom-navigation-back-button">
+          Back
+        </button>
+        <button type="button" id="next" data-automation-id="bottom-navigation-next-button">
+          Save and Continue
+        </button>
+      </div>
+      <p id="status" role="status"></p>
+    </div>
+
+    <!-- Dropdown lists render at the end of the page, like a portal. -->
+    <ul id="hear-list" role="listbox" hidden>
+      <li role="option">Job Board</li>
+      <li role="option">LinkedIn</li>
+      <li role="option">Referral</li>
+      <li role="option">University Career Fair</li>
+    </ul>
+    <ul id="country-list" role="listbox" hidden>
+      <li role="option">Canada</li>
+      <li role="option">India</li>
+      <li role="option">United States of America</li>
+    </ul>
+    <ul id="state-list" role="listbox" hidden>
+      <li role="option">California</li>
+      <li role="option">Virginia</li>
+      <li role="option">Washington</li>
+    </ul>
+    <ul id="device-list" role="listbox" hidden>
+      <li role="option">Mobile</li>
+      <li role="option">Home</li>
+    </ul>
+    <ul id="degree-list" role="listbox" hidden>
+      <li role="option">High School Diploma</li>
+      <li role="option">Associate's Degree</li>
+      <li role="option">Bachelor's Degree</li>
+      <li role="option">Master's Degree</li>
+    </ul>
+    <ul id="yesno-list" role="listbox" hidden>
+      <li role="option">Yes</li>
+      <li role="option">No</li>
+    </ul>
+
+    <script>
+      (function () {
+        window.submitCount = 0;
+        window.stepChanges = 0;
+        var step = 1;
+        function show(n) {
+          step = n;
+          document.querySelectorAll('.step').forEach(function (s) {
+            s.hidden = Number(s.dataset.step) !== n;
+          });
+          document.getElementById('step-now').textContent = String(n);
+          document
+            .querySelectorAll('[data-automation-id="progressBar"] li')
+            .forEach(function (li, i) {
+              if (i === n - 1) li.setAttribute('aria-current', 'step');
+              else li.removeAttribute('aria-current');
+            });
+        }
+        document.getElementById('next').addEventListener('click', function () {
+          window.stepChanges += 1;
+          if (step < 4) show(step + 1);
+        });
+        document.getElementById('back').addEventListener('click', function () {
+          if (step > 1) show(step - 1);
+        });
+        document.getElementById('submit').addEventListener('click', function () {
+          window.submitCount += 1;
+          document.getElementById('status').textContent = 'Application submitted';
+        });
+
+        // Buttons that open a listbox; picking an option closes it and shows the choice.
+        document.querySelectorAll('button[aria-haspopup="listbox"]').forEach(function (button) {
+          var list = document.getElementById(button.getAttribute('aria-controls'));
+          button.addEventListener('click', function () {
+            document.querySelectorAll('ul[role="listbox"]').forEach(function (l) {
+              if (l !== list) l.hidden = true;
+            });
+            list.dataset.owner = button.id;
+            list.hidden = !list.hidden;
+            button.setAttribute('aria-expanded', String(!list.hidden));
+          });
+        });
+        document.querySelectorAll('ul[role="listbox"]:not(#fos-list)').forEach(function (list) {
+          list.addEventListener('click', function (event) {
+            var option = event.target.closest('[role="option"]');
+            if (!option) return;
+            var button = document.getElementById(list.dataset.owner);
+            button.textContent = option.textContent;
+            button.setAttribute('aria-expanded', 'false');
+            list.hidden = true;
+            if (button.id === 'hear-btn') onSource(option.textContent);
+          });
+        });
+
+        // A conditional question: a referral asks who referred you.
+        function onSource(value) {
+          var slot = document.getElementById('referral-slot');
+          if (value === 'Referral' && !slot.firstChild) {
+            slot.innerHTML =
+              '<label for="ref">Referrer Name</label><input id="ref" data-automation-id="referrerName">';
+          } else if (value !== 'Referral') {
+            slot.innerHTML = '';
+          }
+        }
+
+        // A typeahead: options appear after a short delay as you type.
+        var fields = [
+          'Business Administration',
+          'Computer Engineering',
+          'Computer Science',
+          'Information Technology',
+        ];
+        var fos = document.getElementById('fos');
+        var fosList = document.getElementById('fos-list');
+        fos.addEventListener('input', function () {
+          var q = fos.value.toLowerCase();
+          setTimeout(function () {
+            fosList.innerHTML = '';
+            fields
+              .filter(function (f) {
+                return q && f.toLowerCase().indexOf(q) >= 0;
+              })
+              .forEach(function (f) {
+                var li = document.createElement('li');
+                li.setAttribute('role', 'option');
+                li.textContent = f;
+                fosList.appendChild(li);
+              });
+            fosList.hidden = fosList.children.length === 0;
+            fos.setAttribute('aria-expanded', String(!fosList.hidden));
+          }, 120);
+        });
+        fosList.addEventListener('click', function (event) {
+          var option = event.target.closest('[role="option"]');
+          if (!option) return;
+          fos.value = option.textContent;
+          fos.dataset.picked = option.textContent;
+          fosList.hidden = true;
+        });
+
+        document.querySelectorAll('[role="radio"]').forEach(function (radio) {
+          radio.addEventListener('click', function () {
+            radio.parentElement.querySelectorAll('[role="radio"]').forEach(function (r) {
+              r.setAttribute('aria-checked', String(r === radio));
+            });
+          });
+        });
+
+        document
+          .querySelectorAll('input[data-automation-id="currentlyWorkHere"]')
+          .forEach(function (box) {
+            box.addEventListener('change', function () {
+              box.closest('.job-block').dataset.current = String(box.checked);
+            });
+          });
+      })();
+    </script>
+  </body>
+</html>

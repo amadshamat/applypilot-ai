@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Add your contact information | Indeed</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 600px;
+        margin: 2rem auto;
+      }
+      label,
+      legend {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample multi-step application modeled on the structure of Indeed's
+    "Easy Apply" pages (smartapply.indeed.com): contact details, a choice of
+    resume, employer questions and a review step, with a Continue button and
+    a final "Submit your application". Written for tests; not copied from a
+    live page. Continue and Submit clicks are counted in window.stepChanges
+    and window.submitCount.
+  -->
+    <div id="ia-container">
+      <div class="ia-JobHeader">
+        <h2>Cloud Support Intern</h2>
+        <div>Acme · Springfield, VA</div>
+      </div>
+      <div
+        role="progressbar"
+        aria-valuemin="1"
+        aria-valuemax="4"
+        aria-valuenow="1"
+        id="progress"
+      ></div>
+      <main>
+        <section data-step="1">
+          <h1>Add your contact information</h1>
+          <label for="input-firstName">First name</label>
+          <input id="input-firstName" name="firstName" autocomplete="given-name" required />
+          <label for="input-lastName">Last name</label>
+          <input id="input-lastName" name="lastName" autocomplete="family-name" required />
+          <label for="input-location.city">City, State</label>
+          <input id="input-location.city" name="location.city" />
+          <label for="input-phoneNumber">Phone number (optional)</label>
+          <input id="input-phoneNumber" name="phoneNumber" type="tel" />
+          <label for="input-email">Email</label>
+          <input id="input-email" name="email" value="avery@example.com" readonly />
+        </section>
+        <section data-step="2" hidden>
+          <h1>Add a resume for the employer</h1>
+          <fieldset>
+            <legend>Choose a resume</legend>
+            <label
+              ><input type="radio" name="resume" value="indeed-resume" checked /> Indeed
+              Resume</label
+            >
+            <label><input type="radio" name="resume" value="upload" /> Upload a resume</label>
+          </fieldset>
+        </section>
+        <section data-step="3" hidden>
+          <h1>Answer these questions from the employer</h1>
+          <fieldset>
+            <legend>Are you authorized to work in the United States?</legend>
+            <label><input type="radio" name="q_auth" value="1" /> Yes</label>
+            <label><input type="radio" name="q_auth" value="0" /> No</label>
+          </fieldset>
+          <label for="q_aws">How many years of AWS experience do you have?</label>
+          <input id="q_aws" name="q_aws" type="number" />
+          <fieldset>
+            <legend>What is the highest level of education you have completed?</legend>
+            <label><input type="radio" name="q_edu" value="hs" /> High school or equivalent</label>
+            <label><input type="radio" name="q_edu" value="assoc" /> Associate</label>
+            <label><input type="radio" name="q_edu" value="bach" /> Bachelor's</label>
+            <label><input type="radio" name="q_edu" value="mast" /> Master's</label>
+          </fieldset>
+          <label for="q_start">Date available</label>
+          <input id="q_start" name="q_start" type="date" />
+        </section>
+        <section data-step="4" hidden>
+          <h1>Please review your application</h1>
+          <p>You will not be able to make changes after you submit your application.</p>
+          <button type="button" id="submit">Submit your application</button>
+        </section>
+      </main>
+      <div class="ia-footer"><button type="button" id="continue">Continue</button></div>
+    </div>
+    <script>
+      (function () {
+        window.submitCount = 0;
+        window.stepChanges = 0;
+        var step = 1;
+        document.getElementById('continue').addEventListener('click', function () {
+          window.stepChanges += 1;
+          if (step >= 4) return;
+          step += 1;
+          document.querySelectorAll('section[data-step]').forEach(function (s) {
+            s.hidden = Number(s.dataset.step) !== step;
+          });
+          document.getElementById('progress').setAttribute('aria-valuenow', String(step));
+          document.getElementById('continue').hidden = step === 4;
+        });
+        document.getElementById('submit').addEventListener('click', function () {
+          window.submitCount += 1;
+        });
+      })();
+    </script>
+  </body>
+</html>

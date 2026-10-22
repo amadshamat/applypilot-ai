@@ -6,11 +6,14 @@ import {
   TASK_SCHEMAS,
   classifyQuestion,
   explainClassification,
+  filterMappableFields,
   hasUsableJob,
   type AiTask,
   type ApiErrorBody,
   type ApiErrorCode,
   type HealthResponse,
+  type JobContext,
+  type MapFieldsRequest,
   type ScreeningRequest,
   type TaskResponse,
   type TaskTypes,
@@ -104,8 +107,29 @@ export function createApi({
     if (!parsed.success)
       return error(400, 'INVALID_REQUEST', describeIssue(parsed.error.issues[0]));
     let request = parsed.data;
+    let skipped: TaskResponse<T>['skipped'] = [];
 
-    if (!hasUsableJob((request as { job: TaskTypes[T]['request']['job'] }).job)) {
+    // Field mapping sends form labels only, so it has no job to check.
+    if (task === 'map-fields') {
+      const mapping = filterMappableFields(request as MapFieldsRequest);
+      skipped = mapping.skipped;
+      if (mapping.sendable.length === 0) {
+        return {
+          status: 200,
+          body: {
+            task,
+            promptVersion: PROMPTS[task].version,
+            provider: provider.kind,
+            model: provider.model,
+            output: { mappings: [] },
+            usage: null,
+            skipped,
+            generatedAt: now().toISOString(),
+          } satisfies TaskResponse<'map-fields'>,
+        };
+      }
+      request = { fields: mapping.sendable };
+    } else if (!hasUsableJob((request as { job: JobContext }).job)) {
       return error(
         400,
         'INVALID_REQUEST',
@@ -113,7 +137,6 @@ export function createApi({
       );
     }
 
-    let skipped: TaskResponse<T>['skipped'] = [];
     if (task === 'screening-answers') {
       const screening = filterScreening(request as ScreeningRequest);
       skipped = screening.skipped;

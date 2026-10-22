@@ -285,3 +285,61 @@ this outline is how the real structure gets confirmed.
 Rejected: a declared content script or permanent `host_permissions` for Indeed (reads every
 Indeed page without a click and adds an install warning), and reading the frame by fetching its
 address from the background (a second request with the user's cookies, and not what the user sees).
+
+## 038: Autofill is deterministic first, and sensitive questions are locked
+
+Phase 4 classifies each form field with rules, in a fixed order: sensitive and personal
+questions first (work authorization, sponsorship, demographics, veteran and disability status,
+pronouns, consent and attestation boxes, pay, availability, referral source), then the
+`autocomplete` attribute, then label and field-name rules with the section as context. A field
+the rules recognise as sensitive is locked: it gets no proposed value, no checkbox, and cannot be
+filled or sent to AI, even if the user types a value. The user answers it on the page. Only exact
+profile matches start selected; everything else waits for the user. Option lists (states,
+countries, months, degree levels, yes/no) are matched with synonyms and pick nothing when the
+match is unclear.
+
+Rejected: letting a model classify every field (slower, costs money, and a mistake can route a
+profile value into a legal question), and a "remember my answer" store for sensitive questions
+(the user asked that these stay under their manual control).
+
+## 039: Autofill never advances or submits an application
+
+The filler clicks only options, radios, checkboxes and the triggers that open a dropdown. It
+refuses any control that looks submit-like (a submit or image input, a submit button inside a
+form, or text starting with Submit, Apply, Send, Next, Continue, Review, Finish, Proceed or
+Complete). While it fills, it blocks the page's own `submit` events and untrusted
+clicks on submit-like controls, then removes those guards. Multi-step forms are handled as one
+scan per step: the user moves on with the page's own button and scans again. Before filling, the
+service worker checks that the tab still shows the scanned page (origin and path), so a stale
+review cannot fill a different page. CAPTCHAs are reported and never touched; frames on another
+origin are reported with a link to open them in their own tab rather than read through another
+route.
+
+## 040: AI field matching sends labels only
+
+**Match fields with AI** sends the labels, hints, section names, control types and option texts
+of fields the rules left unknown (40 at most), and nothing from the profile. The model answers
+with a profile kind from a fixed list that contains no sensitive kinds, or "none". The extension
+drops sensitive labels before sending, the API drops them again, results are kept only for
+fields that were sent and kinds that exist, confidence is capped at medium, and every AI-mapped
+field is shown under "Check these" without being selected. The value always comes from the
+profile, never from the model. Open questions go through the Phase 3 screening flow instead,
+which already filters sensitive questions and grounds answers in the profile.
+
+## 041: Platforms are experimental until a live application is filled
+
+Indeed Apply, Greenhouse, Lever, Workday, Ashby and SmartRecruiters are recognised by address
+and labelled **Experimental** in the Autofill tab. Their sample forms in
+`tests/fixtures/applications/` were written for this project from public knowledge of each
+platform's markup, not copied from live pages, so passing them is not proof that a live form
+works. A platform moves to **Verified** only after Muhaid fills a real application on it in
+Chrome and the result is recorded in PROGRESS.md. All platforms use the same generic engine;
+recognising one only changes the label and a few hints.
+
+## 042: Check elements by tag name, not `instanceof`
+
+The scanner reads same-origin frames and shadow roots. Each frame has its own `HTMLInputElement`
+constructor, so `instanceof` checks fail for elements from another frame (and in jsdom, which
+was how this showed up: every field was classified as a listbox button). Guards compare
+`tagName` instead, and values are set through the element's own prototype setter with
+`Reflect.set`, which React-controlled inputs need to notice the change.

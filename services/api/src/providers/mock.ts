@@ -5,6 +5,9 @@ import {
   type CandidateContext,
   type CoverLetter,
   type CoverLetterRequest,
+  type FieldMappings,
+  type MapFieldsRequest,
+  type MappableFieldKind,
   type ScreeningAnswers,
   type ScreeningRequest,
   type TailoredResume,
@@ -143,6 +146,27 @@ function screening({ candidate, questions }: ScreeningRequest): ScreeningAnswers
   };
 }
 
+/** Plain keyword matching, so the mapping flow can be tested offline. */
+const MOCK_FIELD_WORDS: [RegExp, MappableFieldKind][] = [
+  [/\b(github|git hub|code hosting)\b/i, 'link.github'],
+  [/\blinked ?in\b/i, 'link.linkedin'],
+  [/\b(portfolio|personal site|homepage)\b/i, 'link.portfolio'],
+  [/\b(e-?mail|electronic mail)\b/i, 'email'],
+  [/\b(mobile|cell|telephone|phone)\b/i, 'phone'],
+  [/\b(employer|company you work for|organi[sz]ation you work for)\b/i, 'current.employer'],
+  [/\b(university|college|school)\b/i, 'education.school'],
+  [/\b(major|field of study|discipline)\b/i, 'education.field'],
+];
+
+function mapFields({ fields }: MapFieldsRequest): FieldMappings {
+  return {
+    mappings: fields.map((f) => {
+      const hit = MOCK_FIELD_WORDS.find(([pattern]) => pattern.test(`${f.label} ${f.hint}`));
+      return { fieldId: f.id, kind: hit ? hit[1] : 'none', confidence: hit ? 'medium' : 'low' };
+    }),
+  };
+}
+
 export function createMockProvider(): AiProvider {
   return {
     kind: 'mock',
@@ -152,6 +176,7 @@ export function createMockProvider(): AiProvider {
         'tailor-resume': tailor,
         'cover-letter': coverLetter,
         'screening-answers': screening,
+        'map-fields': mapFields,
       };
       const output = (outputs[task] as (r: TaskTypes[T]['request']) => TaskTypes[T]['output'])(
         request,

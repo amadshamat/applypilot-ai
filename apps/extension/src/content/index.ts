@@ -1,11 +1,13 @@
 import { contentRequestSchema, fail, ok, type FrameProbe } from '@applypilot/shared';
 import { extractJob, waitForJobContent } from '@applypilot/job-extraction';
+import { fillForm, scanForm } from '@applypilot/autofill';
 
 /**
  * Injected on demand (never declared in the manifest) when the user asks to
- * analyze the current page, into the page and every frame Chrome lets the
- * extension read. It only reads the DOM: it does not modify the page, submit
- * forms, or contact any server.
+ * analyze or autofill the current page, into the page and every frame Chrome
+ * lets the extension read. It never contacts any server. Analyzing and
+ * scanning only read the page. Filling changes only the fields the user
+ * approved in the side panel, and never submits or advances the application.
  */
 type MessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -24,7 +26,27 @@ const listener: MessageListener = (message, sender, sendResponse) => {
   const parsed = contentRequestSchema.safeParse(message);
   if (!parsed.success) return false;
 
-  const { waitMs, embedded = false } = parsed.data;
+  const request = parsed.data;
+  if (request.type === 'content/scan-form') {
+    try {
+      sendResponse(ok(scanForm(document)));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      sendResponse(fail('SCAN_FAILED', `Could not read the form: ${detail}`));
+    }
+    return false;
+  }
+  if (request.type === 'content/fill-form') {
+    fillForm(document, request.instructions)
+      .then((report) => sendResponse(ok(report)))
+      .catch((error: unknown) => {
+        const detail = error instanceof Error ? error.message : String(error);
+        sendResponse(fail('FILL_FAILED', `Could not fill the form: ${detail}`));
+      });
+    return true;
+  }
+
+  const { waitMs, embedded = false } = request;
   waitForJobContent(document, { timeoutMs: waitMs, url: location.href })
     .then(() => sendResponse(ok(extractJob(document, location.href, { embedded }))))
     .catch((error: unknown) => {

@@ -9,9 +9,10 @@ and truthful resume suggestions. With your consent it drafts a tailored resume, 
 and screening answers with Claude, checked against your profile so nothing is invented. Later
 phases add form filling that you approve field by field, and application tracking.
 
-> **Project status: Phase 3 (Claude integration, tailoring, cover letters, screening drafts)
-> built and tested, waiting for manual approval in Chrome.** Autofill, tracking and the AWS
-> backend are **not built yet**, and the extension says so in its UI. See
+> **Project status: Phase 4 (assisted autofill, v0.4.0) built and tested, waiting for manual
+> approval in Chrome.** Every autofill platform is **experimental** until it is checked on a live
+> application. Tracking and the AWS backend are **not built yet**, and the extension says so in
+> its UI. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
 ![Side panel analyzing a job posting](docs/screenshots/sidepanel-analysis-light.png)
@@ -50,7 +51,10 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 | AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)  | Done                 |
 | Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                 | Done                 |
 | Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI             | Done                 |
-| Assisted autofill with per-field approval                                                                       | Phase 4, not started |
+| Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits              | Done (experimental)  |
+| Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms             | Experimental         |
+| Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer       | Done                 |
+| Optional AI field matching (labels only, no profile data) and AI drafts for open questions                      | Done                 |
 | Application tracking and analytics                                                                              | Phase 5, not started |
 | AWS backend (API Gateway, Lambda, DynamoDB, Cognito, CDK)                                                       | Phase 6, not started |
 
@@ -150,6 +154,9 @@ after each build.
 Serve the fixtures with `node tests/e2e/fixture-server.mjs` and open
 `http://127.0.0.1:4173/jobs/json-ld-cloud-intern.html` or
 `http://127.0.0.1:4173/jobs/generic-devops-role.html`, then analyze them from the side panel.
+The sample application forms are under `http://127.0.0.1:4173/applications/` (for example
+`generic-application.html` or `workday-application.html`); open one, click the toolbar icon,
+and use the **Autofill** tab.
 
 ## Environment variables
 
@@ -253,13 +260,17 @@ not a hiring prediction.
 - AI features need the local API running on the same computer; there is no hosted service yet.
 - Grounding checks catch new numbers and known skills, not every possible invented claim (for
   example numbers written as words). Every draft is for you to review and edit.
-- Screening questions are pasted in by hand; reading them from the form comes with autofill in
-  Phase 4.
+- Autofill has been tested only on sample forms written for this project, not on live
+  applications, so every platform is marked experimental. Live forms change often; check every
+  value before you submit.
+- Autofill never clicks Next or Submit: on multi-step forms, move on yourself and scan again.
+  Yes/No button questions, CAPTCHAs, closed shadow roots and frames on another origin are
+  reported, not filled. Workday and similar sites need you to sign in yourself.
 
 ## Roadmap
 
-Phases 4 to 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): user-approved
-autofill, tracking and analytics, AWS infrastructure with CDK, and production hardening.
+Phases 5 to 7 are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps): tracking and
+analytics, AWS infrastructure with CDK, and production hardening.
 
 ## Interview notes
 

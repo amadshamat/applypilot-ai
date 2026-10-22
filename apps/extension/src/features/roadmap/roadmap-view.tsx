@@ -1,4 +1,4 @@
-import { ListChecks, Wand2, type LucideIcon } from 'lucide-react';
+import { ListChecks, type LucideIcon } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 
@@ -10,19 +10,7 @@ interface PlannedFeature {
   points: string[];
 }
 
-const PLANNED: Record<'autofill' | 'applications', PlannedFeature> = {
-  autofill: {
-    icon: Wand2,
-    title: 'Assisted autofill',
-    phase: 'Phase 4',
-    summary:
-      'Preview proposed answers for an application form and fill only the fields you approve.',
-    points: [
-      'Never submits or clicks Apply for you',
-      'Leaves legal, eligibility and demographic questions to you',
-      'Unknown answers stay blank',
-    ],
-  },
+const PLANNED: Record<'applications', PlannedFeature> = {
   applications: {
     icon: ListChecks,
     title: 'Application tracking',

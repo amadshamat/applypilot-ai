@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Apply: Cloud Engineering Intern | Northwind Careers</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+      }
+      label,
+      legend {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      .hp {
+        position: absolute;
+        left: -9999px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample application form for tests: a plain HTML employer careers form with
+    contact details, links, documents, an open question, and the sensitive and
+    personal questions ApplyPilot must never fill. Submitting is recorded in
+    window.submitCount so tests can prove nothing was submitted.
+  -->
+    <header>
+      <nav>
+        <form role="search"><input type="search" name="q" aria-label="Search jobs" /></form>
+      </nav>
+    </header>
+    <main>
+      <h1>Apply for Cloud Engineering Intern</h1>
+      <form id="apply" action="/submit" method="post">
+        <h2>Your details</h2>
+        <label for="first">First name *</label>
+        <input id="first" name="first_name" required />
+        <label for="last">Last name *</label>
+        <input id="last" name="last_name" required />
+        <label for="email">Email *</label>
+        <input id="email" name="email" type="email" required />
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" />
+        <label for="loc">Location (city, state)</label>
+        <input id="loc" name="location" />
+        <label for="password">Create a password</label>
+        <input id="password" name="password" type="password" />
+        <input class="hp" name="website_hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+        <h2>Links</h2>
+        <label for="li">LinkedIn profile</label>
+        <input id="li" name="linkedin" type="url" />
+        <label for="gh">GitHub</label>
+        <input id="gh" name="github" type="url" />
+        <label for="site">Portfolio or personal website</label>
+        <input id="site" name="website" type="url" />
+
+        <h2>Documents</h2>
+        <label for="resume">Resume/CV *</label>
+        <input id="resume" name="resume" type="file" accept=".pdf,.docx" />
+        <label for="cover">Cover letter</label>
+        <textarea id="cover" name="cover_letter" rows="4"></textarea>
+
+        <h2>Questions</h2>
+        <label for="why">Why do you want to work at Northwind?</label>
+        <textarea id="why" name="q_why" rows="4"></textarea>
+        <label for="salary">Desired salary</label>
+        <input id="salary" name="salary" />
+        <label for="start">When can you start?</label>
+        <input id="start" name="start_date" />
+        <label for="hear">How did you hear about us?</label>
+        <select id="hear" name="source">
+          <option value="">Select...</option>
+          <option>LinkedIn</option>
+          <option>Job board</option>
+          <option>Referral</option>
+        </select>
+        <fieldset>
+          <legend>Are you legally authorized to work in the United States? *</legend>
+          <label><input type="radio" name="work_auth" value="yes" /> Yes</label>
+          <label><input type="radio" name="work_auth" value="no" /> No</label>
+        </fieldset>
+        <label for="sponsor">Will you now or in the future require visa sponsorship?</label>
+        <select id="sponsor" name="sponsorship">
+          <option value="">Select...</option>
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+
+        <h2>Voluntary self-identification</h2>
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender">
+          <option value="">Select...</option>
+          <option>Female</option>
+          <option>Male</option>
+          <option>Decline to self-identify</option>
+        </select>
+        <fieldset>
+          <legend>Veteran status</legend>
+          <label><input type="radio" name="veteran" value="yes" /> I am a protected veteran</label>
+          <label
+            ><input type="radio" name="veteran" value="no" /> I am not a protected veteran</label
+          >
+        </fieldset>
+        <label
+          ><input type="checkbox" name="privacy" required /> I agree to the privacy policy *</label
+        >
+        <div class="hidden"><label for="old">Old field</label><input id="old" name="old" /></div>
+
+        <p><button type="submit" id="submit">Submit application</button></p>
+      </form>
+      <p id="status" role="status"></p>
+    </main>
+    <script>
+      window.submitCount = 0;
+      document.getElementById('apply').addEventListener('submit', function (event) {
+        event.preventDefault();
+        window.submitCount += 1;
+        document.getElementById('status').textContent = 'Submitted!';
+      });
+    </script>
+  </body>
+</html>

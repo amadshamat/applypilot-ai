@@ -11,6 +11,16 @@ const FIXTURES = `http://127.0.0.1:${process.env.FIXTURE_PORT ?? 4173}`;
 const RESUMES = resolve(import.meta.dirname, '../fixtures/resumes');
 const API_URL = `http://127.0.0.1:${process.env.E2E_API_PORT ?? 8799}`;
 const API_TOKEN = 'e2e-local-token-0123456789abcdef';
+const MAPPED_HOSTS = [
+  'www.indeed.com',
+  'jobs.indeed.com',
+  'smartapply.indeed.com',
+  'job-boards.greenhouse.io',
+  'jobs.lever.co',
+  'jobs.ashbyhq.com',
+  'jobs.smartrecruiters.com',
+  'acme.wd5.myworkdayjobs.com',
+];
 
 const test = base.extend<{ context: BrowserContext; extensionId: string }>({
   // eslint-disable-next-line no-empty-pattern
@@ -23,7 +33,8 @@ const test = base.extend<{ context: BrowserContext; extensionId: string }>({
         `--load-extension=${EXTENSION_PATH}`,
         // Serve the Indeed fixtures under Indeed's hostnames so the adapter matches;
         // jobs.indeed.com is a separate origin, like Indeed's embedded job frames.
-        '--host-resolver-rules=MAP www.indeed.com 127.0.0.1, MAP jobs.indeed.com 127.0.0.1',
+        // The sample application forms are served under each platform's hostname too.
+        `--host-resolver-rules=${MAPPED_HOSTS.map((h) => `MAP ${h} 127.0.0.1`).join(', ')}`,
       ],
     });
     await use(context);
@@ -46,7 +57,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.3.4' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.4.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -358,4 +369,150 @@ test('drafts a tailored resume, cover letter and screening answers through the l
 
   // The job page itself was never touched.
   await expect(job.locator('h1')).toHaveText('Cloud Engineering Intern');
+});
+
+// ---- Phase 4: autofill ---------------------------------------------------------
+
+async function saveResumeProfile(panel: Page) {
+  await panel.getByRole('tab', { name: 'Profile' }).click();
+  await panel.getByRole('button', { name: 'Upload a resume' }).click();
+  await panel.getByLabel('Choose a file').setInputFiles(resolve(RESUMES, 'sample-resume.pdf'));
+  await panel.getByRole('button', { name: 'Save to profile' }).click();
+  await expect(panel.getByText('Your profile was saved from this resume.')).toBeVisible();
+}
+
+async function openForm(context: BrowserContext, host: string, file: string): Promise<Page> {
+  const port = process.env.FIXTURE_PORT ?? '4173';
+  const page = await context.newPage();
+  await page.goto(`http://${host}:${port}/applications/${file}`);
+  await page.bringToFront();
+  return page;
+}
+
+async function scanForm(panel: Page) {
+  await panel.getByRole('tab', { name: 'Autofill' }).click();
+  const scan = panel.getByRole('button', { name: /^Scan (this form|again)$/ });
+  await scan.click();
+}
+
+const pageCounter = (page: Page, name: 'submitCount' | 'stepChanges') =>
+  page.evaluate((key) => (window as unknown as Record<string, number>)[key], name);
+
+test('autofill: reviews and fills a plain application form, attaches the resume, never submits', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  const form = await openForm(context, '127.0.0.1', 'generic-application.html');
+  await scanForm(panel);
+
+  await expect(panel.getByText('Apply for Cloud Engineering Intern')).toBeVisible();
+  const ready = panel.getByRole('region', { name: 'Ready to fill' });
+  await expect(ready.getByLabel('Value for Email')).toHaveValue('jordan.rivera@example.com');
+  await expect(ready.getByText('Attaches sample-resume.pdf')).toBeVisible();
+  const manual = panel.getByRole('region', { name: 'You answer these on the page' });
+  await expect(manual.getByText('Gender', { exact: true })).toBeVisible();
+  await expect(manual.getByRole('checkbox')).toHaveCount(0);
+
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toContainText('filled');
+
+  await expect(form.locator('#first')).toHaveValue('Jordan');
+  await expect(form.locator('#email')).toHaveValue('jordan.rivera@example.com');
+  expect(
+    await form.evaluate(
+      () => (document.querySelector('input[type="file"]') as HTMLInputElement).files?.[0]?.name,
+    ),
+  ).toBe('sample-resume.pdf');
+  // Sensitive answers and the submit button are untouched.
+  await expect(form.locator('select[name="gender"]')).toHaveValue('');
+  await expect(form.locator('input[name="work_auth"]:checked')).toHaveCount(0);
+  await expect(form.locator('#password')).toHaveValue('');
+  expect(await pageCounter(form, 'submitCount')).toBe(0);
+});
+
+test('autofill: fills one step of a multi-step Workday-style form at a time', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  const form = await openForm(context, 'acme.wd5.myworkdayjobs.com', 'workday-application.html');
+  await scanForm(panel);
+  await expect(panel.getByText('Workday', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Step 1 of 4')).toBeVisible();
+  await expect(panel.getByText('More steps may follow')).toBeVisible();
+
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields?$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toBeVisible();
+  await expect(form.locator('#fn')).toHaveValue('Jordan');
+  expect(await pageCounter(form, 'stepChanges')).toBe(0);
+
+  // The user moves to the next step; ApplyPilot scans it fresh.
+  await form.bringToFront();
+  await form.getByRole('button', { name: 'Save and Continue' }).click();
+  await scanForm(panel);
+  await expect(panel.getByText('Step 2 of 4')).toBeVisible();
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields?$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toBeVisible();
+  await expect(form.locator('#t1')).toHaveValue('Cloud Engineering Intern');
+  await expect(form.locator('#c1')).toHaveValue('Northwind Logistics');
+  await expect(form.locator('#t2')).toHaveValue('IT Support Assistant');
+  await expect(form.locator('#school')).toHaveValue('University of Toronto');
+  expect(await pageCounter(form, 'stepChanges')).toBe(1);
+  expect(await pageCounter(form, 'submitCount')).toBe(0);
+});
+
+test('autofill: handles react-select style typeaheads and web components', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+
+  const greenhouse = await openForm(
+    context,
+    'job-boards.greenhouse.io',
+    'greenhouse-application.html',
+  );
+  await scanForm(panel);
+  await expect(panel.getByText('Greenhouse', { exact: true })).toBeVisible();
+  const review = panel.getByRole('region', { name: 'Check these' });
+  // Typeahead choices start unselected; the user opts in.
+  await review.getByRole('checkbox', { name: 'Fill Degree' }).check();
+  // The sample school list has no "University of Toronto": it is reported, not guessed.
+  await review.getByRole('checkbox', { name: 'Fill School' }).check();
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toBeVisible();
+  await expect(greenhouse.locator('#first_name')).toHaveValue('Jordan');
+  await expect(greenhouse.locator('#degree--0')).toHaveAttribute(
+    'data-selected',
+    "Bachelor's Degree",
+  );
+  await expect(greenhouse.locator('#school--0')).not.toHaveAttribute('data-selected');
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toContainText(
+    'No option matching "University of Toronto" appeared',
+  );
+  await expect(greenhouse.locator('#gender')).not.toHaveAttribute('data-selected');
+  expect(await pageCounter(greenhouse, 'submitCount')).toBe(0);
+
+  const smart = await openForm(
+    context,
+    'jobs.smartrecruiters.com',
+    'smartrecruiters-application.html',
+  );
+  await scanForm(panel);
+  await expect(panel.getByText('SmartRecruiters', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: /^Fill \d+ approved fields$/ }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toBeVisible();
+  expect(
+    await smart.evaluate(
+      () =>
+        [...document.querySelectorAll('sr-input')]
+          .map((h) => h.shadowRoot?.querySelector('input'))
+          .find((i) => i?.name === 'firstName')?.value,
+    ),
+  ).toBe('Jordan');
+  expect(await pageCounter(smart, 'stepChanges')).toBe(0);
 });

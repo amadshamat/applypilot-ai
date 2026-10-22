@@ -1,19 +1,47 @@
 # Progress
 
-_Last updated: 2026-10-22 (v0.3.4)_
+_Last updated: 2026-10-22 (v0.4.0)_
 
 ## Current phase
 
-**Phase 3 (Claude integration, tailoring, cover letters, screening drafts): built and tested
-here, waiting for Muhaid's manual test in Chrome.** v0.3.1 to v0.3.4 fix Indeed extraction bugs
-found during that test (below). Phase 4 will not start until Phase 3 is approved. No real (paid)
+**Phase 4 (assisted autofill): built and tested here, waiting for Muhaid's manual test in
+Chrome.** Phase 3 was approved by Muhaid on 2026-10-22 after testing in Chrome, together with
+the v0.3.4 Indeed checklist. Phase 5 will not start until Phase 4 is approved. No real (paid)
 Claude request has been made; see "Not yet verified".
 
-Phase 2 was approved by Muhaid on 2026-10-14 after manual testing in Google Chrome (resume
-upload, profile management, persistence, job matching and suggestions). Phase 1 and the
-v0.1.1 Indeed fix were confirmed earlier.
+Phase 2 was approved on 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed and verified
+
+### Phase 4 (v0.4.0): assisted autofill
+
+Every platform is **experimental**: tested on sample forms written for this project and modeled
+on each platform's public markup, not yet on a live application. Generic HTML forms with
+standard controls are supported the same way.
+
+| Feature                                                                                                                                                                                                                                                                                                                                                                                                                           | Verified by                                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Form scan: the form with the most fields (never the search box), labels from `aria-labelledby`, `<label>`, `aria-label`, nearby text, groups and legends; sections; required marks; options; current values; open shadow roots; same-origin frames; page order                                                                                                                                                                    | `autofill/test/scan.test.ts`, `platforms.test.ts`                        |
+| Controls: text, email, tel, url, number, date, month, textarea, select, radio groups (native and ARIA), checkboxes, checkbox groups, ARIA comboboxes and typeaheads, buttons that open a listbox, file inputs                                                                                                                                                                                                                     | `scan.test.ts`, `fill.test.ts`, `platforms.test.ts`, e2e                 |
+| Skipped on purpose: passwords, read-only and disabled fields (counted), hidden fields and honeypots (ignored), CAPTCHAs (reported, never touched), frames on another origin (reported with a link to open the form in its own tab), Yes/No button questions (listed for the user)                                                                                                                                                 | `scan.test.ts`, `platforms.test.ts`                                      |
+| Multi-step forms: "Step N of M", progress bars and step lists; Next/Continue/Submit buttons listed and never clicked; each step scanned fresh after the user moves on                                                                                                                                                                                                                                                             | `scan.test.ts`, `platforms.test.ts`, e2e (Workday-style, 2 steps)        |
+| Repeated sections: each work experience or education block maps to the matching profile entry; a block the profile does not have is reported as missing                                                                                                                                                                                                                                                                           | `scan.test.ts`, `propose.test.ts`, e2e                                   |
+| Deterministic classification first: sensitive and personal questions, then `autocomplete`, then label and field-name rules with section context; AI only for fields the rules leave unknown                                                                                                                                                                                                                                       | `scan.test.ts`, `ai.test.ts`                                             |
+| Sensitive questions locked: work authorization, sponsorship, demographics, veteran and disability status, pronouns, consent and attestation boxes, pay, availability and referral source are never proposed, never fillable, and never sent to AI                                                                                                                                                                                 | `propose.test.ts`, `review.test.ts`, `test/autofill.test.tsx`, e2e       |
+| Proposals from the profile only, each with its source and confidence: names, contact, location (split into city, state, country, postal), links, current job, experience, education, skills, certifications, summary, resume file, resume text, saved AI Tailor cover letter; option matching with synonyms (US states, countries, months, degree levels, yes/no) that picks nothing when unsure; dates formatted for the control | `propose.test.ts`                                                        |
+| Review: groups (ready, check these, open questions, missing, you answer, not recognised), per-field edit, approve or deselect, copy, resume choice; only exact profile matches start selected                                                                                                                                                                                                                                     | `test/autofill.test.tsx`, `review.test.ts`                               |
+| Fill: React-safe value setting (prototype setter, input/change/blur), dropdowns opened and options clicked, typeaheads typed without leaving the box, radios and checkboxes clicked, resume attached via `DataTransfer`; each result reported as filled, skipped, failed or not supported; labels re-checked so a changed page is not filled                                                                                      | `fill.test.ts`, `react.test.tsx` (real React), e2e                       |
+| No submission: clicks only options, radios and checkboxes, refuses anything submit-like, blocks the page's own submit attempts while filling, refuses a tab that moved to another page; e2e pages count submissions and step changes and stay at 0                                                                                                                                                                                | `fill.test.ts`, `router.test.ts`, e2e                                    |
+| AI help, both optional and behind consent and a click: **Match fields with AI** sends only labels of unrecognised fields (no profile data) and accepts only known profile kinds (never sensitive); **Draft answers with AI Tailor** sends open questions through the Phase 3 screening flow. Every AI result is shown for review, not pre-selected                                                                                | `ai.test.ts`, `ai-core.test.ts`, `app.test.ts`, `test/autofill.test.tsx` |
+| Local API: new `POST /v1/map-fields` (no job needed; sensitive labels dropped server-side; mock provider answers offline). Existing endpoints unchanged                                                                                                                                                                                                                                                                           | `app.test.ts`                                                            |
+| Messages: `autofill/scan` and `autofill/fill` validated by Zod at the side panel, service worker and content script; the scan from the page is validated like any untrusted input                                                                                                                                                                                                                                                 | `router.test.ts`, `messaging.test.ts`                                    |
+
+Sample forms (`tests/fixtures/applications/`): generic employer form, Greenhouse-style
+(react-select typeaheads, EEOC), Lever-style (full name, `urls[...]`, cards, hCaptcha),
+Workday-style (4 steps, listbox buttons in a portal, conditional question, two experience
+blocks, typeahead), Ashby-style (no `<form>`, Yes/No buttons), SmartRecruiters-style (web
+components with shadow roots), Indeed Apply-style (4 steps, read-only email). They are written
+for tests, not copied from live pages.
 
 **Verified live (2026-10-22):** Muhaid ran the v0.3.4 Indeed checklist in Chrome (search results
 page, homepage feed, switching jobs, paste fallback, other sites) and reported that it passed.
@@ -141,30 +169,29 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-20, v0.3.4, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-22, v0.4.0, local container, Node 22.22, Chromium 141)
 
 - `pnpm verify` (typecheck, lint, format check, tests, build, bundle check): passes
-- `pnpm test`: **383 passed** (job-extraction 110, extension 96, resume-parser 44, ai-core 43,
-  api 42, matching 30, shared 18)
-- `pnpm test:coverage`: 88.0% statements, 80.3% branches, 84.8% functions, 89.8% lines
-- `pnpm test:e2e`: **13 passed**. v0.3.4 adds the CloudKitchens feed page. v0.3.3 adds an Indeed search page whose details frame is on a
-  second hostname (`jobs.indeed.com`, a separate origin the page cannot read); the extension reads
-  the selected job from inside the frame (repeated 4 times with the frame-switch test, no flakes).
-  v0.3.2 added the homepage feed. New: the reported Indeed page with the selected job in a
-  details frame, then a switch to another job whose frame loads 0.8 s after the address changes
-  (repeated 4 times, no flakes). Also the AI flow: upload a resume, analyze a job, give consent,
-  connect to the real local API (mock mode), generate a tailored resume, cover letter and
-  screening answer, reload and see the saved draft. Screenshot test skipped by default.
-- `pnpm audit --audit-level high`: passes. One **moderate** advisory (sprintf-js, via mammoth →
-  argparse) is in mammoth's command-line tool only and not in the extension bundle.
+- `pnpm test`: **456 passed** (job-extraction 110, extension 108, autofill 57, api 45,
+  ai-core 44, resume-parser 44, matching 30, shared 18)
+- `pnpm test:coverage`: 86.8% statements, 78.2% branches, 84.4% functions, 89.0% lines
+  (autofill package: 86.8% statements, 91.1% lines)
+- `pnpm test:e2e`: **16 passed**, run twice in a row (`--repeat-each=2`, 32 runs, no flakes). New
+  in v0.4.0, each in real Chromium against the sample forms served under the platforms'
+  hostnames: a plain form (resume file attached, sensitive fields and password untouched, no
+  submission); a Workday-style form over two steps (the user presses Save and Continue; no
+  step change by ApplyPilot); a Greenhouse-style form with react-select typeaheads (a school
+  missing from the list is reported, not guessed) and a SmartRecruiters-style form built from
+  web components. Screenshot test skipped by default.
 
 ## Not yet verified
 
+- **Phase 4 on live application sites.** No platform is marked verified. Muhaid's checklist
+  (`docs/INSTALL-CHROME.md`, section 8) is the first live test. Real Workday, Greenhouse, Lever,
+  Ashby, SmartRecruiters and Indeed Apply markup may differ from the samples.
 - **A real Claude request.** No paid call has been made. The request shape is verified against
   the real SDK and a fake API, but output quality, latency and actual cost per draft need
   Muhaid's own key and approval.
-- Phase 3 in desktop Google Chrome by hand, including Chrome's permission prompt for
-  127.0.0.1 (checklist in `docs/INSTALL-CHROME.md`, section 7).
 - Chrome's prompt for the optional Indeed access, by hand, unless it appeared during Muhaid's
   checklist run (automation cannot click it; the e2e build has the access granted up front).
 - Running the local API on Windows or macOS (tested on Linux).
@@ -176,9 +203,24 @@ the reported values on the new fixture.
 
 ## Under development
 
-Nothing in progress. Waiting for Phase 3 approval.
+Nothing in progress. Waiting for Phase 4 approval.
 
 ## Known bugs and limitations
+
+- **Autofill (new in v0.4.0):**
+  - No platform is verified live yet; all are experimental.
+  - A form inside a frame from another site (an embedded Greenhouse board, for example) cannot
+    be read; the tab offers a link to open the form on its own.
+  - Questions drawn as Yes/No buttons (Ashby) are listed but not filled.
+  - Closed shadow roots, canvas-drawn controls, rich-text editors and drag-and-drop-only
+    uploads are not supported; use Copy and paste.
+  - A page script can still submit with `form.submit()` (which fires no event), and nothing
+    stops a page from doing so on its own. ApplyPilot itself never clicks a submit control.
+  - Dates without a day use the 1st and are marked for review. Years of experience, start
+    date, salary and similar facts are not stored, so those fields stay empty.
+  - Workday and similar sites need an account; sign in yourself. ApplyPilot never handles
+    passwords.
+  - After a fill reveals new questions, scan again to see them.
 
 - **Fixed in v0.3.3:** an Indeed job shown in a frame on another origin was reported as "No job is
   open". If Chrome still blocks the frame (access declined), the user can paste the job.
@@ -215,14 +257,13 @@ Nothing in progress. Waiting for Phase 3 approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** test Phase 3 in mock mode (section 7 of the install guide) and decide whether to
-   try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft). Then approve
-   Phase 3 or report issues.
-2. **Phase 3 follow-ups (optional, not built):** AI fallback for resumes the deterministic parser
-   struggles with; prompt caching once real usage shows repeated prefixes.
-3. **Phase 4:** autofill preview and per-field approval (will also read screening questions from
-   the form instead of pasting).
-4. **Phase 5:** application tracker and analytics.
-5. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda). No
+1. **Muhaid:** install v0.4.0 (update with Reload so your profile stays), run the Phase 4
+   checklist on the sample forms and on one or two real applications you intend to submit
+   yourself, then approve Phase 4 or report issues. Platforms move to "verified" only from those
+   live runs.
+2. **Optional:** try real Claude drafts with your own Anthropic key (about $0.05–$0.25 per draft;
+   field matching is far smaller). Not done without your approval.
+3. **Phase 5:** application tracker and analytics (not started; waits for Phase 4 approval).
+4. **Phase 6:** AWS CDK stacks with a cost estimate (the API handler moves into Lambda). No
    deployment without approval.
-6. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.
+5. **Phase 7:** accessibility audit, performance, Chrome Web Store preparation.

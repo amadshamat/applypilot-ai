@@ -67,7 +67,7 @@ const RULES: readonly Rule[] = [
     topic: 'availability',
     category: 'personal',
     pattern:
-      /\b(start date|when can you start|available to start|availability|notice period|earliest (?:start|date)|graduation date|hours per week|work (?:weekends|evenings|nights|shifts)|available (?:on )?weekends|shift (?:work|availability))/i,
+      /\b(start date|when can you start|available to start|availability|date available|available date|notice period|earliest (?:start|date)|graduation date|hours per week|work (?:weekends|evenings|nights|shifts)|available (?:on )?weekends|shift (?:work|availability))/i,
   },
   {
     topic: 'location or relocation',
