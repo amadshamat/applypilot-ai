@@ -102,7 +102,12 @@ const sync = new SyncRunner({
 const SYNC_ALARM = 'applypilot-sync';
 const SYNC_SOON_ALARM = 'applypilot-sync-soon';
 void chrome.alarms.create(SYNC_ALARM, { periodInMinutes: 15, delayInMinutes: 1 });
-const syncSoon = () => void chrome.alarms.create(SYNC_SOON_ALARM, { delayInMinutes: 0.5 });
+// Edits schedule a sync only when sync is on, so the worker is not woken for nothing.
+const syncSoon = () =>
+  void cloudSettings.load().then((s) => {
+    if (s.syncEnabled) void chrome.alarms.create(SYNC_SOON_ALARM, { delayInMinutes: 0.5 });
+  });
+void sync.recoverInterrupted();
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM || alarm.name === SYNC_SOON_ALARM) {
     void sync

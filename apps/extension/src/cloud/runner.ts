@@ -147,10 +147,29 @@ export class SyncRunner {
         break;
       case 'retry':
         status.state = 'error';
-        status.message = 'You edited data while syncing, so sync will try again shortly.';
+        status.message =
+          'You edited data while syncing, so nothing was overwritten. Sync runs again within 15 minutes, or press Sync now.';
         break;
     }
     return this.deps.status.save(status);
+  }
+
+  /**
+   * Call when the service worker starts. A status still saying "syncing" is
+   * left from a run that Chrome stopped part-way (the worker was suspended or
+   * the browser closed); no run can be in progress in a fresh worker. Writes
+   * are checked against what was read, so an interrupted run loses nothing.
+   */
+  recoverInterrupted(): Promise<void> {
+    return this.exclusive(async () => {
+      const status = await this.deps.status.load();
+      if (status.state !== 'syncing') return;
+      await this.deps.status.save({
+        ...status,
+        state: 'error',
+        message: 'The last sync was interrupted. Nothing was lost; it runs again at the next sync.',
+      });
+    });
   }
 
   /** An automatic run (timer or data change): skipped unless sync is on and signed in. */

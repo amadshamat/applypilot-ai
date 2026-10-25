@@ -1,21 +1,36 @@
 # Progress
 
-_Last updated: 2026-10-22 (v0.6.0)_
+_Last updated: 2026-10-25 (v0.6.1)_
 
 ## Current phase
 
-**Phase 6 (AWS cloud backend, optional sign-in and sync): built and tested locally, waiting for
-Muhaid's test in Chrome.** Phase 5 was approved by Muhaid on 2026-10-22 after all tracker
-features passed in Chrome. Phase 6 was authorized for development only: **nothing has been
-deployed to AWS, no AWS account was created or used, and no paid service was called.** Phase 7
-will not start until Muhaid tests and approves Phase 6.
+**Phase 6 (AWS cloud backend, optional sign-in and sync): implemented and automated-tested,
+not manually verified or approved.** On 2026-10-25 Muhaid installed v0.6.0 and chose to skip
+the manual cloud sync checklist for now. Cloud sync has passed only the automated tests listed
+below; it has **not** passed Muhaid's manual testing. Nothing has been deployed to AWS, no AWS
+account was created or used, and no paid service was called.
 
-Phase 4 was approved on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on 2026-10-14. Phase 1 and
-the v0.1.1 Indeed fix were confirmed earlier.
+Work continues on the extension's local features, which need neither AWS nor the local cloud
+server. Cloud sync stays off unless the user sets it up, so it does not affect them. Phase 7
+has not started.
 
-## Completed and verified
+Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
+2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
-### Phase 6 (v0.6.0): ApplyPilot Cloud on AWS (built, not deployed)
+## Completed
+
+### v0.6.1: review fixes (automated-tested)
+
+- A sync interrupted by Chrome (worker suspended or browser closed mid-run) could leave the
+  status on "Syncing…" and the **Sync now** button disabled for good. The worker now clears a
+  leftover "syncing" status when it starts, and the button no longer depends on it. Covered by
+  a new runner test.
+- With sync off, every profile or tracker edit still woke the service worker 30 seconds later
+  for a sync that then did nothing. Edits now schedule a sync only when sync is on.
+- The message after an edit during sync said "will try again shortly" although the next run is
+  the 15-minute timer; it now says so.
+
+### Phase 6 (v0.6.0): ApplyPilot Cloud on AWS (implemented and automated-tested; not manually verified, not approved, not deployed)
 
 - **Infrastructure as code** (`infra/`, AWS CDK in TypeScript): DynamoDB (on-demand, encrypted,
   point-in-time recovery), Cognito user pool (Lite plan) with hosted sign-in, API Gateway REST
@@ -249,7 +264,12 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-22, v0.6.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-25, v0.6.1, local container, Node 22.22, Chromium 141)
+
+v0.6.1: `pnpm verify` passes with **580 tests** (extension 149); `pnpm test:e2e` **20 passed**,
+screenshot test skipped. These are automated results only. Results recorded for v0.6.0 follow.
+
+### v0.6.0 (2026-10-22)
 
 - `pnpm verify` steps (typecheck including `infra` and `packages/sync`, lint, format check,
   tests, build, bundle check): pass
@@ -265,8 +285,9 @@ the reported values on the new fixture.
 
 ## Not yet verified
 
-- **Phase 6 in Chrome.** Muhaid's checklist (`docs/INSTALL-CHROME.md`, section 10) against the
-  local test server is the first manual run.
+- **Phase 6 in Chrome.** Muhaid skipped the manual checklist (`docs/INSTALL-CHROME.md`,
+  section 10) on 2026-10-25. Sign-in, sync, conflicts and cloud data controls have only been
+  checked by automated tests, including the two-browser Playwright test.
 - **Phase 6 on real AWS.** Not deployed (needs approval). Real DynamoDB, Cognito's hosted page,
   API Gateway's authorizer and IAM have only been checked through synthesized templates,
   cdk-nag and local stand-ins.
@@ -287,7 +308,7 @@ the reported values on the new fixture.
 
 ## Under development
 
-Nothing in progress. Waiting for Muhaid's Phase 6 test and approval.
+Local feature improvements (see Next recommended steps). Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
@@ -364,8 +385,11 @@ Nothing in progress. Waiting for Muhaid's Phase 6 test and approval.
 
 ## Next recommended steps
 
-1. **Muhaid:** install v0.6.0 (update with Reload so your data stays), start `pnpm cloud:local`,
-   run the Phase 6 checklist, then approve Phase 6 or report issues.
+1. **Local features next** (no AWS, no cloud server): see
+   `/mnt/project-files/notes/review-and-next-steps-0.6.1.md`. Recommended first: Import data
+   from an export, clear cached page analyses on Delete all, and refresh the reminder badge at
+   midnight. Phase 6 manual testing is deferred; run section 10 of INSTALL-CHROME.md whenever
+   you want to verify cloud sync.
 2. **Decision for Muhaid:** whether to deploy ApplyPilot Cloud to your own AWS account
    (estimated USD 0.00 to 0.15 per month at personal use; see docs/AWS.md). Not done without
    your explicit approval.

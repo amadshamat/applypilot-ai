@@ -341,7 +341,10 @@ panel, and send both. Everything here stays in your browser; nothing is sent any
 - [ ] K3. AI Tailor still opens (mock mode if the local API runs).
 - [ ] K4. Autofill still scans and fills the practice form.
 
-## 10. Phase 6 checklist: Cloud sync (v0.6.0)
+## 10. Phase 6 checklist: Cloud sync (v0.6.0, optional)
+
+_Skipped for now by Muhaid (2026-10-25). Cloud sync is off unless you set it up, so the rest of
+the extension does not need this._
 
 This uses the **local test server** on your computer. Nothing is sent to AWS and nothing is
 billed. You need the source folder (from the source zip), Node.js 22.13+ and pnpm, as for the

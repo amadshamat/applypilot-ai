@@ -11,9 +11,9 @@ fills application forms only with values you approve field by field (never submi
 your applications, and can optionally sync your profile and tracker between browsers through
 an AWS serverless backend.
 
-> **Project status: Phase 6 (AWS cloud backend and optional sync, v0.6.0) built and tested
-> locally, waiting for manual approval.** The AWS infrastructure is defined in CDK and tested
-> with local stand-ins, but **has not been deployed**. Phase 5 (tracker) was approved in Chrome;
+> **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
+> automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
+> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.6.1. Phase 5 (tracker) was approved in Chrome;
 > every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 

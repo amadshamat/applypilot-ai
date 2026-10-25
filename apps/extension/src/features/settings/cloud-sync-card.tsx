@@ -436,11 +436,7 @@ function SignedIn({
       ) : null}
       <div className="flex flex-wrap gap-2">
         {settings.syncEnabled ? (
-          <Button
-            size="sm"
-            onClick={() => void run({ type: 'sync/run' })}
-            disabled={busy || status?.state === 'syncing'}
-          >
+          <Button size="sm" onClick={() => void run({ type: 'sync/run' })} disabled={busy}>
             <RefreshCw aria-hidden className="h-3.5 w-3.5" /> Sync now
           </Button>
         ) : null}

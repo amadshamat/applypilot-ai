@@ -228,4 +228,20 @@ describe('SyncRunner', () => {
     expect(response.ok && response.status.state).toBe('off');
     expect(await a.local.get(STORAGE_KEYS.syncState)).toBeUndefined();
   });
+
+  it('clears a "syncing" status left by an interrupted run when the worker starts', async () => {
+    const api = new FakeApi();
+    const a = await browser(api);
+    const status = new SyncStatusRepository(a.local);
+    await status.save({ ...(await status.load()), state: 'syncing' });
+    await a.runner.recoverInterrupted();
+    expect(await status.load()).toMatchObject({
+      state: 'error',
+      message: expect.stringContaining('interrupted') as unknown,
+    });
+    // A normal status is left alone.
+    await a.runner.handle({ type: 'sync/run' });
+    await a.runner.recoverInterrupted();
+    expect((await status.load()).state).toBe('synced');
+  });
 });
