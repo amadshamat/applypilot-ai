@@ -35,6 +35,7 @@ export function fakeServices(
   options: FakeOptions = {},
 ) {
   const localStore = memoryStore();
+  const sessionStore = memoryStore();
   const permission = { ...(options.permission ?? { granted: true, grantOnRequest: true }) };
   const send = vi.fn((request: BackgroundRequest) => Promise.resolve(handler(request)));
   // The active tab's address; null models a tab the extension may not see.
@@ -46,6 +47,7 @@ export function fakeServices(
   };
   const { cloud, account } = fakeCloudServices(localStore, options.cloud);
   const services: AppServices = {
+    appVersion: '0.0.0-test',
     settings: new SettingsRepository(localStore),
     profile: new ProfileRepository(localStore, () => new Date('2026-10-14T12:00:00Z')),
     resumes: memoryResumeStore(),
@@ -55,6 +57,7 @@ export function fakeServices(
         : Promise.resolve(options.resumeText ?? ''),
     ),
     localStore,
+    sessionStore,
     aiConnection: new AiConnectionRepository(localStore),
     aiDrafts: new AiDraftsRepository(localStore),
     applications: new ApplicationsRepository(localStore),

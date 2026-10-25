@@ -13,7 +13,8 @@ an AWS serverless backend.
 
 > **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
 > automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
-> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.6.1. Phase 5 (tracker) was approved in Chrome;
+> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.7.0
+> (Import data and local fixes, automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
 > every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
@@ -41,7 +42,7 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
 | MV3 extension with React side panel, six-section navigation, light/dark themes                                           | Done                       |
 | Settings page (theme, AI-processing consent, match weights) with validation                                              | Done                       |
-| Local data export and deletion                                                                                           | Done                       |
+| Local data export, import (preview, merge or replace, undo) and deletion                                                 | Done                       |
 | Typed, runtime-validated messaging between side panel, service worker and page                                           | Done                       |
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence          | Done                       |
 | Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)                   | Done                       |
@@ -300,8 +301,12 @@ not a hiring prediction.
 - Autofill never clicks Next or Submit: on multi-step forms, move on yourself and scan again.
   Yes/No button questions, CAPTCHAs, closed shadow roots and frames on another origin are
   reported, not filled. Workday and similar sites need you to sign in yourself.
-- Reminders are a toolbar badge, not system notifications. Only you can mark an application as
-  applied.
+- Reminders are a toolbar badge, not system notifications, refreshed just after local midnight
+  (or when the computer wakes). Only you can mark an application as applied.
+- Import data restores exports from any version, but exports made before 0.7.0 have no resume
+  files, so those resumes cannot be restored. Merge never edits a record that is already here;
+  use Replace to take the file's copy. The AI connection and cloud sync settings are never
+  imported.
 - Cloud sync is not deployed: it works against the local test server (`pnpm cloud:local`) until
   ApplyPilot Cloud is deployed to AWS. Resume files are never synced. See
   [docs/AWS.md](docs/AWS.md#known-limitations).

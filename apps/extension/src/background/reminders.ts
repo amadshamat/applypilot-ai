@@ -29,3 +29,12 @@ export async function refreshFollowUpBadge(
   );
   return due;
 }
+
+/**
+ * The next local midnight after `now`, plus a few seconds so the new day has
+ * certainly begun. Built from the local date parts, so a daylight-saving
+ * change on that night still lands on 00:00 local time.
+ */
+export function nextLocalMidnight(now: Date = new Date(), graceSeconds = 5): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, graceSeconds);
+}

@@ -456,3 +456,43 @@ window) and `unlimitedStorage` (sync keeps a last-synced copy and two backups, w
 Chrome's 10 MB default for 1,000 records); neither shows an install warning. Host access to
 `*.amazonaws.com` and `*.amazoncognito.com` is optional and requested only for the exact hosts
 of the deployment the user connects to.
+
+## 053: Import is data-only, previewed, and Merge never changes existing data
+
+Export data writes a versioned file (`format: applypilot-backup`, version 2) that now includes
+the original resume files as base64; files from 0.1 to 0.6.1 (no format marker) are read as
+version 1. An imported file is parsed with JSON.parse and every part is checked against the
+schemas the extension already uses for its own storage, record by record, so one bad record
+does not block the rest and unknown fields never reach storage. Resume files must match their
+recorded size and start like a PDF or a Word (ZIP) file. Device-specific items (the API access
+token, cloud sync settings and bookkeeping) are never imported: they belong to the browser that
+made the file, and importing sync state could make the next sync overwrite cloud data.
+
+Nothing is written until the user has seen a preview and confirmed. **Merge** is the default
+because it cannot lose data: it only adds what is missing, and treats a record with the same id
+or the same job as already present. **Replace** is for restoring a known-good backup over a
+broken or unwanted state; it is limited to the parts the file contains, so an old export without
+resume files cannot wipe the resumes here.
+
+## 054: Undo copy in storage plus a downloaded backup before Replace
+
+Before any import, everything it could touch (profile, tracker, settings, AI drafts and resume
+files) is copied to `applypilot.importUndo`. If a write fails part-way the copy is put back at
+once; otherwise **Undo last import** restores it. Replace also downloads a regular export of the
+current data first, so a copy exists outside the browser even if the extension is removed. The
+undo copy is excluded from exports and is removed by Delete all local data.
+
+## 055: A data-reset signal keeps open pages honest; the badge follows local midnight
+
+Delete all, import and undo write `applypilot.dataReset` (`{at, reason, origin}`). Every
+ApplyPilot page listens: it clears its in-memory state (the page analysis, the open tracker
+entry) and, unless it made the change itself, remounts its views so they re-read storage. Delete
+all also removes every `job-analysis:<tab>` entry from chrome.storage.session, from the page and
+again in the service worker in case the page closed first. This fixes deleted analyses
+reappearing on a tab switch or when the panel was reopened.
+
+The follow-up badge used an hourly alarm, so a reminder could appear up to an hour after
+midnight. It now uses a one-off alarm at 00:00:05 local time, computed from the local date so
+daylight-saving nights are handled, and set again whenever it fires or the worker starts. A
+6-hour alarm (instead of the hourly one) re-sets it in case the clock or time zone changed.
+Chrome fires missed alarms when the computer wakes, so a sleeping laptop shows the badge on wake.

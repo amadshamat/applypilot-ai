@@ -1,5 +1,6 @@
 import { APP_NAME } from '@applypilot/shared';
 import { ErrorBoundary } from '../components/error-boundary';
+import { DataResetBoundary } from '../data/data-reset';
 import { useSettings } from '../hooks/use-settings';
 import { useTheme } from '../hooks/use-theme';
 import { AiView } from '../features/ai/ai-view';
@@ -51,7 +52,9 @@ export function SidePanelApp() {
         className="flex-1 p-3 focus-visible:outline-none"
       >
         <ErrorBoundary resetKey={view}>
-          <CurrentView view={view} />
+          <DataResetBoundary>
+            <CurrentView view={view} />
+          </DataResetBoundary>
         </ErrorBoundary>
       </main>
     </div>

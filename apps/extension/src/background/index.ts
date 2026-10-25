@@ -8,14 +8,14 @@ import { ExtensionLocalData } from '../cloud/local-data';
 import { isSyncRequest, syncRequestSchema } from '../cloud/messages';
 import { SyncRunner } from '../cloud/runner';
 import { SyncStateRepository, SyncStatusRepository } from '../cloud/sync-store';
-import { refreshFollowUpBadge } from './reminders';
+import { analysisCacheKey as cacheKey, clearCachedAnalyses } from '../data/analysis-cache';
+import { nextLocalMidnight, refreshFollowUpBadge } from './reminders';
 import { handleBackgroundMessage, type BackgroundDeps } from './router';
 
 const local = chromeStore('local');
 const settings = new SettingsRepository(local);
 const applications = new ApplicationsRepository(local);
 const session = chromeStore('session');
-const cacheKey = (tabId: number) => `job-analysis:${tabId}`;
 
 const deps: BackgroundDeps = {
   version: chrome.runtime.getManifest().version,
@@ -64,8 +64,11 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 
 // Follow-up reminders: the toolbar badge counts follow-ups due today or earlier.
-// It is refreshed when the tracker changes, when the browser starts, and hourly
-// so a reminder appears on its day without the panel being opened.
+// It is refreshed when the tracker changes, when the browser starts, and by a
+// one-off alarm set for just after the next local midnight (re-set each time it
+// fires), so a reminder appears as its day begins. A slow 6-hour alarm re-sets
+// the midnight alarm in case the computer's time zone or clock changed.
+const MIDNIGHT_ALARM = 'applypilot-follow-ups-midnight';
 const FOLLOW_UP_ALARM = 'applypilot-follow-ups';
 const refreshBadge = () =>
   void refreshFollowUpBadge(applications, {
@@ -73,9 +76,19 @@ const refreshBadge = () =>
     setColor: (color) => chrome.action.setBadgeBackgroundColor({ color }),
     setTitle: (title) => chrome.action.setTitle({ title }),
   }).catch((error: unknown) => console.error('[ApplyPilot] follow-up badge failed', error));
-void chrome.alarms.create(FOLLOW_UP_ALARM, { periodInMinutes: 60, delayInMinutes: 1 });
+const armMidnight = () =>
+  void chrome.alarms.create(MIDNIGHT_ALARM, { when: nextLocalMidnight().getTime() });
+// Earlier versions ran this alarm hourly; it is replaced once with the 6-hour one.
+void chrome.alarms.get(FOLLOW_UP_ALARM).then((alarm) => {
+  if (alarm?.periodInMinutes !== 360)
+    void chrome.alarms.create(FOLLOW_UP_ALARM, { periodInMinutes: 360, delayInMinutes: 360 });
+});
+armMidnight();
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === FOLLOW_UP_ALARM) refreshBadge();
+  if (alarm.name === MIDNIGHT_ALARM || alarm.name === FOLLOW_UP_ALARM) {
+    refreshBadge();
+    armMidnight();
+  }
 });
 chrome.runtime.onStartup.addListener(refreshBadge);
 local.subscribe(STORAGE_KEYS.applications, refreshBadge);
@@ -88,6 +101,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     void session.remove(cacheKey(tabId));
 });
 chrome.tabs.onRemoved.addListener((tabId) => void session.remove(cacheKey(tabId)));
+// Delete all local data also drops every cached analysis (the page clears them
+// too; this covers a page that closed before it finished).
+local.subscribe(STORAGE_KEYS.dataReset, (value) => {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'reason' in value &&
+    value.reason === 'deleted'
+  )
+    void clearCachedAnalyses(session);
+});
 
 // Optional cloud sync (Phase 6). Off until the user connects, signs in and
 // turns it on. It runs every 15 minutes and shortly after local edits.

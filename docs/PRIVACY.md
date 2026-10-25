@@ -101,9 +101,12 @@ whoever operates it (for now, only a deployment you run in your own AWS account)
 
 ## Your controls
 
-Settings → **Your data** lets you export everything ApplyPilot stores as JSON (including your profile and the text of
-uploaded resumes) or delete it all. Individual resumes can be downloaded or deleted from the
-Profile tab.
+Settings → **Your data** lets you export everything ApplyPilot stores as JSON (including your
+profile and, since 0.7.0, your original resume files, so keep the file private), import such a
+file back, or delete it all. An import is read in this browser only, checked before anything is
+saved, and never contains or restores the access token or cloud settings. Delete all also
+removes the page analyses Chrome keeps for the current session. Individual resumes can be
+downloaded or deleted from the Profile tab.
 The AI tools have a **Discard draft** button, and Settings → **AI connection** has **Forget
 token**. Exports never include the access token. Uninstalling the extension also removes its
 local data.

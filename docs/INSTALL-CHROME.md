@@ -414,6 +414,82 @@ local AI API.
 - [ ] G2. Stop `pnpm cloud:local` while signed in and press **Sync now**: the card says it could
       not reach ApplyPilot Cloud, and nothing in the browser changes.
 
+## 11. v0.7.0 checklist: Import data, Delete all and reminders
+
+No AWS and no local cloud server are needed. Before you start, update as described in
+**Updating to a new build** below (do not Remove the extension), then on the extension card
+check the version says **0.7.0**.
+
+### A. Back up first
+
+- [ ] A1. Settings → **Export data**. A file `applypilot-export-YYYY-MM-DD.json` downloads. Keep
+      it somewhere private: it now includes your resume files.
+- [ ] A2. Open the file in a text editor: it starts with `"format": "applypilot-backup"` and the
+      AI connection shows `"token": "(not exported)"`.
+
+### B. Import into the same (populated) profile
+
+- [ ] B1. Settings → Import data → **Choose a backup file** → pick the file from A1. A preview
+      appears; nothing has changed yet.
+- [ ] B2. With **Merge** selected the preview says **Nothing would change** and the import
+      button is disabled. Press **Cancel**.
+- [ ] B3. If you have an export from 0.6.x, choose it: the preview says its resumes have no
+      original file and will be skipped. Cancel or merge, as you like (Merge changes nothing
+      that is already here).
+
+### C. Import into an empty Chrome profile
+
+- [ ] C1. Create a second Chrome profile (profile icon → **Add**), load the extension there
+      from the same folder (**Load unpacked**), and open the side panel. It is empty.
+- [ ] C2. Settings → Import data → choose the file from A1. The preview lists your profile,
+      tracked applications, saved AI drafts, settings and resume files.
+- [ ] C3. Press **Import and merge**. "Import finished" lists what was restored.
+- [ ] C4. Profile shows your details; Profile → Resumes lists your resumes and **Download**
+      gives back the original file; Applications shows your records with statuses, notes and
+      reminders; AI Tailor shows saved drafts for the same jobs.
+- [ ] C5. Close Chrome completely and start it again on that profile. Everything from C4 is
+      still there.
+- [ ] C6. Settings → AI connection and Cloud sync are not set up: they belong to the browser
+      that made the file and are never imported (the access token is never exported).
+
+### D. Replace and undo (in the second profile)
+
+- [ ] D1. Add one test application by hand in Applications.
+- [ ] D2. Import the file from A1 again and choose **Replace**. The preview shows in red that
+      the test application will be removed. Press **Back up and replace**.
+- [ ] D3. A file `applypilot-before-import-YYYY-MM-DD.json` downloads, and the test application
+      is gone.
+- [ ] D4. Press **Undo last import** → **Yes, undo the import**. The test application is back.
+
+### E. Damaged files
+
+- [ ] E1. Make a copy of the export, delete its last few lines, and import it: "Could not
+      import this file … not valid JSON". Nothing changed.
+- [ ] E2. Import any other `.json` file (not from ApplyPilot): it is refused as not an
+      ApplyPilot backup.
+
+### F. Delete all local data (second profile only; it deletes everything there)
+
+- [ ] F1. Analyze a job page, then close and reopen the side panel: it shows "Showing the
+      earlier analysis of this tab".
+- [ ] F2. Open the options page (Settings → **Open in a tab**) and press **Delete all local
+      data** → **Yes, delete everything**. The message mentions the cached page analyses.
+- [ ] F3. In the side panel, switch to another tab and back to Analyze: the old analysis is
+      gone. Close and reopen the panel on the job tab: still nothing is shown until you press
+      Analyze again. Profile and Applications are empty.
+
+### G. Reminders at midnight
+
+- [ ] G1. Set a follow-up on any application for **tomorrow**. The toolbar badge does not count
+      it today.
+- [ ] G2. Leave Chrome open past midnight (or check first thing the next morning). The badge
+      shows the reminder within a minute of midnight, or as soon as the computer wakes.
+
+### H. Nothing else broke
+
+- [ ] H1. Analyze, Profile editing, resume upload, AI Tailor (mock), Autofill on the practice
+      form and the tracker still work in your main profile.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To
@@ -433,7 +509,9 @@ remove the extension.
 Your data lives in the extension's own storage, which Chrome keys to the extension's id. Loading
 from the same folder keeps the same id, so Reload keeps everything. **Remove** (or loading the
 new build from a different folder) starts with empty storage. If you must remove it, use
-Settings → **Export data** first.
+Settings → **Export data** first; since v0.7.0 you can load that file back with Settings →
+**Import data** (Merge), including your resume files when the export was made by 0.7.0 or
+later.
 
 ## Troubleshooting
 

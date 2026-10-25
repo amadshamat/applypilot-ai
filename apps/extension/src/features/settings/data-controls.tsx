@@ -1,44 +1,31 @@
 import { useState } from 'react';
 import { Download, Trash2 } from 'lucide-react';
-import { DEFAULT_SETTINGS, STORAGE_KEYS } from '@applypilot/shared';
+import { DEFAULT_SETTINGS } from '@applypilot/shared';
 import { Button } from '../../components/ui/button';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
+import { clearCachedAnalyses } from '../../data/analysis-cache';
+import { buildBackup } from '../../data/backup-format';
+import { PAGE_ORIGIN, resetPageState } from '../../data/page-state';
+import { announceDataReset } from '../../data/import-plan';
 import { useServices } from '../../services/app-services';
+import { downloadText } from '../ai/download';
+import { ImportData } from './import-data';
 
-/** Export and deletion of everything ApplyPilot stores in this browser. */
+/** Export, import and deletion of everything ApplyPilot stores in this browser. */
 export function DataControls() {
-  const { localStore, settings, resumes, cloud } = useServices();
+  const { localStore, sessionStore, settings, resumes, cloud, appVersion } = useServices();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const exportData = async () => {
-    const data = await localStore.getAll();
-    // The API access token is a credential; it is not part of an export.
-    const connection = data[STORAGE_KEYS.aiConnection];
-    if (typeof connection === 'object' && connection !== null && 'token' in connection) {
-      data[STORAGE_KEYS.aiConnection] = { ...connection, token: '(not exported)' };
-    }
-    // Resume metadata, extracted text and parsed drafts. Original files stay downloadable from the Profile tab.
-    const resumeVersions = await resumes.list();
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          { exportedAt: new Date().toISOString(), data, resumes: resumeVersions },
-          null,
-          2,
-        ),
-      ],
-      {
-        type: 'application/json',
-      },
+    // Everything stored here, including the original resume files. The API access token is left out.
+    const text = await buildBackup(localStore, resumes, { appVersion });
+    downloadText(
+      `applypilot-export-${new Date().toISOString().slice(0, 10)}.json`,
+      text,
+      'application/json',
     );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `applypilot-export-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setMessage('Export downloaded.');
+    setMessage('Export downloaded. It includes your resume files; keep it somewhere private.');
   };
 
   const deleteData = async () => {
@@ -46,10 +33,15 @@ export function DataControls() {
     await resumes.clear();
     // Signs this browser out of ApplyPilot Cloud too. Cloud data is deleted from Cloud sync.
     await cloud.auth.forget();
+    // Page analyses cached for open tabs, and what this page holds in memory.
+    await clearCachedAnalyses(sessionStore);
+    resetPageState();
     await settings.save(DEFAULT_SETTINGS);
+    // Tells the other open ApplyPilot pages to drop what they show.
+    await announceDataReset(localStore, 'deleted', PAGE_ORIGIN);
     setConfirming(false);
     setMessage(
-      'All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts, the API token and cloud sync settings, was deleted. This browser is signed out of ApplyPilot Cloud; cloud data is managed under Cloud sync. Settings are back to defaults.',
+      'All local ApplyPilot data, including your profile, resumes, tracked applications, AI drafts, the API token and cloud sync settings, was deleted, along with the cached page analyses. This browser is signed out of ApplyPilot Cloud; cloud data is managed under Cloud sync. Settings are back to defaults.',
     );
   };
 
@@ -58,7 +50,8 @@ export function DataControls() {
       <div>
         <CardTitle>Your data</CardTitle>
         <CardDescription>
-          Everything ApplyPilot stores lives in this browser. Export it or delete it at any time.
+          Everything ApplyPilot stores lives in this browser. Export it, import it back, or delete
+          it at any time.
         </CardDescription>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -98,6 +91,7 @@ export function DataControls() {
           {message}
         </p>
       ) : null}
+      <ImportData onImported={() => setMessage(null)} />
     </Card>
   );
 }

@@ -57,11 +57,30 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.6.1' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.7.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
   expect(rejected).toMatchObject({ ok: false, error: { code: 'INVALID_MESSAGE' } });
+});
+
+test('schedules the follow-up badge refresh for just after local midnight', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await openPanel(context, extensionId);
+  const alarms = await panel.evaluate(async () => {
+    const midnight = await chrome.alarms.get('applypilot-follow-ups-midnight');
+    const safety = await chrome.alarms.get('applypilot-follow-ups');
+    const now = new Date();
+    const expected = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    return {
+      offset: midnight ? midnight.scheduledTime - expected.getTime() : null,
+      periodic: midnight?.periodInMinutes ?? null,
+      safety: safety?.periodInMinutes ?? null,
+    };
+  });
+  expect(alarms).toEqual({ offset: 0, periodic: null, safety: 360 });
 });
 
 test('side panel renders and navigates', async ({ context, extensionId }) => {

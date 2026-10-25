@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-25 (v0.6.1)_
+_Last updated: 2026-10-25 (v0.7.0)_
 
 ## Current phase
 
@@ -14,10 +14,45 @@ Work continues on the extension's local features, which need neither AWS nor the
 server. Cloud sync stays off unless the user sets it up, so it does not affect them. Phase 7
 has not started.
 
+**v0.7.0 (Import data, Delete all and reminder fixes): implemented and automated-tested,
+waiting for Muhaid's manual test in Chrome** (`docs/INSTALL-CHROME.md`, section 11). No further
+improvement starts until Muhaid has tested it.
+
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
+
+### v0.7.0: Import data and two local fixes (automated-tested; not yet tested by Muhaid)
+
+- **Import data** (Settings → Your data): loads a file made by Export data, from 0.7.0 or from
+  any earlier version.
+  - The file is read as data only (JSON.parse, never evaluated). Every record is checked against
+    the same schemas the extension uses for its own storage, unknown fields are dropped, and
+    resume files must match their recorded size and look like a PDF or Word file. Damaged,
+    unrelated, cut-short and newer-version files are refused with an explanation.
+  - A preview lists what the file holds, what cannot be imported and why, and what each choice
+    would do, before anything is written.
+  - **Merge** (default) never changes or removes anything here: it adds missing tracked
+    applications (skipping ones whose job is already tracked), AI drafts, resumes, and the
+    profile only if there is none. **Replace** makes each part the file contains match the
+    file, shows removals in red, downloads a backup of the current data first, and leaves parts
+    the file lacks alone.
+  - Both keep an in-browser copy of everything they could touch: **Undo last import** puts it
+    back, and a failed write puts it back automatically.
+  - The result lists what was restored, removed, skipped, and could not be imported.
+  - The API access token, cloud sync settings and sync bookkeeping are never imported.
+- **Export data** now writes a versioned backup (`format: applypilot-backup`, version 2) that
+  includes the original resume files, so a backup restores everything. Exports from 0.6.1 and
+  earlier have no resume files; importing one keeps the resume text in the profile and says the
+  files were skipped.
+- **Delete all local data** now also removes every cached page analysis from Chrome's session
+  storage and what the open pages hold in memory. Other open ApplyPilot pages (the side panel
+  and the options page) are told and reload their views, so deleted data does not reappear on a
+  tab switch or when the panel is reopened.
+- **Follow-up reminders**: the toolbar badge is refreshed by a one-off alarm just after local
+  midnight, set again each time it fires, instead of hourly. A 6-hour alarm re-sets it if the
+  clock or time zone changes. The service worker now wakes about 5 times a day instead of 24.
 
 ### v0.6.1: review fixes (automated-tested)
 
@@ -264,7 +299,24 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-25, v0.6.1, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-25, v0.7.0, local container, Node 22.22, Chromium 141)
+
+v0.7.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
+**612 tests** (extension 181, up from 149). `pnpm test:e2e`: **23 passed**, screenshot test
+skipped. New Chromium tests:
+
+- Export from a populated Chrome profile, import into the same profile (nothing would change)
+  and into a new, empty profile; then Chrome is closed and started again on that profile and
+  the profile, tracked job and the original resume file (byte-for-byte) are still there.
+- Delete all local data from the options page while two side panels are open: the cached
+  analysis is gone from session storage, both panels drop it after a tab switch, and a newly
+  opened panel shows nothing cached.
+- The midnight alarm is set for 00:00:05 local time and the safety alarm runs every 6 hours.
+
+The midnight tests also pass in the UTC, America/Toronto, Europe/Berlin and Asia/Kolkata time
+zones. These are automated results only.
+
+### v0.6.1
 
 v0.6.1: `pnpm verify` passes with **580 tests** (extension 149); `pnpm test:e2e` **20 passed**,
 screenshot test skipped. These are automated results only. Results recorded for v0.6.0 follow.
@@ -285,6 +337,9 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
+- **v0.7.0 in Chrome by Muhaid** (section 11 of `docs/INSTALL-CHROME.md`): import on Muhaid's
+  own profile, an import of a real 0.6.x export, and the badge changing at midnight. The badge
+  at a real midnight has not been watched; only the alarm's scheduled time is checked.
 - **Phase 6 in Chrome.** Muhaid skipped the manual checklist (`docs/INSTALL-CHROME.md`,
   section 10) on 2026-10-25. Sign-in, sync, conflicts and cloud data controls have only been
   checked by automated tests, including the two-browser Playwright test.
@@ -308,9 +363,20 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Local feature improvements (see Next recommended steps). Phase 6 manual testing is deferred by Muhaid.
+Nothing: v0.7.0 waits for Muhaid's test. Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
+
+- **Import data (new in v0.7.0):**
+  - Merge never edits an existing record, so a newer copy of a tracked application in the file
+    is not used when this browser has the same record; Replace uses the file's copy.
+  - Merge treats two records for the same job (same job key, address, or company and title) as
+    one and keeps the one here.
+  - Exports from 0.6.1 and earlier have no resume files, so those resumes cannot be restored.
+  - The undo copy is kept until the next import or Delete all, and is the size of your data
+    (including resume files).
+  - Replace downloads the pre-import backup through Chrome's normal download, which may ask
+    where to save it.
 
 - **Cloud sync (new in v0.6.0):**
   - Not deployed; only the local test server works until an approved AWS deployment.
@@ -327,8 +393,8 @@ Local feature improvements (see Next recommended steps). Phase 6 manual testing 
   - Stored in this browser profile; optional cloud sync arrived in v0.6.0. Export CSV or
     Export data for a copy.
   - Reminders are a toolbar badge and a list in the tab, not system notifications (that would
-    need the `notifications` permission). The badge refreshes hourly, so it can lag up to an
-    hour after midnight.
+    need the `notifications` permission). Since v0.7.0 the badge refreshes just after local
+    midnight; if the computer is asleep then, it refreshes when Chrome wakes it.
   - "Applied" is set only by the user; ApplyPilot cannot see whether a site accepted a
     submission. A record created after autofill has the form's title and no company unless the
     job was analyzed on the same site first.
@@ -385,11 +451,11 @@ Local feature improvements (see Next recommended steps). Phase 6 manual testing 
 
 ## Next recommended steps
 
-1. **Local features next** (no AWS, no cloud server): see
-   `/mnt/project-files/notes/review-and-next-steps-0.6.1.md`. Recommended first: Import data
-   from an export, clear cached page analyses on Delete all, and refresh the reminder badge at
-   midnight. Phase 6 manual testing is deferred; run section 10 of INSTALL-CHROME.md whenever
-   you want to verify cloud sync.
+1. **Muhaid tests v0.7.0** with section 11 of `docs/INSTALL-CHROME.md`. Nothing new starts
+   before that. Remaining local ideas from the review
+   (`/mnt/project-files/notes/review-and-next-steps-0.6.1.md`): keep AI draft edits, autofill
+   follow-ups after a fill, and better two-column PDF parsing. Phase 6 manual testing is
+   deferred; run section 10 of INSTALL-CHROME.md whenever you want to verify cloud sync.
 2. **Decision for Muhaid:** whether to deploy ApplyPilot Cloud to your own AWS account
    (estimated USD 0.00 to 0.15 per month at personal use; see docs/AWS.md). Not done without
    your explicit approval.

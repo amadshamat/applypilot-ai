@@ -30,4 +30,8 @@ export const STORAGE_KEYS = {
   syncBackups: 'applypilot.syncBackups',
   /** Sign-in tokens. In chrome.storage.session only: memory, never written to disk. */
   cloudSession: 'applypilot.cloudSession',
+  /** What this browser held before the last import, so it can be undone (v0.7). */
+  importUndo: 'applypilot.importUndo',
+  /** Written when local data is deleted or replaced, so every open page drops what it shows. */
+  dataReset: 'applypilot.dataReset',
 } as const;

@@ -34,7 +34,8 @@ const envelopeSchema = z.object({
   response: z.unknown(),
 });
 
-function parseDraft(raw: unknown): SavedDraft | null {
+/** A stored or imported draft, checked against its task's schemas; null if it does not fit. */
+export function parseSavedDraft(raw: unknown): SavedDraft | null {
   const envelope = envelopeSchema.safeParse(raw);
   if (!envelope.success) return null;
   const { task } = envelope.data;
@@ -61,7 +62,7 @@ export class AiDraftsRepository {
   async list(): Promise<SavedDraft[]> {
     const raw = await this.store.get(STORAGE_KEYS.aiDrafts);
     if (!Array.isArray(raw)) return [];
-    return raw.map(parseDraft).filter((d): d is SavedDraft => d !== null);
+    return raw.map(parseSavedDraft).filter((d): d is SavedDraft => d !== null);
   }
 
   async find<T extends AiTask>(task: T, jobKey: string): Promise<SavedDraft<T> | null> {

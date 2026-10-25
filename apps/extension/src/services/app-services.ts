@@ -53,11 +53,15 @@ export interface CloudServices {
  * tests pass fakes, so components never call `chrome.*` directly.
  */
 export interface AppServices {
+  /** This extension's version, written into exports. */
+  appVersion: string;
   settings: SettingsRepository;
   profile: ProfileRepository;
   resumes: ResumeStore;
   readResumeText: ResumeTextReader;
   localStore: KeyValueStore;
+  /** chrome.storage.session: cached page analyses and cloud sign-in tokens. */
+  sessionStore: KeyValueStore;
   aiConnection: AiConnectionRepository;
   aiDrafts: AiDraftsRepository;
   applications: ApplicationsRepository;
@@ -88,14 +92,17 @@ const readResumeText: ResumeTextReader = async (file) => {
 
 export function createChromeServices(): AppServices {
   const localStore = chromeStore('local');
-  const auth = new CloudAuth({ session: chromeStore('session'), identity: chrome.identity });
+  const sessionStore = chromeStore('session');
+  const auth = new CloudAuth({ session: sessionStore, identity: chrome.identity });
   const localData = new ExtensionLocalData(localStore);
   return {
+    appVersion: chrome.runtime.getManifest().version,
     settings: new SettingsRepository(localStore),
     profile: new ProfileRepository(localStore),
     resumes: indexedDbResumeStore(),
     readResumeText,
     localStore,
+    sessionStore,
     aiConnection: new AiConnectionRepository(localStore),
     aiDrafts: new AiDraftsRepository(localStore),
     applications: new ApplicationsRepository(localStore),

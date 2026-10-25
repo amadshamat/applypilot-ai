@@ -1,5 +1,6 @@
 import { APP_NAME, APP_TAGLINE } from '@applypilot/shared';
 import { ErrorBoundary } from '../components/error-boundary';
+import { DataResetBoundary } from '../data/data-reset';
 import { useSettings } from '../hooks/use-settings';
 import { useTheme } from '../hooks/use-theme';
 import { SettingsView } from '../features/settings/settings-view';
@@ -20,7 +21,9 @@ export function OptionsApp() {
       </header>
       <main className="mx-auto max-w-2xl px-6 py-6">
         <ErrorBoundary>
-          <SettingsView showOpenFullPage={false} />
+          <DataResetBoundary>
+            <SettingsView showOpenFullPage={false} />
+          </DataResetBoundary>
         </ErrorBoundary>
       </main>
     </div>
