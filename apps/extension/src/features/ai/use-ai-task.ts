@@ -45,8 +45,9 @@ export function useAiTask<T extends AiTask>(task: T, jobKey: string) {
           request,
           response,
         };
-        await services.aiDrafts.save(draft);
-        setState({ status: 'success', draft, restored: false });
+        // An edited draft this replaces is kept as `previous`, so it can be restored.
+        const stored = await services.aiDrafts.save(draft);
+        setState({ status: 'success', draft: stored, restored: false });
       } catch (e) {
         setState({
           status: 'error',
@@ -62,5 +63,29 @@ export function useAiTask<T extends AiTask>(task: T, jobKey: string) {
     setState({ status: 'idle' });
   }, [services, task, jobKey]);
 
-  return { state, run, discard };
+  /**
+   * Stores the edited text of one part (null: back to the generated text).
+   * Returns false if the draft shown is no longer the stored one.
+   */
+  const saveEdit = useCallback(
+    async (generatedAt: string, part: string, text: string | null) => {
+      const updated = await services.aiDrafts.saveEdit(task, jobKey, generatedAt, part, text);
+      if (!updated) return false;
+      setState((current) =>
+        current.status === 'success' && current.draft.response.generatedAt === generatedAt
+          ? { ...current, draft: updated }
+          : current,
+      );
+      return true;
+    },
+    [services, task, jobKey],
+  );
+
+  /** Brings back the edited draft that the current one replaced. */
+  const restorePrevious = useCallback(async () => {
+    const restored = await services.aiDrafts.restorePrevious(task, jobKey);
+    if (restored) setState({ status: 'success', draft: restored, restored: true });
+  }, [services, task, jobKey]);
+
+  return { state, run, discard, saveEdit, restorePrevious };
 }

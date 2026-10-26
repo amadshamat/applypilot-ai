@@ -1,5 +1,4 @@
 import { useId, useMemo, useState } from 'react';
-import { Sparkles, Trash2 } from 'lucide-react';
 import {
   coverLetterToText,
   reviewCoverLetter,
@@ -10,40 +9,17 @@ import {
   type JobContext,
 } from '@applypilot/ai-core';
 import { Alert } from '../../components/ui/alert';
-import { Button } from '../../components/ui/button';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { Field, Select, Textarea } from '../../components/ui/field';
 import { Skeleton } from '../../components/ui/skeleton';
 import type { AiConnection } from '../../storage/ai-connection-repository';
+import { hasEdits } from '../../storage/ai-drafts-repository';
+import { DiscardButton, GenerateButton, PreviousVersionNotice } from './draft-controls';
 import { DraftMeta, FindingsList } from './draft-meta';
-import { OutputActions } from './output-actions';
+import { COVER_LETTER_PART } from './draft-parts';
+import { EditableDraft } from './editable-draft';
 import { SendPreview } from './send-preview';
 import { useAiTask } from './use-ai-task';
-
-/** The draft as an editable text box. Edits stay on screen; copy or download to keep them. */
-export function EditableDraft({
-  label,
-  initial,
-  fileName,
-  rows = 14,
-}: {
-  label: string;
-  initial: string;
-  fileName?: string;
-  rows?: number;
-}) {
-  const id = useId();
-  const [text, setText] = useState(initial);
-  return (
-    <div className="space-y-2">
-      <label htmlFor={id} className="block text-xs font-medium">
-        {label}
-      </label>
-      <Textarea id={id} value={text} rows={rows} onChange={(e) => setText(e.target.value)} />
-      <OutputActions text={text} {...(fileName ? { fileName } : {})} />
-    </div>
-  );
-}
 
 export function CoverLetterPanel({
   jobKey,
@@ -65,7 +41,8 @@ export function CoverLetterPanel({
     notes: '',
   });
   const request: CoverLetterRequest = { job, candidate, options };
-  const { state, run, discard } = useAiTask('cover-letter', jobKey);
+  const { state, run, discard, saveEdit, restorePrevious } = useAiTask('cover-letter', jobKey);
+  const edited = state.status === 'success' && hasEdits(state.draft);
   const reviewed = useMemo(
     () =>
       state.status === 'success'
@@ -138,10 +115,13 @@ export function CoverLetterPanel({
           )}
         </Field>
         <SendPreview task="cover-letter" request={request} health={health} />
-        <Button onClick={() => void run(connection, request)} disabled={state.status === 'loading'}>
-          <Sparkles aria-hidden className="h-4 w-4" />
+        <GenerateButton
+          edited={edited}
+          onGenerate={() => void run(connection, request)}
+          disabled={state.status === 'loading'}
+        >
           {state.status === 'success' ? 'Generate again' : 'Generate cover letter'}
-        </Button>
+        </GenerateButton>
       </Card>
 
       {state.status === 'loading' ? (
@@ -159,6 +139,7 @@ export function CoverLetterPanel({
       {state.status === 'success' && reviewed ? (
         <Card className="space-y-3">
           <DraftMeta response={state.draft.response} restored={state.restored} />
+          <PreviousVersionNotice draft={state.draft} onRestore={() => void restorePrevious()} />
           <FindingsList findings={reviewed.findings} />
           {flagged && flagged.length > 0 ? (
             <Alert tone="warning" title="Check before you use this letter">
@@ -171,16 +152,22 @@ export function CoverLetterPanel({
           ) : null}
           <EditableDraft
             key={state.draft.response.generatedAt}
+            target={{
+              task: 'cover-letter',
+              jobKey,
+              generatedAt: state.draft.response.generatedAt,
+              part: COVER_LETTER_PART,
+            }}
             label="Cover letter (edit before you use it)"
-            initial={coverLetterToText(reviewed)}
+            generated={coverLetterToText(reviewed)}
+            saved={state.draft.edits?.[COVER_LETTER_PART]}
+            onSave={(text) => saveEdit(state.draft.response.generatedAt, COVER_LETTER_PART, text)}
             fileName="cover-letter.txt"
           />
           {reviewed.sources.length > 0 ? (
             <p className="text-[11px] text-muted">Draws on: {reviewed.sources.join('; ')}</p>
           ) : null}
-          <Button size="sm" variant="ghost" onClick={() => void discard()}>
-            <Trash2 aria-hidden className="h-3.5 w-3.5" /> Discard draft
-          </Button>
+          <DiscardButton edited={edited} onDiscard={() => void discard()} />
         </Card>
       ) : null}
     </div>

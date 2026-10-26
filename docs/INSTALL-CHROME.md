@@ -490,6 +490,63 @@ check the version says **0.7.0**.
 - [ ] H1. Analyze, Profile editing, resume upload, AI Tailor (mock), Autofill on the practice
       form and the tracker still work in your main profile.
 
+## 12. v0.8.0 checklist: Keep AI draft edits
+
+No AWS and no paid calls: run the local API as in section 7, which starts in free **mock
+mode**. Update as described in **Updating to a new build** (do not Remove the extension) and
+check the card says **0.8.0**.
+
+### A. Autosave
+
+- [ ] A1. Analyze a job, open AI Tailor → **Cover letter** → **Generate cover letter**. Above the
+      letter it says "Edits are saved automatically".
+- [ ] A2. Type a sentence at the end. It says **Saving…**, then **Edited · All changes saved**.
+- [ ] A3. **Resume** → **Generate tailored resume**: below the review cards there is a
+      "Tailored resume text" box. Edit it; it saves the same way.
+- [ ] A4. **Questions** → paste two draftable questions → draft them. Edit both answers; each
+      shows its own "All changes saved".
+
+### B. Survives closing and restarting
+
+- [ ] B1. Close the side panel and open it again on the same job tab: your edits to the letter,
+      the resume text and both answers are there.
+- [ ] B2. Type one more word and close the panel immediately. Reopen it: the word is there.
+- [ ] B3. Reload the job tab, analyze it again: the edits are still there.
+- [ ] B4. Quit Chrome completely and start it again. Analyze the job: the edits are still there.
+
+### C. Kept with the right job
+
+- [ ] C1. Analyze a different job and open AI Tailor: it has no drafts (or its own drafts), not
+      the edits from the first job.
+- [ ] C2. Go back to the first job: its edits are shown.
+
+### D. Revert
+
+- [ ] D1. Press **Revert to generated text** on the letter. It asks first; **Keep my edits**
+      changes nothing.
+- [ ] D2. Press it again and confirm **Yes, discard my edits**: the generated letter is back
+      and the button disappears. Close and reopen the panel: still the generated letter.
+
+### E. No silent overwrite
+
+- [ ] E1. Edit the letter again, then press **Generate again**. It warns that you edited the
+      draft. **Keep my edited draft** changes nothing.
+- [ ] E2. Press **Generate again** → **Generate a new draft**. The new letter appears with
+      "Your edited version is kept".
+- [ ] E3. Press **Restore my edited version**: your edited letter is back.
+- [ ] E4. With edits, **Discard draft** asks before deleting.
+
+### F. Your data and other features
+
+- [ ] F1. Copy `tests/fixtures/applications/generic-application.html` from the source into the
+      practice-form folder (section 8) and open `http://127.0.0.1:8000/generic-application.html`
+      with the analyzed job still in the panel. Click the toolbar icon, then Autofill → **Scan
+      this form**: the Cover letter field is offered your edited letter.
+- [ ] F2. Settings → **Export data**, then import it into a second Chrome profile: the drafts
+      come with your edits.
+- [ ] F3. Profile, Analyze, the tracker, reminders and Import data still work, and your
+      existing profile, resumes and tracked applications are unchanged after the update.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To

@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-26 (v0.7.0)_
+_Last updated: 2026-10-26 (v0.8.0)_
 
 ## Current phase
 
@@ -20,10 +20,40 @@ Chrome profile: the import finished, the profile and the original resume file we
 the Profile tab showed the restored information, and the downloaded resume opened correctly.
 The rest of the v0.7.0 checklist has not been reported yet (see Not yet verified).
 
+**v0.8.0 (Keep AI draft edits): implemented and automated-tested, waiting for Muhaid's manual
+test and approval** (`docs/INSTALL-CHROME.md`, section 12). No further improvement starts until
+Muhaid has tested and approved it.
+
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
+
+### v0.8.0: Keep AI draft edits (automated-tested; not yet tested by Muhaid)
+
+- **Edits are saved automatically.** Text typed into the cover letter, the tailored resume
+  (now an editable text box under the review cards) and each screening answer is stored about
+  0.6 seconds after typing stops, per part, next to the generated draft for that job. Each box
+  shows "Saving…", then "All changes saved", and "Edited" while it differs from the generated
+  text.
+- **Survives closing, reloading and restarting.** Edits live in `chrome.storage.local` with the
+  draft (keyed by task and job, as before). Pending text is also written synchronously to the
+  page's own storage on every keystroke and stored when the panel is hidden or closed, so a
+  change typed just before closing is not lost; the copy is cleared once stored and by Delete
+  all local data.
+- **Revert to generated text** appears while a part is edited and asks before discarding the
+  edits.
+- **No silent overwrite.** Generate again on an edited draft asks first; the edited version is
+  then kept and **Restore my edited version** brings it back (and keeps the newer draft too, if
+  that one was edited). Discard asks first when the draft has edits.
+- An edit is stored only on the draft it was made for: if that draft was replaced or deleted
+  meanwhile, the box says so instead of writing onto the new one. Writes to one draft run one
+  after another, so two answers saved together are both kept.
+- Autofill uses the edited cover letter when there is one.
+- Edits travel with Export and Import data (Merge keeps the draft already here).
+- **Hardening:** when Chrome reports the extension as newly installed, settings are reset to
+  defaults only if none are saved. Found by the new restart test: Chrome reports an unpacked
+  build loaded with `--load-extension` as installed on every start, which turned AI consent off.
 
 ### v0.7.0: Import data and two local fixes (automated-tested; import into a new profile tested by Muhaid)
 
@@ -301,7 +331,28 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-25, v0.7.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-26, v0.8.0, local container, Node 22.22, Chromium 141)
+
+v0.8.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
+**626 tests** (extension 195, up from 181). `pnpm test:e2e`: **24 passed**, screenshot test
+skipped. New tests:
+
+- Repository: edits stored per part beside the generated text, only on the matching draft;
+  two parts saved at once; the edited version kept when generating again, restored, and
+  swapped back; malformed or oversized edits dropped while the draft is kept; edits in backups.
+- Side panel: autosave with "Saving…" and "All changes saved"; edits shown again after
+  reopening; an edit typed just before closing is stored; a change left in the page's copy is
+  recovered; revert only after confirming; generating over edits asks and the edited version
+  can be restored; discard asks; screening answers saved separately; the tailored resume is
+  editable and stored for its job only.
+- Chromium (on-disk profile, mock API): edit a cover letter, reload the panel, type and close
+  the panel at once, restart Chrome; the edited letter is back each time. Then generate again,
+  restore the edited version, check that Autofill offers the edited letter on a form with a
+  cover-letter field, revert to the generated text, and reload.
+
+These are automated results only.
+
+### v0.7.0 (2026-10-25)
 
 v0.7.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
 **612 tests** (extension 181, up from 149). `pnpm test:e2e`: **23 passed**, screenshot test
@@ -344,6 +395,8 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
+- **v0.8.0 in Chrome by Muhaid** (section 12 of `docs/INSTALL-CHROME.md`), including closing
+  the real side panel (e2e opens `sidepanel.html` as a tab) straight after typing.
 - **The rest of v0.7.0 in Chrome.** Muhaid confirmed importing into a separate profile (profile
   and resume file restored). Not reported yet: whether tracked applications and AI drafts came
   across, a restart of the new profile, Merge on the populated profile, Replace and Undo,
@@ -373,7 +426,7 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Choosing the next local improvement (see Next recommended steps). Phase 6 manual testing is deferred by Muhaid.
+Nothing: v0.8.0 waits for Muhaid's test and approval. Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
@@ -440,7 +493,11 @@ Choosing the next local improvement (see Next recommended steps). Phase 6 manual
 - AI drafts need the local API running on the same computer; there is no hosted service yet.
 - Grounding catches new numbers and known skills, not every invented claim (for example numbers
   written as words, or a vague claim with neither). Every draft is shown for review.
-- Text edited in the draft boxes is not saved; copy or download it.
+- **Draft edits (v0.8.0):** edits are kept for the latest draft of each kind per job, up to 30
+  drafts in all, as before; the oldest are dropped first. Only one replaced edited version is
+  kept per draft. If the same draft is open in two side panels at once (two windows), the last
+  save wins. The tailored resume's review cards show the generated text; edits are in the text
+  box below them.
 - The screening classifier is keyword-based and errs toward "you answer"; it can mark a harmless
   question as one to answer yourself.
 - Mock mode only reorders and quotes your text; it is for testing the flow, not for real drafts.
@@ -461,9 +518,9 @@ Choosing the next local improvement (see Next recommended steps). Phase 6 manual
 
 ## Next recommended steps
 
-1. **Next local improvement** (no AWS, no cloud server). Recommended: keep AI draft edits
-   (edits typed into a draft are lost when the panel closes). Other candidates from
-   `/mnt/project-files/notes/review-and-next-steps-0.6.1.md`: autofill follow-ups after a fill
+1. **Muhaid tests and approves v0.8.0** with section 12 of `docs/INSTALL-CHROME.md`. Nothing
+   new starts before that. Remaining local ideas from the review
+   (`/mnt/project-files/notes/review-and-next-steps-0.6.1.md`): autofill follow-ups after a fill
    (re-scan offer, Yes/No button questions) and better two-column PDF parsing. Phase 6 manual
    testing is deferred; run section 10 of INSTALL-CHROME.md whenever you want to verify cloud
    sync.

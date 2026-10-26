@@ -57,7 +57,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.7.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.8.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );

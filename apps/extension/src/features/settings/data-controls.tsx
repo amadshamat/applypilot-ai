@@ -9,6 +9,7 @@ import { PAGE_ORIGIN, resetPageState } from '../../data/page-state';
 import { announceDataReset } from '../../data/import-plan';
 import { useServices } from '../../services/app-services';
 import { downloadText } from '../ai/download';
+import { clearAllBuffered } from '../ai/edit-buffer';
 import { ImportData } from './import-data';
 
 /** Export, import and deletion of everything ApplyPilot stores in this browser. */
@@ -35,6 +36,7 @@ export function DataControls() {
     await cloud.auth.forget();
     // Page analyses cached for open tabs, and what this page holds in memory.
     await clearCachedAnalyses(sessionStore);
+    clearAllBuffered();
     resetPageState();
     await settings.save(DEFAULT_SETTINGS);
     // Tells the other open ApplyPilot pages to drop what they show.

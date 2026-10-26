@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FileText, Sparkles, Trash2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import {
   resumeToText,
   reviewTailoredResume,
@@ -9,12 +9,14 @@ import {
 } from '@applypilot/ai-core';
 import { Alert } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import type { AiConnection } from '../../storage/ai-connection-repository';
 import { DraftMeta, FindingsList, Flags } from './draft-meta';
-import { OutputActions } from './output-actions';
+import { hasEdits } from '../../storage/ai-drafts-repository';
+import { DiscardButton, GenerateButton, PreviousVersionNotice } from './draft-controls';
+import { RESUME_PART } from './draft-parts';
+import { EditableDraft } from './editable-draft';
 import { SendPreview } from './send-preview';
 import { useAiTask } from './use-ai-task';
 
@@ -61,7 +63,8 @@ export function TailorPanel({
   connection: AiConnection;
   health: HealthResponse | null;
 }) {
-  const { state, run, discard } = useAiTask('tailor-resume', jobKey);
+  const { state, run, discard, saveEdit, restorePrevious } = useAiTask('tailor-resume', jobKey);
+  const edited = state.status === 'success' && hasEdits(state.draft);
   const reviewed = useMemo(
     () =>
       state.status === 'success'
@@ -80,10 +83,13 @@ export function TailorPanel({
           removed, and new numbers or skills are flagged.
         </CardDescription>
         <SendPreview task="tailor-resume" request={request} health={health} />
-        <Button onClick={() => void run(connection, request)} disabled={state.status === 'loading'}>
-          <Sparkles aria-hidden className="h-4 w-4" />
+        <GenerateButton
+          edited={edited}
+          onGenerate={() => void run(connection, request)}
+          disabled={state.status === 'loading'}
+        >
           {state.status === 'success' ? 'Generate again' : 'Generate tailored resume'}
-        </Button>
+        </GenerateButton>
       </Card>
 
       {state.status === 'loading' ? (
@@ -101,6 +107,7 @@ export function TailorPanel({
       {state.status === 'success' && reviewed ? (
         <>
           <DraftMeta response={state.draft.response} restored={state.restored} />
+          <PreviousVersionNotice draft={state.draft} onRestore={() => void restorePrevious()} />
           <FindingsList findings={reviewed.findings} />
           {reviewed.summary.text ? (
             <Card className="space-y-1">
@@ -143,12 +150,23 @@ export function TailorPanel({
               </ul>
             </Alert>
           ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <OutputActions text={resumeToText(reviewed)} fileName="tailored-resume.txt" />
-            <Button size="sm" variant="ghost" onClick={() => void discard()}>
-              <Trash2 aria-hidden className="h-3.5 w-3.5" /> Discard draft
-            </Button>
-          </div>
+          <Card className="space-y-2">
+            <EditableDraft
+              key={state.draft.response.generatedAt}
+              target={{
+                task: 'tailor-resume',
+                jobKey,
+                generatedAt: state.draft.response.generatedAt,
+                part: RESUME_PART,
+              }}
+              label="Tailored resume text (edit before you use it)"
+              generated={resumeToText(reviewed)}
+              saved={state.draft.edits?.[RESUME_PART]}
+              onSave={(text) => saveEdit(state.draft.response.generatedAt, RESUME_PART, text)}
+              fileName="tailored-resume.txt"
+            />
+          </Card>
+          <DiscardButton edited={edited} onDiscard={() => void discard()} />
           <p className="flex items-center gap-1 text-[11px] text-muted">
             <FileText aria-hidden className="h-3 w-3" /> Your saved profile is unchanged. Copy what
             you want into your resume.

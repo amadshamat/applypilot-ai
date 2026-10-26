@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from 'react';
-import { ShieldAlert, Sparkles, Trash2 } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import {
   classifyQuestion,
   explainClassification,
@@ -12,12 +12,13 @@ import {
 } from '@applypilot/ai-core';
 import { Alert } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { Field, Textarea } from '../../components/ui/field';
 import { Skeleton } from '../../components/ui/skeleton';
 import type { AiConnection } from '../../storage/ai-connection-repository';
-import { EditableDraft } from './cover-letter-panel';
+import { hasEdits } from '../../storage/ai-drafts-repository';
+import { DiscardButton, GenerateButton, PreviousVersionNotice } from './draft-controls';
+import { EditableDraft } from './editable-draft';
 import { DraftMeta, FindingsList, Flags } from './draft-meta';
 import { SendPreview } from './send-preview';
 import { useAiTask } from './use-ai-task';
@@ -39,7 +40,8 @@ export function ScreeningPanel({
 }) {
   const id = useId();
   const [input, setInput] = useState('');
-  const { state, run, discard } = useAiTask('screening-answers', jobKey);
+  const { state, run, discard, saveEdit, restorePrevious } = useAiTask('screening-answers', jobKey);
+  const edited = state.status === 'success' && hasEdits(state.draft);
 
   const parsed = useMemo(
     () =>
@@ -121,13 +123,13 @@ export function ScreeningPanel({
         {draftable.length > 0 && !tooMany ? (
           <SendPreview task="screening-answers" request={request} health={health} />
         ) : null}
-        <Button
-          onClick={() => void run(connection, request)}
+        <GenerateButton
+          edited={edited}
+          onGenerate={() => void run(connection, request)}
           disabled={state.status === 'loading' || draftable.length === 0 || tooMany}
         >
-          <Sparkles aria-hidden className="h-4 w-4" />
           Draft {draftable.length === 1 ? '1 answer' : `${draftable.length} answers`}
-        </Button>
+        </GenerateButton>
       </Card>
 
       {state.status === 'loading' ? (
@@ -145,6 +147,7 @@ export function ScreeningPanel({
       {state.status === 'success' && reviewed ? (
         <div className="space-y-3">
           <DraftMeta response={state.draft.response} restored={state.restored} />
+          <PreviousVersionNotice draft={state.draft} onRestore={() => void restorePrevious()} />
           <FindingsList findings={reviewed.findings} />
           {state.draft.response.skipped.map((s) => (
             <Alert key={s.questionId} tone="warning" title="Not drafted">
@@ -159,8 +162,18 @@ export function ScreeningPanel({
                   <Flags flags={answer.flags} />
                   <EditableDraft
                     key={state.draft.response.generatedAt}
+                    target={{
+                      task: 'screening-answers',
+                      jobKey,
+                      generatedAt: state.draft.response.generatedAt,
+                      part: answer.questionId,
+                    }}
                     label="Draft answer (edit before you use it)"
-                    initial={answer.answer}
+                    generated={answer.answer}
+                    saved={state.draft.edits?.[answer.questionId]}
+                    onSave={(text) =>
+                      saveEdit(state.draft.response.generatedAt, answer.questionId, text)
+                    }
                     rows={6}
                   />
                 </>
@@ -178,9 +191,7 @@ export function ScreeningPanel({
               ) : null}
             </Card>
           ))}
-          <Button size="sm" variant="ghost" onClick={() => void discard()}>
-            <Trash2 aria-hidden className="h-3.5 w-3.5" /> Discard drafts
-          </Button>
+          <DiscardButton edited={edited} label="Discard drafts" onDiscard={() => void discard()} />
         </div>
       ) : null}
     </div>

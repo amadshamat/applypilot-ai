@@ -25,6 +25,7 @@ import { AiClientError } from '../../services/ai-client';
 import { useServices } from '../../services/app-services';
 import { isConfigured, type AiConnection } from '../../storage/ai-connection-repository';
 import { jobKeyFor } from '../../storage/ai-drafts-repository';
+import { COVER_LETTER_PART } from '../ai/draft-parts';
 import { useAnalysis } from '../analyze/store';
 import {
   applyDrafts,
@@ -112,7 +113,13 @@ export function useAutofill(
       return;
     }
     void services.aiDrafts.find('cover-letter', jobKey).then((draft) => {
-      if (active) setCoverLetter(draft ? coverLetterText(draft.response.output) : null);
+      // The letter as the user edited it in AI Tailor, if they did.
+      if (active)
+        setCoverLetter(
+          draft
+            ? (draft.edits?.[COVER_LETTER_PART] ?? coverLetterText(draft.response.output))
+            : null,
+        );
     });
     return () => {
       active = false;

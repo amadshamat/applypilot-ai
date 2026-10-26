@@ -60,7 +60,12 @@ chrome.action.onClicked.addListener((tab) => {
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
-  if (reason === 'install') void settings.save(DEFAULT_SETTINGS);
+  // Only a browser without saved settings gets the defaults: an unpacked build
+  // loaded again (for example with --load-extension) reports 'install' too.
+  if (reason === 'install')
+    void local.get(STORAGE_KEYS.settings).then((saved) => {
+      if (saved === undefined) void settings.save(DEFAULT_SETTINGS);
+    });
 });
 
 // Follow-up reminders: the toolbar badge counts follow-ups due today or earlier.

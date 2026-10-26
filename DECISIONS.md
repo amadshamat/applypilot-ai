@@ -496,3 +496,23 @@ midnight. It now uses a one-off alarm at 00:00:05 local time, computed from the 
 daylight-saving nights are handled, and set again whenever it fires or the worker starts. A
 6-hour alarm (instead of the hourly one) re-sets it in case the clock or time zone changed.
 Chrome fires missed alarms when the computer wakes, so a sleeping laptop shows the badge on wake.
+
+## 056: Draft edits are stored beside the generated draft, per part, and never written blind
+
+Edited text is stored on the saved draft as `edits` (a map from part to text: `letter`,
+`resume`, or a screening question id) instead of replacing the generated output. The generated
+text is what the grounding review checked, so keeping it allows **Revert to generated text**
+and keeps the review notes meaningful; the edits are the user's own words and are not
+re-checked. A part whose text equals the generated text has no entry.
+
+Saving is automatic: after 0.6 s without typing, and at once when the panel is hidden or the
+box unmounts. chrome.storage writes are asynchronous and a closing page may not finish one, so
+every keystroke is also written synchronously to the page's localStorage and stored on the next
+mount if needed; the copy is cleared once stored and by Delete all. Each edit names the draft it
+belongs to (task, job and generation time): if the draft was replaced or deleted meanwhile, the
+edit is not written onto the new one. Writes to the drafts list are serialised per page so two
+answers saved together are both kept.
+
+Generating again over an edited draft asks first and keeps the edited version as `previous`
+(one level), which **Restore my edited version** swaps back. Generating twice in a row without
+edits keeps the same `previous`, so a second click cannot lose the user's edits.

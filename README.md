@@ -13,8 +13,8 @@ an AWS serverless backend.
 
 > **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
 > automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
-> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.7.0
-> (Import data and local fixes, automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
+> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.8.0
+> (draft edits kept; automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
 > every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
@@ -52,6 +52,7 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 | Truthful resume suggestions (never invent skills, numbers or experience)                                                 | Done                       |
 | Local ApplyPilot API that holds the Claude key server-side, with a free offline mock mode                                | Done                       |
 | AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)           | Done                       |
+| Edits to AI drafts saved automatically per job, with Revert to generated text and no silent overwrite                    | Done                       |
 | Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                          | Done                       |
 | Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI                      | Done                       |
 | Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits                       | Done (experimental)        |

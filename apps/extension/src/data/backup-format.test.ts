@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STORAGE_KEYS } from '@applypilot/shared';
 import { application, pdfBytes, populated, resumeMeta } from '../../test/data-fixtures';
+import { AiDraftsRepository } from '../storage/ai-drafts-repository';
 import {
   BACKUP_FORMAT,
   base64ToBytes,
@@ -46,6 +47,22 @@ describe('backup files', () => {
     expect(backup.resumes.files).toHaveLength(1);
     expect(new TextDecoder().decode(backup.resumes.files[0]?.bytes)).toContain('%PDF-');
     expect(backup.ignored).toEqual(['AI connection (enter the access token again in Settings)']);
+  });
+
+  it('keeps edited draft text and the replaced edited version in a backup', async () => {
+    const { store, resumes } = await populated();
+    const repo = new AiDraftsRepository(store);
+    const [saved] = await repo.list();
+    await repo.saveEdit(
+      'cover-letter',
+      saved!.jobKey,
+      saved!.response.generatedAt,
+      'letter',
+      'Mine',
+    );
+    const parsed = parseBackup(await buildBackup(store, resumes, { appVersion: '0.8.0' }));
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.backup.aiDrafts?.drafts[0]?.edits).toEqual({ letter: 'Mine' });
   });
 
   it('reads exports from 0.6 and earlier, which have no resume files', () => {

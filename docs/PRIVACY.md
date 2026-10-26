@@ -107,6 +107,6 @@ file back, or delete it all. An import is read in this browser only, checked bef
 saved, and never contains or restores the access token or cloud settings. Delete all also
 removes the page analyses Chrome keeps for the current session. Individual resumes can be
 downloaded or deleted from the Profile tab.
-The AI tools have a **Discard draft** button, and Settings → **AI connection** has **Forget
+Edits you make to AI drafts are stored with the draft in this browser only. The AI tools have a **Discard draft** button, and Settings → **AI connection** has **Forget
 token**. Exports never include the access token. Uninstalling the extension also removes its
 local data.
