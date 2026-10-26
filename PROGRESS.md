@@ -20,16 +20,18 @@ Chrome profile: the import finished, the profile and the original resume file we
 the Profile tab showed the restored information, and the downloaded resume opened correctly.
 The rest of the v0.7.0 checklist has not been reported yet (see Not yet verified).
 
-**v0.8.0 (Keep AI draft edits): implemented and automated-tested, waiting for Muhaid's manual
-test and approval** (`docs/INSTALL-CHROME.md`, section 12). No further improvement starts until
-Muhaid has tested and approved it.
+**v0.8.0 (Keep AI draft edits): autosave approved by Muhaid on 2026-10-26** for what was
+tested in Chrome: AI Tailor connected to the local API in free mock mode, cover letter edits
+saved automatically, the "All changes saved" indicator worked, and an edited cover letter was
+still there after closing and reopening the extension. The other v0.8.0 checks have not been
+reported (see Not yet verified).
 
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
 
-### v0.8.0: Keep AI draft edits (automated-tested; not yet tested by Muhaid)
+### v0.8.0: Keep AI draft edits (cover letter autosave tested and approved by Muhaid)
 
 - **Edits are saved automatically.** Text typed into the cover letter, the tailored resume
   (now an editable text box under the review cards) and each screening answer is stored about
@@ -350,7 +352,10 @@ skipped. New tests:
   restore the edited version, check that Autofill offers the edited letter on a form with a
   cover-letter field, revert to the generated text, and reload.
 
-These are automated results only.
+**Manual test by Muhaid (2026-10-26, Chrome, v0.8.0):** passed and approved for cover letter
+autosave: connection to the local API in mock mode, automatic saving of cover letter edits,
+the "All changes saved" indicator, and the edited letter kept after closing and reopening the
+extension.
 
 ### v0.7.0 (2026-10-25)
 
@@ -395,8 +400,11 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
-- **v0.8.0 in Chrome by Muhaid** (section 12 of `docs/INSTALL-CHROME.md`), including closing
-  the real side panel (e2e opens `sidepanel.html` as a tab) straight after typing.
+- **The rest of v0.8.0 in Chrome.** Muhaid tested cover letter autosave and reopening the
+  extension. Not reported yet: tailored resume and screening answer edits, closing straight
+  after typing, a Chrome restart, drafts kept per job, Revert, Generate again with Restore,
+  Discard confirmation, Autofill using the edited letter, and edits in Export and Import
+  (section 12 B2 to F).
 - **The rest of v0.7.0 in Chrome.** Muhaid confirmed importing into a separate profile (profile
   and resume file restored). Not reported yet: whether tracked applications and AI drafts came
   across, a restart of the new profile, Merge on the populated profile, Replace and Undo,
@@ -426,7 +434,7 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Nothing: v0.8.0 waits for Muhaid's test and approval. Phase 6 manual testing is deferred by Muhaid.
+Smarter Application Autofill (v0.9.0). Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
@@ -518,12 +526,10 @@ Nothing: v0.8.0 waits for Muhaid's test and approval. Phase 6 manual testing is 
 
 ## Next recommended steps
 
-1. **Muhaid tests and approves v0.8.0** with section 12 of `docs/INSTALL-CHROME.md`. Nothing
-   new starts before that. Remaining local ideas from the review
-   (`/mnt/project-files/notes/review-and-next-steps-0.6.1.md`): autofill follow-ups after a fill
-   (re-scan offer, Yes/No button questions) and better two-column PDF parsing. Phase 6 manual
-   testing is deferred; run section 10 of INSTALL-CHROME.md whenever you want to verify cloud
-   sync.
+1. **Smarter Application Autofill (v0.9.0, in progress):** detect questions revealed after a
+   fill, a re-scan that keeps approved answers, Yes/No radio and custom select support, with
+   sensitive questions still locked. Then Muhaid tests it. Phase 6 manual testing is deferred;
+   run section 10 of INSTALL-CHROME.md whenever you want to verify cloud sync.
 2. **Decision for Muhaid:** whether to deploy ApplyPilot Cloud to your own AWS account
    (estimated USD 0.00 to 0.15 per month at personal use; see docs/AWS.md). Not done without
    your explicit approval.
