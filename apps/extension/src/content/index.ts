@@ -1,6 +1,6 @@
 import { contentRequestSchema, fail, ok, type FrameProbe } from '@applypilot/shared';
 import { extractJob, waitForJobContent } from '@applypilot/job-extraction';
-import { fillForm, scanForm } from '@applypilot/autofill';
+import { fillForm, formChanges, scanForm } from '@applypilot/autofill';
 
 /**
  * Injected on demand (never declared in the manifest) when the user asks to
@@ -29,7 +29,17 @@ const listener: MessageListener = (message, sender, sendResponse) => {
   const request = parsed.data;
   if (request.type === 'content/scan-form') {
     try {
-      sendResponse(ok(scanForm(document)));
+      sendResponse(ok(scanForm(document, { keepRefs: request.keepRefs === true })));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      sendResponse(fail('SCAN_FAILED', `Could not read the form: ${detail}`));
+    }
+    return false;
+  }
+  if (request.type === 'content/form-changes') {
+    // Read-only: counts fields the last scan did not see.
+    try {
+      sendResponse(ok(formChanges(document)));
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       sendResponse(fail('SCAN_FAILED', `Could not read the form: ${detail}`));

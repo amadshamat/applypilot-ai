@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   Lock,
+  RefreshCw,
   ScanSearch,
   ShieldCheck,
   Sparkles,
@@ -20,13 +21,22 @@ import { Card, CardDescription, CardTitle } from '../../components/ui/card';
 import { EmptyState } from '../../components/ui/empty-state';
 import { Input, Select, Textarea } from '../../components/ui/field';
 import { Skeleton } from '../../components/ui/skeleton';
+import { cn } from '../../lib/cn';
 import { useAiConnection } from '../../hooks/use-ai-connection';
 import { useSettings } from '../../hooks/use-settings';
 import { MarkAppliedCard } from '../applications/track-buttons';
 import { useAnalysis } from '../analyze/store';
 import { useNavigation } from '../navigation/store';
 import { useProfile } from '../profile/use-profile';
-import { groupOf, isLocked, summarize, valueText, type ReviewRow, type RowGroup } from './review';
+import {
+  fillableRows,
+  groupOf,
+  isLocked,
+  summarize,
+  valueText,
+  type ReviewRow,
+  type RowGroup,
+} from './review';
 import { useAutofill } from './use-autofill';
 
 const GROUPS: { id: RowGroup; title: string; description: string }[] = [
@@ -118,7 +128,9 @@ function ValueEditor({
   if (field.control === 'checkbox-group') {
     return <p className="text-xs text-muted">{valueText(row.value) || 'No boxes chosen.'}</p>;
   }
-  const choice = ['select', 'radio-group', 'listbox-button', 'combobox'].includes(field.control);
+  const choice = ['select', 'radio-group', 'listbox-button', 'combobox', 'button-group'].includes(
+    field.control,
+  );
   if (choice && field.options.length > 0) {
     const current = row.value?.type === 'choose' ? row.value.value : '';
     return (
@@ -177,9 +189,13 @@ function FieldRow({
   const source = row.edited ? 'Typed by you' : proposal.source;
   return (
     <li
-      className="space-y-1.5 rounded-lg border border-border px-3 py-2"
+      className={cn(
+        'space-y-1.5 rounded-lg border px-3 py-2',
+        row.isNew ? 'border-primary/50 bg-primary/5' : 'border-border',
+      )}
       data-testid="autofill-row"
       data-status={proposal.status}
+      data-new={row.isNew ? 'true' : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -189,11 +205,10 @@ function FieldRow({
           </p>
           {field.section ? <p className="text-[11px] text-muted">{field.section}</p> : null}
         </div>
-        {badge ? (
-          <Badge tone={badge.tone} className="shrink-0">
-            {badge.label}
-          </Badge>
-        ) : null}
+        <span className="flex shrink-0 gap-1">
+          {row.isNew ? <Badge tone="primary">New</Badge> : null}
+          {badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : null}
+        </span>
       </div>
       {locked ? (
         <p className="flex items-start gap-1 text-[11px] text-muted">
@@ -293,7 +308,8 @@ function Notices({ scan }: { scan: FormScan }) {
       ) : null}
       {scan.unsupportedFields.length > 0 ? (
         <Alert tone="warning" title="Questions to answer on the page">
-          These use buttons ApplyPilot does not click: {scan.unsupportedFields.join('; ')}.
+          ApplyPilot cannot tell what these ask, so it never clicks them:{' '}
+          {scan.unsupportedFields.join('; ')}.
         </Alert>
       ) : null}
       {scan.step.hasNext ? (
@@ -338,11 +354,13 @@ export function AutofillView() {
     );
   }
 
-  const { scanState, rows, fillState } = autofill;
+  const { scanState, rows, fillState, pageStatus } = autofill;
   const scanning = scanState.status === 'scanning';
-  const approvedCount = rows.filter(
-    (r) => r.approved && r.value && !isLocked(r) && !(r.proposal.status === 'done' && !r.edited),
-  ).length;
+  const busy = scanning || autofill.rescanning || fillState.status === 'filling';
+  const approvedCount = fillableRows(rows).length;
+  const newRows = rows.filter((r) => r.isNew);
+  const newToReview = newRows.filter((r) => !isLocked(r) && !r.approved).length;
+  const newLocked = newRows.filter((r) => isLocked(r)).length;
   const unknownCount = rows.filter((r) => r.proposal.status === 'unknown').length;
   const questionCount = rows.filter((r) => r.proposal.status === 'question').length;
 
@@ -350,13 +368,22 @@ export function AutofillView() {
     <div className="space-y-3">
       <Header />
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          onClick={() => void autofill.scan()}
-          disabled={scanning || fillState.status === 'filling'}
-        >
-          <ScanSearch aria-hidden className="h-4 w-4" />
-          {scanState.status === 'ready' ? 'Scan again' : 'Scan this form'}
-        </Button>
+        {scanState.status === 'ready' ? (
+          <>
+            <Button onClick={() => void autofill.rescan()} disabled={busy}>
+              <RefreshCw aria-hidden className="h-4 w-4" />
+              {autofill.rescanning ? 'Scanning…' : 'Scan for new questions'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void autofill.scan()} disabled={busy}>
+              Start over
+            </Button>
+          </>
+        ) : (
+          <Button onClick={() => void autofill.scan()} disabled={busy}>
+            <ScanSearch aria-hidden className="h-4 w-4" />
+            Scan this form
+          </Button>
+        )}
         {autofill.resumes.length > 1 ? (
           <Select
             aria-label="Resume to attach"
@@ -390,6 +417,49 @@ export function AutofillView() {
       {scanState.status === 'ready' ? (
         <>
           <ScanSummary scan={scanState.scan} />
+          <p className="text-[11px] text-muted">
+            Scan for new questions keeps every answer you reviewed. Start over clears them.
+          </p>
+          {autofill.rescanError ? (
+            <Alert tone="error" title="The form could not be scanned again">
+              {autofill.rescanError} Your review below is unchanged.
+            </Alert>
+          ) : null}
+          {pageStatus && !pageStatus.samePage ? (
+            <Alert tone="info" title="This tab shows another page now">
+              If you moved to the next step, press Start over to scan it.
+            </Alert>
+          ) : null}
+          {pageStatus?.samePage && pageStatus.newFields > 0 && !autofill.rescanning ? (
+            <Alert tone="info" title="New questions appeared on the page">
+              <span className="block">
+                {pageStatus.newFields} question{pageStatus.newFields === 1 ? '' : 's'} appeared
+                since the last scan. Scan for them; your reviewed answers stay as they are.
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-1"
+                onClick={() => void autofill.rescan()}
+              >
+                Scan for new questions
+              </Button>
+            </Alert>
+          ) : null}
+          {newRows.length > 0 ? (
+            <Alert
+              tone="info"
+              title={`${newRows.length} new question${newRows.length === 1 ? '' : 's'} found`}
+            >
+              Marked New below.{' '}
+              {newToReview > 0
+                ? `${newToReview} ${newToReview === 1 ? 'is' : 'are'} not selected: check ${newToReview === 1 ? 'it' : 'each one'}, tick Fill, then fill again.`
+                : 'Nothing new is selected to fill.'}
+              {newLocked > 0
+                ? ` ${newLocked} ${newLocked === 1 ? 'is' : 'are'} for you to answer on the page.`
+                : ''}
+            </Alert>
+          ) : null}
           <Notices scan={scanState.scan} />
           {rows.length === 0 ? (
             <Alert tone="info" title="No fields found">
@@ -506,7 +576,7 @@ export function AutofillView() {
               <Button
                 className="w-full"
                 onClick={() => void autofill.fill()}
-                disabled={approvedCount === 0 || fillState.status === 'filling'}
+                disabled={approvedCount === 0 || busy}
               >
                 <Check aria-hidden className="h-4 w-4" />
                 {fillState.status === 'filling'
@@ -597,8 +667,9 @@ function FillResults({
       ) : null}
       {report.newFields > 0 ? (
         <Alert tone="info" title="New questions appeared">
-          Your answers revealed {report.newFields} more field{report.newFields === 1 ? '' : 's'}.
-          Scan again to review them.
+          Your answers revealed {report.newFields} more question
+          {report.newFields === 1 ? '' : 's'}. They are listed above, marked New, and are not filled
+          until you tick them.
         </Alert>
       ) : null}
       <p className="text-[11px] text-muted">

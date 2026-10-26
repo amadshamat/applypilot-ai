@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cloud Support Intern – Contoso Careers</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 680px;
+        margin: 2rem auto;
+      }
+      label,
+      .question {
+        display: block;
+        margin-top: 0.75rem;
+        font-weight: 600;
+      }
+      [hidden] {
+        display: none;
+      }
+      [aria-pressed='true'],
+      [aria-checked='true'] {
+        background: #1d4ed8;
+        color: white;
+      }
+      [role='listbox'] {
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    Sample application with conditional questions, written for tests. Answers
+    reveal follow-up questions: Yes on the AWS question shows a project
+    question and a certification dropdown; Yes on the GitHub question shows a
+    GitHub URL field; answering the relocation question shows, after a short
+    delay, a question about the preferred office. Yes/No questions are drawn
+    as toggle buttons (aria-pressed) or as role=radio buttons outside a
+    radiogroup, and dropdowns as ARIA listboxes. Next and Submit only count
+    their clicks (window.nextCount, window.submitCount); the form's submit
+    event is counted in window.formSubmits.
+  -->
+    <h1>Apply: Cloud Support Intern</h1>
+    <p>Step 1 of 2</p>
+    <form id="application" action="/submitted" method="post">
+      <h2>About you</h2>
+      <label for="full-name">Full name *</label>
+      <input id="full-name" name="full_name" type="text" required />
+      <label for="email">Email *</label>
+      <input id="email" name="email" type="email" required />
+
+      <h2>Experience</h2>
+      <div class="question" id="aws-q">Have you used AWS in a project or job?</div>
+      <div class="toggle" role="group" aria-labelledby="aws-q" data-question="aws">
+        <button type="button" aria-pressed="false" data-value="yes">Yes</button>
+        <button type="button" aria-pressed="false" data-value="no">No</button>
+      </div>
+
+      <div id="aws-follow-up" hidden>
+        <label for="aws-project">Describe a project where you used AWS.</label>
+        <textarea id="aws-project" name="aws_project" rows="4"></textarea>
+
+        <div class="question" id="degree-label">Highest level of education</div>
+        <button
+          type="button"
+          id="degree"
+          aria-haspopup="listbox"
+          aria-labelledby="degree-label"
+          aria-controls="degree-list"
+          aria-expanded="false"
+        >
+          Select…
+        </button>
+        <div role="listbox" id="degree-list" hidden>
+          <div role="option" data-value="hs">High School</div>
+          <div role="option" data-value="assoc">Associate's Degree</div>
+          <div role="option" data-value="ba">Bachelor's Degree</div>
+          <div role="option" data-value="ms">Master's Degree</div>
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Do you have a public GitHub profile?</legend>
+        <label><input type="radio" name="has_github" value="yes" /> Yes</label>
+        <label><input type="radio" name="has_github" value="no" /> No</label>
+      </fieldset>
+      <div id="github-follow-up" hidden>
+        <label for="github">GitHub URL</label>
+        <input id="github" name="github_url" type="url" />
+      </div>
+
+      <h2>Eligibility</h2>
+      <div class="question" id="auth-q">
+        Are you legally authorized to work in the United States?
+      </div>
+      <div class="choices" aria-labelledby="auth-q">
+        <span role="radio" tabindex="0" aria-checked="false">Yes</span>
+        <span role="radio" tabindex="0" aria-checked="false">No</span>
+      </div>
+
+      <div class="question" id="sponsor-q">
+        Will you now or in the future require visa sponsorship?
+      </div>
+      <div class="toggle" aria-labelledby="sponsor-q">
+        <button type="button" aria-pressed="false">Yes</button>
+        <button type="button" aria-pressed="false">No</button>
+      </div>
+
+      <label for="salary">What are your salary expectations?</label>
+      <input id="salary" name="salary" type="text" />
+
+      <div class="question" id="gender-label">Gender</div>
+      <button
+        type="button"
+        id="gender"
+        aria-haspopup="listbox"
+        aria-labelledby="gender-label"
+        aria-controls="gender-list"
+        aria-expanded="false"
+      >
+        Select…
+      </button>
+      <div role="listbox" id="gender-list" hidden>
+        <div role="option">Female</div>
+        <div role="option">Male</div>
+        <div role="option">Non-binary</div>
+        <div role="option">Decline to self-identify</div>
+      </div>
+
+      <div class="question" id="relocate-q">Are you open to working from one of our offices?</div>
+      <div class="toggle" aria-labelledby="relocate-q" data-question="office">
+        <button type="button" aria-pressed="false">Yes</button>
+        <button type="button" aria-pressed="false">No</button>
+      </div>
+      <div id="office-follow-up" hidden>
+        <label for="office">Which team interests you most?</label>
+        <select id="office" name="team">
+          <option value="">Select one</option>
+          <option value="support">Cloud Support</option>
+          <option value="networking">Networking</option>
+          <option value="security">Security</option>
+        </select>
+      </div>
+
+      <label
+        ><input type="checkbox" name="consent" required /> I consent to Contoso storing my
+        information for this application.</label
+      >
+
+      <div class="actions">
+        <button type="button" id="next">Next</button>
+        <button type="submit" id="submit">Submit application</button>
+      </div>
+    </form>
+    <script>
+      (function () {
+        window.nextCount = 0;
+        window.submitCount = 0;
+        window.formSubmits = 0;
+        var form = document.getElementById('application');
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          window.formSubmits += 1;
+        });
+        document.getElementById('submit').addEventListener('click', function () {
+          window.submitCount += 1;
+        });
+        document.getElementById('next').addEventListener('click', function () {
+          window.nextCount += 1;
+        });
+
+        function reveal(question, yes) {
+          if (question === 'aws') document.getElementById('aws-follow-up').hidden = !yes;
+          if (question === 'office') {
+            // This one appears a little later, as if loaded from the server.
+            setTimeout(function () {
+              document.getElementById('office-follow-up').hidden = !yes;
+            }, 400);
+          }
+        }
+
+        document.querySelectorAll('.toggle').forEach(function (group) {
+          var buttons = group.querySelectorAll('button');
+          buttons.forEach(function (b) {
+            b.addEventListener('click', function () {
+              buttons.forEach(function (other) {
+                other.setAttribute('aria-pressed', other === b ? 'true' : 'false');
+              });
+              reveal(group.dataset.question, b.textContent.trim() === 'Yes');
+            });
+          });
+        });
+
+        document.querySelectorAll('.choices [role="radio"]').forEach(function (r, _, all) {
+          r.addEventListener('click', function () {
+            all.forEach(function (other) {
+              other.setAttribute('aria-checked', other === r ? 'true' : 'false');
+            });
+          });
+        });
+
+        document.querySelectorAll('input[name="has_github"]').forEach(function (radio) {
+          radio.addEventListener('change', function () {
+            document.getElementById('github-follow-up').hidden = radio.value !== 'yes';
+          });
+        });
+
+        document.querySelectorAll('[aria-haspopup="listbox"]').forEach(function (trigger) {
+          var list = document.getElementById(trigger.getAttribute('aria-controls'));
+          trigger.addEventListener('click', function () {
+            var open = trigger.getAttribute('aria-expanded') === 'true';
+            trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
+            list.hidden = open;
+          });
+          list.querySelectorAll('[role="option"]').forEach(function (option) {
+            option.addEventListener('click', function () {
+              trigger.textContent = option.textContent;
+              trigger.setAttribute('aria-expanded', 'false');
+              list.hidden = true;
+            });
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

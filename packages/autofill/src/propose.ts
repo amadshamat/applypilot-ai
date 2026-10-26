@@ -132,7 +132,13 @@ export function parseLocation(location: string): Place | null {
   };
 }
 
-const CHOICE_CONTROLS: readonly string[] = ['select', 'radio-group', 'listbox-button', 'combobox'];
+const CHOICE_CONTROLS: readonly string[] = [
+  'select',
+  'radio-group',
+  'listbox-button',
+  'combobox',
+  'button-group',
+];
 
 function dateTexts(date: string, part: DatePart, field: DetectedField): Found | Missing {
   const [year, month] = date.split('-');
@@ -397,7 +403,8 @@ function toValue(
     case 'select':
     case 'radio-group':
     case 'listbox-button':
-    case 'combobox': {
+    case 'combobox':
+    case 'button-group': {
       if (field.options.length === 0) {
         // Options load only when the list opens: the fill step types and picks the match.
         return field.control === 'combobox' || field.control === 'listbox-button'
@@ -445,7 +452,8 @@ function toValue(
   }
 }
 
-function sameAsPage(field: DetectedField, value: ProposedValue): boolean {
+/** Whether the page already shows this value in the field. */
+export function pageShows(field: DetectedField, value: ProposedValue): boolean {
   const current = normalize(field.currentValue);
   if (!current) return false;
   switch (value.type) {
@@ -508,6 +516,8 @@ export function proposeField(
     };
   }
   if (kind === 'unknown') {
+    const yes = yesFromProfile(field, context.profile);
+    if (yes) return { ...base, ...yes };
     return {
       ...base,
       status: 'unknown',
@@ -556,7 +566,7 @@ export function proposeField(
           : `Your profile value does not fit this field.`,
     };
   }
-  if (sameAsPage(field, chosen.value)) {
+  if (pageShows(field, chosen.value)) {
     return {
       ...base,
       status: 'done',
@@ -583,6 +593,59 @@ export function proposeField(
     source: found.source,
     note: cautions.join(' '),
     approved: !review,
+  };
+}
+
+const YES = /^(yes|y|true)$/i;
+const NO = /^(no|n|false)$/i;
+
+/** Facts a Yes/No question may ask about, and the profile entry that proves the answer is Yes. */
+const YES_FACTS: { pattern: RegExp; holds: (p: ProfileContent) => boolean; source: string }[] = [
+  {
+    pattern: /\b(do|does) you have an? (public |personal )?git ?hub\b/,
+    holds: (p) => p.personal.githubUrl.trim() !== '',
+    source: 'Profile · GitHub',
+  },
+  {
+    pattern: /\b(do|does) you have an? (public )?linked ?in\b/,
+    holds: (p) => p.personal.linkedinUrl.trim() !== '',
+    source: 'Profile · LinkedIn',
+  },
+  {
+    pattern:
+      /\b(do|does) you have an? (online |personal )?(portfolio|personal (web ?)?site|website)\b/,
+    holds: (p) => p.personal.portfolioUrl.trim() !== '',
+    source: 'Profile · Portfolio',
+  },
+  {
+    pattern:
+      /\bare you (currently |presently )?(enrolled|a (current )?student|attending (a )?(college|university|school)|pursuing a degree)\b/,
+    holds: (p) => p.education.some((e) => e.current),
+    source: 'Profile · Education',
+  },
+];
+
+/**
+ * A Yes/No question the profile answers: "Do you have a GitHub profile?" is
+ * Yes when the profile holds a GitHub link. Only Yes is ever proposed, since
+ * a missing entry proves nothing, and the user still reviews and ticks it.
+ */
+function yesFromProfile(
+  field: DetectedField,
+  profile: ProfileContent,
+): Pick<Proposal, 'status' | 'value' | 'source' | 'note'> | null {
+  if (!['radio-group', 'button-group', 'select', 'listbox-button'].includes(field.control))
+    return null;
+  const yes = field.options.find((o) => YES.test(clean(o.label)));
+  if (!yes || !field.options.some((o) => NO.test(clean(o.label)))) return null;
+  const question = normalize(field.label);
+  const fact = YES_FACTS.find((f) => f.pattern.test(question));
+  if (!fact?.holds(profile)) return null;
+  return {
+    status: 'review',
+    value: { type: 'choose', value: yes.value, label: yes.label },
+    source: fact.source,
+    note: 'Your profile has this, so the answer is Yes. Check it, then tick Fill.',
   };
 }
 

@@ -10,6 +10,7 @@ import {
   type FillInstruction,
   type FillReport,
   type FormScan,
+  type FormStatus,
   type JobExtractionResult,
   type Result,
 } from '@applypilot/shared';
@@ -69,7 +70,9 @@ export async function handleBackgroundMessage(
     case 'job/extract-active-tab':
       return extractActiveTab(deps);
     case 'autofill/scan':
-      return scanActiveTab(deps);
+      return scanActiveTab(deps, request.keepRefs === true);
+    case 'autofill/status':
+      return formStatus(request.pageUrl, deps);
     case 'autofill/fill':
       return fillActiveTab(request.pageUrl, request.instructions, deps);
   }
@@ -97,12 +100,16 @@ async function readyTab(deps: BackgroundDeps): Promise<Result<{ id: number; url:
   return ok({ id: tab.id, url: tab.url });
 }
 
-async function scanActiveTab(deps: BackgroundDeps): Promise<Result<FormScan>> {
+async function scanActiveTab(deps: BackgroundDeps, keepRefs: boolean): Promise<Result<FormScan>> {
   const tab = await readyTab(deps);
   if (!tab.ok) return tab;
   let reply: unknown;
   try {
-    reply = await deps.sendToTab(tab.data.id, { type: 'content/scan-form' }, 0);
+    reply = await deps.sendToTab(
+      tab.data.id,
+      keepRefs ? { type: 'content/scan-form', keepRefs } : { type: 'content/scan-form' },
+      0,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return fail('SCAN_FAILED', `The page did not respond: ${message}`);
@@ -144,6 +151,29 @@ async function fillActiveTab(
   const response = responseSchemas['content/fill-form'].safeParse(reply);
   if (!response.success) return fail('FILL_FAILED', 'The page returned an unexpected result.');
   return response.data;
+}
+
+/**
+ * Whether the scanned form changed: questions revealed since the last scan,
+ * or a move to another page. It only asks a content script already in the
+ * page (it never injects one), and reads without changing anything, so the
+ * side panel can ask every few seconds.
+ */
+async function formStatus(pageUrl: string, deps: BackgroundDeps): Promise<Result<FormStatus>> {
+  const quiet: FormStatus = { samePage: true, reachable: false, newFields: 0, removedFields: 0 };
+  const tab = await deps.getActiveTab();
+  if (!tab?.url) return ok(quiet);
+  if (!samePage(pageUrl, tab.url)) return ok({ ...quiet, samePage: false });
+  let reply: unknown;
+  try {
+    reply = await deps.sendToTab(tab.id, { type: 'content/form-changes' }, 0);
+  } catch {
+    // The page reloaded or navigated: its content script is gone.
+    return ok(quiet);
+  }
+  const response = responseSchemas['content/form-changes'].safeParse(reply);
+  if (!response.success || !response.data.ok) return ok(quiet);
+  return ok({ samePage: true, reachable: true, ...response.data.data });
 }
 
 /**

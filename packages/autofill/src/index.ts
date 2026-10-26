@@ -1,4 +1,4 @@
-export { scanForm, type ScanOptions } from './scan';
+export { buttonGroups, formChanges, scanForm, type ButtonGroup, type ScanOptions } from './scan';
 export { fillForm, type FillOptions } from './fill';
 export {
   FIELD_KINDS,
@@ -10,6 +10,7 @@ export {
 } from './classify';
 export { matchOption, degreeLevel, US_STATES, MONTHS, type OptionMatch } from './options';
 export {
+  pageShows,
   parseLocation,
   proposeAnswers,
   proposeField,

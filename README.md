@@ -13,8 +13,8 @@ an AWS serverless backend.
 
 > **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
 > automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
-> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.8.0
-> (draft edits kept; automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
+> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.9.0
+> (smarter autofill; automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
 > every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 
@@ -56,6 +56,8 @@ explainable everywhere, and nothing is submitted or claimed without the user's a
 | Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                          | Done                       |
 | Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI                      | Done                       |
 | Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits                       | Done (experimental)        |
+| Revealed follow-up questions found after a fill; re-scan keeps reviewed answers; new questions wait for a tick           | Done (experimental)        |
+| Yes/No button questions (toggle and role=radio buttons) answered and clicked only when you approve them                  | Done (experimental)        |
 | Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms                      | Experimental               |
 | Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer                | Done                       |
 | Optional AI field matching (labels only, no profile data) and AI drafts for open questions                               | Done                       |
@@ -300,8 +302,8 @@ not a hiring prediction.
   applications, so every platform is marked experimental. Live forms change often; check every
   value before you submit.
 - Autofill never clicks Next or Submit: on multi-step forms, move on yourself and scan again.
-  Yes/No button questions, CAPTCHAs, closed shadow roots and frames on another origin are
-  reported, not filled. Workday and similar sites need you to sign in yourself.
+  Unlabeled Yes/No buttons, Yes/No buttons that would submit the form, CAPTCHAs, closed
+  shadow roots and frames on another origin are reported, not filled. Workday and similar sites need you to sign in yourself.
 - Reminders are a toolbar badge, not system notifications, refreshed just after local midnight
   (or when the computer wakes). Only you can mark an application as applied.
 - Import data restores exports from any version, but exports made before 0.7.0 have no resume

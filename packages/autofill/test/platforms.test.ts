@@ -158,7 +158,7 @@ describe('Lever-style form', () => {
 describe('Ashby-style form', () => {
   const url = 'https://jobs.ashbyhq.com/acme/0b8e/application';
 
-  it('reads a form without a form element and lists Yes/No button questions it will not answer', () => {
+  it('reads a form without a form element and locks its Yes/No work authorization question', () => {
     const { scan, by } = load('ashby-application.html', url);
     expect(scan.platform).toBe('ashby');
     expect(scan.submitControls).toEqual(['Submit Application']);
@@ -172,7 +172,11 @@ describe('Ashby-style form', () => {
       'manual',
     );
     expect(by('Gender').status).toBe('manual');
-    expect(scan.unsupportedFields).toEqual(['Are you currently authorized to work in the US?']);
+    const authorization = by('Are you currently authorized to work in the US?');
+    expect(authorization.field.control).toBe('button-group');
+    expect(authorization.field.options.map((o) => o.label)).toEqual(['Yes', 'No']);
+    expect(authorization).toMatchObject({ status: 'manual', value: null, approved: false });
+    expect(scan.unsupportedFields).toEqual([]);
   });
 
   it('picks a location from the typeahead and never clicks Yes/No or Submit', async () => {

@@ -13,6 +13,7 @@ import {
   readableDocuments,
 } from './dom';
 import { matchOption } from './options';
+import { formChanges } from './scan';
 import { clean, cleanLabel, normalize } from './text';
 
 /**
@@ -40,9 +41,6 @@ interface Outcome {
   /** The option that was picked, for dropdowns. */
   picked?: string;
 }
-
-const FIELD_CONTROLS =
-  'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="password"]), select, textarea, [role="combobox"], [aria-haspopup="listbox"], [role="radiogroup"]';
 
 const TEXT_LIKE: readonly string[] = [
   'text',
@@ -212,14 +210,30 @@ async function pickFromList(
   return { status: 'filled', message: `Picked "${picked}".`, picked };
 }
 
-function labelStillMatches(el: Element, expected: string): boolean {
-  const now = normalize(cleanLabel(labelFor(el)));
+function labelStillMatches(el: Element, expected: string, control: string): boolean {
+  const now = normalize(cleanLabel(control === 'button-group' ? groupLabel(el) : labelFor(el)));
   const before = normalize(expected);
   if (!before || !now) return true;
   return now === before || now.includes(before) || before.includes(now);
 }
 
 const PERSONAL_ID = /\b(social security|ssn|date of birth|birth ?date)\b/i;
+
+/** Personal topics the fill step refuses as well: the review never offers them either. */
+const REFUSED_PERSONAL = new Set(['pay expectations']);
+
+const GROUPS: readonly string[] = ['radio-group', 'checkbox-group', 'button-group'];
+
+/** The answers a group offers, as the page shows them now (a "Male / Female" group is demographic). */
+function choiceText(members: Element[]): string {
+  const choices = members.filter((m) =>
+    m.matches(
+      'input[type="radio"], input[type="checkbox"], [role="radio"], button, [role="button"]',
+    ),
+  );
+  if (choices.length > 12) return '';
+  return choices.map((c) => labelFor(c) || clean(c.textContent)).join(' ');
+}
 
 /**
  * The fill step re-checks every instruction on its own, because the page is
@@ -230,12 +244,18 @@ const PERSONAL_ID = /\b(social security|ssn|date of birth|birth ?date)\b/i;
 function refusal(instruction: FillInstruction, members: Element[]): string | null {
   const [anchor] = members;
   if (!anchor) return null;
-  const group = instruction.control === 'radio-group' || instruction.control === 'checkbox-group';
-  const current = group ? groupLabel(anchor, members) : labelFor(anchor);
+  const group = GROUPS.includes(instruction.control);
+  const current = group
+    ? `${groupLabel(anchor, instruction.control === 'button-group' ? [] : members)} ${choiceText(members)}`
+    : labelFor(anchor);
   for (const text of [instruction.label, current]) {
-    if (!text) continue;
+    if (!text.trim()) continue;
     const question = classifyQuestion(text);
-    if (question.category === 'sensitive' || PERSONAL_ID.test(text)) {
+    if (
+      question.category === 'sensitive' ||
+      REFUSED_PERSONAL.has(question.topic) ||
+      PERSONAL_ID.test(text)
+    ) {
       return `This asks about ${question.topic || 'personal identification'}. ApplyPilot never fills it; answer it yourself.`;
     }
   }
@@ -415,6 +435,42 @@ async function fillOne(
       }
       return outcome;
     }
+    case 'button-group': {
+      if (action.type !== 'choose') break;
+      const buttons = members.slice(1);
+      const target =
+        buttons.find((b) => b.getAttribute('data-value') === action.value) ??
+        buttons.find((b) => normalize(clean(b.textContent)) === normalize(action.label)) ??
+        buttons.find((b) => normalize(clean(b.textContent)) === normalize(action.value));
+      if (!target)
+        return { status: 'failed', message: `The answer "${action.label}" is no longer offered.` };
+      if (!isVisible(target) || target.matches(':disabled, [aria-disabled="true"]'))
+        return { status: 'skipped', message: 'The answer button cannot be clicked now.' };
+      const stateful = buttons.some((b) =>
+        ['aria-pressed', 'aria-checked', 'aria-selected'].some((n) => b.hasAttribute(n)),
+      );
+      const pressed = () =>
+        ['aria-pressed', 'aria-checked', 'aria-selected'].some(
+          (n) => target.getAttribute(n) === 'true',
+        );
+      if (stateful && pressed()) return { status: 'filled', message: 'Already selected.' };
+      if (!safeClick(target)) {
+        return {
+          status: 'unsupported',
+          message: 'This answer button looks like a submit button, so it was not clicked.',
+        };
+      }
+      await nextFrame(target);
+      if (!stateful) {
+        return {
+          status: 'filled',
+          message: `Clicked "${action.label}". Check that the page shows it selected.`,
+        };
+      }
+      return pressed()
+        ? { status: 'filled', message: '' }
+        : { status: 'failed', message: 'The answer did not stick. Click it yourself.' };
+    }
     case 'file': {
       if (action.type !== 'file' || !isInput(el)) break;
       const win = view(el);
@@ -481,10 +537,6 @@ function installGuard(docs: Document[]): { blocked: () => number; remove: () => 
   };
 }
 
-function fieldElements(docs: Document[]): Set<Element> {
-  return new Set(docs.flatMap((d) => deepQueryAll(d, FIELD_CONTROLS)));
-}
-
 export async function fillForm(
   doc: Document,
   instructions: readonly FillInstruction[],
@@ -492,7 +544,7 @@ export async function fillForm(
 ): Promise<FillReport> {
   const timeoutMs = options.optionTimeoutMs ?? 2_000;
   const docs = readableDocuments(doc);
-  const before = fieldElements(docs);
+  const before = formChanges(doc).newFields;
   const guard = installGuard(docs);
   const results: FillReport['results'] = [];
 
@@ -515,8 +567,8 @@ export async function fillForm(
       const [anchor] = members;
       if (
         anchor &&
-        TEXT_LIKE.includes(instruction.control) &&
-        !labelStillMatches(anchor, instruction.label)
+        (TEXT_LIKE.includes(instruction.control) || instruction.control === 'button-group') &&
+        !labelStillMatches(anchor, instruction.label, instruction.control)
       ) {
         results.push({
           ref: instruction.ref,
@@ -548,13 +600,12 @@ export async function fillForm(
     guard.remove();
   }
 
-  const after = [...fieldElements(readableDocuments(doc))].filter(
-    (el) => !before.has(el) && isVisible(el),
-  );
+  // Fields the scan did not see: questions the answers revealed.
+  const after = formChanges(doc).newFields;
   return {
     results,
     blockedSubmissions: guard.blocked(),
-    newFields: after.length,
+    newFields: Math.max(0, after - before),
     filledAt: (options.now?.() ?? new Date()).toISOString(),
   };
 }

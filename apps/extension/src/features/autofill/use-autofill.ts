@@ -18,6 +18,7 @@ import type {
   AppError,
   FillReport,
   FormScan,
+  FormStatus,
   ProfileContent,
   ResumeVersionMeta,
 } from '@applypilot/shared';
@@ -32,16 +33,37 @@ import {
   buildInstructions,
   editRow,
   fileToBase64,
+  mergeRows,
+  rowKey,
   setApproved,
   toRows,
   type ReviewRow,
 } from './review';
 
+/** How often the panel asks the page whether new questions appeared. */
+export const STATUS_POLL_MS = 2_500;
+
+/** Same page: same origin and path (a form's steps may change the query or hash). */
+function samePage(a: string, b: string): boolean {
+  try {
+    const x = new URL(a);
+    const y = new URL(b);
+    return x.origin === y.origin && x.pathname === y.pathname;
+  } catch {
+    return false;
+  }
+}
+
 export type ScanState =
   | { status: 'idle' }
   | { status: 'scanning' }
   | { status: 'error'; error: AppError }
-  | { status: 'ready'; scan: FormScan };
+  | {
+      status: 'ready';
+      scan: FormScan;
+      /** Row keys from before a re-scan, to mark the fields it found first; null after a fresh scan. */
+      known: ReadonlySet<string> | null;
+    };
 
 export type FillState =
   | { status: 'idle' }
@@ -88,6 +110,9 @@ export function useAutofill(
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [aiMap, setAiMap] = useState<Record<string, Classification>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [rescanning, setRescanning] = useState(false);
+  const [rescanError, setRescanError] = useState<string | null>(null);
+  const [pageStatus, setPageStatus] = useState<FormStatus | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -139,16 +164,53 @@ export function useAutofill(
     setAiMap({});
     setDrafts({});
     setRows([]);
+    setPageStatus(null);
+    setRescanError(null);
     const response = await services.send({ type: 'autofill/scan' });
     setScanState(
       response.ok
-        ? { status: 'ready', scan: response.data }
+        ? { status: 'ready', scan: response.data, known: null }
         : { status: 'error', error: response.error },
     );
   }, [services]);
 
+  /**
+   * Scans again without losing the review: fields still on the page keep
+   * their ref, value and tick; fields found for the first time are marked
+   * new and left unticked. Reading the page is all it does.
+   */
+  const rescan = useCallback(async () => {
+    if (scanState.status !== 'ready') return;
+    const previous = scanState.scan;
+    const known = new Set(rows.map(rowKey));
+    setRescanning(true);
+    setRescanError(null);
+    const response = await services.send({ type: 'autofill/scan', keepRefs: true });
+    setRescanning(false);
+    setPageStatus(null);
+    if (!response.ok) {
+      setRescanError(response.error.message);
+      return;
+    }
+    const refs = new Set(rows.map((r) => r.proposal.field.ref));
+    const nextStep =
+      !samePage(previous.url, response.data.url) ||
+      response.data.step.current !== previous.step.current ||
+      (refs.size > 0 && !response.data.fields.some((f) => refs.has(f.ref)));
+    if (nextStep) {
+      // Another page or step: none of the reviewed fields is left, so start a fresh review.
+      setAiMap({});
+      setDrafts({});
+      setRows([]);
+      setFillState({ status: 'idle' });
+      setScanState({ status: 'ready', scan: response.data, known: null });
+      return;
+    }
+    setScanState({ status: 'ready', scan: response.data, known });
+  }, [services, scanState, rows]);
+
   // Proposals follow the scan, the chosen resume, the cover letter and any AI
-  // help. A field the user edited keeps their value (refs are per scan).
+  // help. What the user already decided (edits, ticks) is kept; see mergeRows.
   useEffect(() => {
     if (scanState.status !== 'ready' || !profile) return;
     const fresh = applyDrafts(
@@ -157,13 +219,27 @@ export function useAutofill(
       ),
       drafts,
     );
-    setRows((current) =>
-      fresh.map(
-        (row) =>
-          current.find((c) => c.proposal.field.ref === row.proposal.field.ref && c.edited) ?? row,
-      ),
-    );
+    setRows((current) => mergeRows(current, fresh, scanState.known));
   }, [scanState, profile, resume, coverLetter, aiMap, drafts]);
+
+  // While a scan is on screen, ask the page now and then whether questions
+  // appeared or the tab moved on. The check only reads the page.
+  const filling = fillState.status === 'filling';
+  const scannedUrl = scanState.status === 'ready' ? scanState.scan.url : null;
+  useEffect(() => {
+    if (!scannedUrl || filling || rescanning) return;
+    let active = true;
+    const check = async () => {
+      if (document.visibilityState === 'hidden') return;
+      const response = await services.send({ type: 'autofill/status', pageUrl: scannedUrl });
+      if (active && response.ok) setPageStatus(response.data);
+    };
+    const timer = setInterval(() => void check(), STATUS_POLL_MS);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [services, scannedUrl, filling, rescanning]);
 
   const edit = useCallback(
     (ref: string, value: ProposedValue | null) => setRows((r) => editRow(r, ref, value)),
@@ -199,7 +275,9 @@ export function useAutofill(
         ? { status: 'done', report: response.data }
         : { status: 'error', message: response.error.message },
     );
-  }, [services, rows, scanState, resumeId, resumes]);
+    // Answers often reveal follow-up questions: look for them right away.
+    if (response.ok) await rescan();
+  }, [services, rows, scanState, resumeId, resumes, rescan]);
 
   const aiReady = aiAllowed && connection !== null && isConfigured(connection);
 
@@ -289,7 +367,11 @@ export function useAutofill(
     aiReady,
     canDraft: aiReady && job !== null && hasUsableJob(job),
     jobTitle: job?.title ?? null,
+    rescanning,
+    rescanError,
+    pageStatus,
     scan,
+    rescan,
     edit,
     approve,
     fill,

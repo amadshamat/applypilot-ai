@@ -516,3 +516,41 @@ answers saved together are both kept.
 Generating again over an edited draft asks first and keeps the edited version as `previous`
 (one level), which **Restore my edited version** swaps back. Generating twice in a row without
 edits keeps the same `previous`, so a second click cannot lose the user's edits.
+
+## 057: Re-scans keep refs; new questions are marked and never pre-ticked
+
+Conditional questions appear only after an answer, so after every fill the panel scans again
+(read-only), and while a scan is shown it asks the page every 2.5 s whether visible fields
+without a ref exist. That check (`content/form-changes` via `autofill/status`) never injects a
+content script and only reads the DOM, so it is safe to repeat; a tab that moved on is reported
+instead.
+
+A re-scan (`keepRefs`) keeps a field's ref only when exactly the same elements still carry it,
+so a block cloned with `cloneNode` (which copies the attribute) cannot inherit another field's
+approved answer: both copies get new refs. New refs are numbered after the highest one in use.
+The panel then matches rows by ref, control and label; a reworded question is a new question.
+What the user decided is kept (typed value, tick or untick). Rows found for the first time are
+marked New and start unticked even when the profile has an exact value, because the user has
+not seen them; values the page already shows are not sent again. When none of the reviewed
+refs is left, or the step number changed, the re-scan is a new step and the review starts
+fresh. Considered and rejected: re-scanning automatically on every page change (the list would
+move under the user while they review it) and filling revealed fields in the same pass (that
+would fill fields nobody approved).
+
+## 058: Yes/No buttons are a control kind, with sensitive checks on the page's answers too
+
+Many forms draw Yes/No as two buttons (`aria-pressed` toggles, `role="radio"` outside a
+radiogroup, or plain buttons). They are now the `button-group` control: 2 to 6 short, visible
+buttons side by side that either expose a pressed or checked state or read as answers. Groups
+in toolbars, tab lists, navigation, and buttons that open dropdowns, submit or advance are
+excluded; a group without a label is reported only, since it could be a consent or eligibility
+question. Filling clicks the one chosen button through the same submit-refusing click as other
+controls and checks that its state changed; a group without state is reported as clicked, to
+check.
+
+The fill step's own sensitive check now also reads the group's current label and answer texts
+from the page and refuses pay questions, so a group whose answers are demographic (Male /
+Female) is refused whatever its label says, and a tampered or reworded instruction cannot fill
+a sensitive question. Yes/No questions are answered from the profile only when it proves Yes
+(a saved GitHub, LinkedIn or portfolio link, a current education entry); a missing entry proves
+nothing, so No is never proposed.

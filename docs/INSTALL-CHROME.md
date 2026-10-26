@@ -547,6 +547,68 @@ check the card says **0.8.0**.
 - [ ] F3. Profile, Analyze, the tracker, reminders and Import data still work, and your
       existing profile, resumes and tracked applications are unchanged after the update.
 
+## 13. v0.9.0 checklist: Smarter Application Autofill
+
+Nothing here needs AWS, the local API or a paid call. Update as described in **Updating to a
+new build** (do not Remove the extension) and check the card says **0.9.0**. **Never submit a
+real application during this test.**
+
+Use the sample form `conditional-application.html` (in the project files next to this
+checklist, and in the source under `tests/fixtures/applications/`). Put it in your
+practice-form folder and serve it as in section 8 ("Practice form"), then open
+`http://127.0.0.1:8000/conditional-application.html`, click the ApplyPilot toolbar icon on that
+tab and open **Autofill**. Your saved profile is used, so values are yours.
+
+### A. Yes/No buttons and sensitive questions
+
+- [ ] A1. **Scan this form**. "Have you used AWS in a project or job?" is listed with a value box
+      offering **Yes** and **No**, and nothing chosen.
+- [ ] A2. Under **You answer these on the page**: "Are you legally authorized to work in the
+      United States?", "Will you now or in the future require visa sponsorship?", "What are your
+      salary expectations?", "Gender" and the consent box. None has a value or a **Fill** box.
+- [ ] A3. "Do you have a public GitHub profile?": if your profile has a GitHub link it shows
+      **Yes** under **Check these**, with **Fill** not ticked. Without a GitHub link it has no
+      value (ApplyPilot never answers No for you).
+
+### B. Fill, then newly revealed questions
+
+- [ ] B1. Choose **Yes** for the AWS question. If the GitHub question shows Yes, tick its
+      **Fill**. Untick **Fill** on Email.
+- [ ] B2. Press **Fill N approved fields**. On the page, the AWS **Yes** button is highlighted
+      and Yes is chosen for GitHub; Email is still empty.
+- [ ] B3. Without pressing anything else, the panel says **3 new questions found** (2 if you
+      did not answer the GitHub question). The new rows ("Describe a project where you used
+      AWS.", "Highest level of education", "GitHub URL") are marked **New** and their **Fill**
+      boxes are not ticked. Nothing new was typed on the page.
+- [ ] B4. Email is still unticked, and the fields already filled show **Already filled**. The
+      Fill button counts 0 fields.
+- [ ] B5. Tick **Highest level of education** (it proposes your degree level) and, if shown,
+      **GitHub URL** (your GitHub link). **Fill**: only those change on the page.
+
+### C. Questions that load later, and a safe re-scan
+
+- [ ] C1. Choose **Yes** for "Are you open to working from one of our offices?" and **Fill**. A
+      moment later "Which team interests you most?" appears on the page.
+- [ ] C2. Within a few seconds the panel shows **New questions appeared on the page**. Press
+      **Scan for new questions** in that message: the team question is added, marked New and
+      unticked; everything you ticked, unticked or typed before is unchanged.
+- [ ] C3. Type something into the empty project question box in the panel (do not fill), then
+      press **Scan for new questions** at the top: your text is still there.
+- [ ] C4. **Start over** clears the review and scans fresh: rows are no longer marked New.
+
+### D. Never submits, never advances
+
+- [ ] D1. Through all of this the page did not move to step 2 and did not submit: the URL is
+      unchanged and the heading still reads "Apply: Cloud Support Intern". The authorization,
+      sponsorship and gender answers, salary and consent are untouched.
+
+### E. Everything else still works
+
+- [ ] E1. The practice form from section 8 still fills and locks as before.
+- [ ] E2. Profile, Analyze, AI Tailor (with your edited drafts), the tracker, reminders, Export
+      and Import still work, and your profile, resumes, drafts and tracked applications are
+      unchanged after the update.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To

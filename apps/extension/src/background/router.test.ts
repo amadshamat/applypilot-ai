@@ -371,6 +371,51 @@ describe('autofill messages', () => {
     expect(moved.sendToTab).not.toHaveBeenCalled();
   });
 
+  it('re-scans keeping refs when asked', async () => {
+    const result = scan();
+    const deps = makeDeps({ sendToTab: vi.fn(() => Promise.resolve(ok(result))) });
+    await handleBackgroundMessage({ type: 'autofill/scan', keepRefs: true }, deps);
+    expect(deps.sendToTab).toHaveBeenCalledWith(
+      3,
+      { type: 'content/scan-form', keepRefs: true },
+      0,
+    );
+    expect(deps.injectContentScript).toHaveBeenCalled();
+  });
+
+  it('reports form changes without injecting into the page', async () => {
+    const changes = { newFields: 2, removedFields: 0 };
+    const deps = makeDeps({ sendToTab: vi.fn(() => Promise.resolve(ok(changes))) });
+    await expect(
+      handleBackgroundMessage(
+        { type: 'autofill/status', pageUrl: 'https://careers.example.com/jobs/1#step2' },
+        deps,
+      ),
+    ).resolves.toEqual(ok({ samePage: true, reachable: true, newFields: 2, removedFields: 0 }));
+    expect(deps.sendToTab).toHaveBeenCalledWith(3, { type: 'content/form-changes' }, 0);
+    expect(deps.injectContentScript).not.toHaveBeenCalled();
+
+    const moved = makeDeps();
+    await expect(
+      handleBackgroundMessage(
+        { type: 'autofill/status', pageUrl: 'https://other.example/apply' },
+        moved,
+      ),
+    ).resolves.toEqual(ok({ samePage: false, reachable: false, newFields: 0, removedFields: 0 }));
+    expect(moved.sendToTab).not.toHaveBeenCalled();
+
+    const gone = makeDeps({ sendToTab: vi.fn(() => Promise.reject(new Error('No receiver'))) });
+    const bad = makeDeps({ sendToTab: vi.fn(() => Promise.resolve(ok({ newFields: -1 }))) });
+    for (const d of [gone, bad]) {
+      await expect(
+        handleBackgroundMessage(
+          { type: 'autofill/status', pageUrl: 'https://careers.example.com/jobs/1' },
+          d,
+        ),
+      ).resolves.toEqual(ok({ samePage: true, reachable: false, newFields: 0, removedFields: 0 }));
+    }
+  });
+
   it('rejects fill requests that are malformed or empty', async () => {
     for (const message of [
       { type: 'autofill/fill', pageUrl: 'https://careers.example.com/jobs/1', instructions: [] },

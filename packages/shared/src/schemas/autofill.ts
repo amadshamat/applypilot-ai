@@ -36,6 +36,8 @@ export const controlKindSchema = z.enum([
   'combobox',
   /** A button that opens a list of options (Workday-style dropdowns). */
   'listbox-button',
+  /** A question answered by clicking one of a few buttons (Yes / No), each a toggle or role=radio. */
+  'button-group',
   'file',
 ]);
 export type ControlKind = z.infer<typeof controlKindSchema>;
@@ -90,7 +92,7 @@ export const formScanSchema = z.object({
   fields: z.array(detectedFieldSchema).max(300),
   /** Visible fields left alone on purpose: passwords, read-only and disabled fields. */
   skippedCount: z.number().int().nonnegative(),
-  /** Labels of visible questions drawn in a way ApplyPilot cannot fill (such as Yes/No buttons). */
+  /** Labels of visible questions drawn in a way ApplyPilot cannot fill (such as unlabeled Yes/No buttons). */
   unsupportedFields: z.array(pageText(300)).max(50),
   step: z.object({
     current: z.number().int().positive().nullable(),
@@ -162,3 +164,20 @@ export const fillReportSchema = z.object({
   filledAt: z.iso.datetime(),
 });
 export type FillReport = z.infer<typeof fillReportSchema>;
+
+/** What the content script reports when the panel checks whether the form changed. Read-only. */
+export const formChangesSchema = z.object({
+  /** Visible fields the last scan did not see (questions revealed since). */
+  newFields: z.number().int().nonnegative().max(300),
+  /** Fields from the last scan that are no longer on the page. */
+  removedFields: z.number().int().nonnegative().max(300),
+});
+export type FormChanges = z.infer<typeof formChangesSchema>;
+
+export const formStatusSchema = formChangesSchema.extend({
+  /** False when the tab moved to another page (or another step at a new address). */
+  samePage: z.boolean(),
+  /** False when the page could not be asked (it reloaded, or is not readable). */
+  reachable: z.boolean(),
+});
+export type FormStatus = z.infer<typeof formStatusSchema>;

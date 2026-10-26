@@ -1,4 +1,10 @@
-import type { ControlKind, DetectedField, FieldOption, FormScan } from '@applypilot/shared';
+import type {
+  ControlKind,
+  DetectedField,
+  FieldOption,
+  FormChanges,
+  FormScan,
+} from '@applypilot/shared';
 import {
   REF_ATTRIBUTE,
   buttonText,
@@ -27,6 +33,13 @@ import { clean, cleanLabel, labelMarksRequired, nameWords } from './text';
 
 export interface ScanOptions {
   now?: () => Date;
+  /**
+   * Re-scan: a field still on the page keeps the ref it had, so the answers the
+   * user approved stay attached to it. New fields get refs after the highest
+   * one in use. A ref that is copied (a cloned block) or split across elements
+   * that no longer form one field is dropped, and those fields count as new.
+   */
+  keepRefs?: boolean;
 }
 
 const MAX_FIELDS = 300;
@@ -362,27 +375,107 @@ function fileLabel(input: HTMLInputElement): string {
   return named || labelFor(input) || labelFor(input.parentElement ?? input);
 }
 
-const CHOICE_BUTTON_TEXT = /^(yes|no|maybe|true|false|n\/a|prefer not to (say|answer)|decline)$/i;
+const CHOICE_BUTTON_TEXT =
+  /^(yes|no|maybe|true|false|n\/a|not sure|prefer not to (say|answer)|decline( to answer)?|i don'?t know)$/i;
+const CHOICE_BUTTONS = 'button, [role="button"], [role="radio"]';
+const PRESSED_STATE = ['aria-pressed', 'aria-checked', 'aria-selected'];
+
+function isPressed(button: Element): boolean {
+  return PRESSED_STATE.some((name) => button.getAttribute(name) === 'true');
+}
+
+export interface ButtonGroup {
+  container: Element;
+  buttons: Element[];
+  label: string;
+}
 
 /**
- * Questions answered by clicking one of a few buttons (Ashby draws Yes/No
- * this way). ApplyPilot does not click them, but lists them so the user knows.
+ * Questions answered by clicking one of a few buttons: Ashby and many custom
+ * forms draw Yes/No this way, as toggle buttons (aria-pressed) or role=radio
+ * outside a radiogroup. A group counts only when it is 2 to 6 short,
+ * visible buttons side by side, none of them a Submit, Next or dropdown
+ * button, and either the buttons expose a pressed or checked state or they
+ * read as answers (Yes, No, Prefer not to say).
  */
-function buttonChoiceQuestions(root: Element): string[] {
-  const out: string[] = [];
+export function buttonGroups(root: Element): ButtonGroup[] {
   const containers = new Set<Element>();
-  for (const button of deepQueryAll(root, 'button, [role="button"]')) {
-    if (CHOICE_BUTTON_TEXT.test(buttonText(button)) && button.parentElement)
-      containers.add(button.parentElement);
+  for (const button of deepQueryAll(root, CHOICE_BUTTONS)) {
+    if (button.closest('[role="radiogroup"]')) continue;
+    if (button.parentElement) containers.add(button.parentElement);
   }
+  const out: ButtonGroup[] = [];
   for (const container of containers) {
-    const buttons = [...container.children].filter((c) => c.matches('button, [role="button"]'));
+    const buttons = [...container.children].filter((c) => c.matches(CHOICE_BUTTONS));
     if (buttons.length < 2 || buttons.length > 6 || !isVisible(container)) continue;
-    if (!buttons.every((b) => buttonText(b).length <= 40 && !isSubmitLike(b))) continue;
-    const label = cleanLabel(groupLabel(container));
-    if (label && out.length < 50) out.push(label.slice(0, 300));
+    // Editor toolbars and tabs use pressed buttons too; they are not questions.
+    if (
+      container.closest('[role="toolbar"], [role="menubar"], [role="tablist"], nav, header, footer')
+    )
+      continue;
+    if (
+      !buttons.every(
+        (b) =>
+          isVisible(b) &&
+          buttonText(b).length > 0 &&
+          buttonText(b).length <= 40 &&
+          !isSubmitLike(b) &&
+          !b.matches('[aria-haspopup], [aria-expanded], :disabled, [aria-disabled="true"]') &&
+          !b.querySelector('input, select, textarea'),
+      )
+    ) {
+      continue;
+    }
+    const stateful = buttons.every(
+      (b) => b.matches('[role="radio"]') || PRESSED_STATE.some((name) => b.hasAttribute(name)),
+    );
+    const answers = buttons.some((b) => CHOICE_BUTTON_TEXT.test(buttonText(b)));
+    if (!stateful && !answers) continue;
+    out.push({ container, buttons, label: cleanLabel(groupLabel(container)) });
   }
   return out;
+}
+
+function buttonGroupCandidate(group: ButtonGroup): Candidate {
+  const options = group.buttons.map((b) => {
+    const label = buttonText(b).slice(0, 300);
+    return { value: (b.getAttribute('data-value') ?? label).slice(0, 300), label };
+  });
+  const pressed = group.buttons.findIndex(isPressed);
+  return {
+    el: group.container,
+    members: [group.container, ...group.buttons],
+    control: 'button-group',
+    label: group.label,
+    options,
+    optionsComplete: true,
+    currentValue: pressed >= 0 ? (options[pressed]?.label ?? '') : '',
+  };
+}
+
+/**
+ * Every field on the page, in page order: the controls `collect` finds and
+ * the button groups. Button groups without a label cannot be told apart from
+ * consent or eligibility questions, so they are reported, never offered.
+ */
+function candidates(
+  root: Element,
+  skipped: { count: number },
+): { fields: Candidate[]; unlabeled: number } {
+  const fields = collect(root, skipped);
+  let unlabeled = 0;
+  for (const group of buttonGroups(root)) {
+    if (!group.label) {
+      unlabeled += 1;
+      continue;
+    }
+    fields.push(buttonGroupCandidate(group));
+  }
+  const order = new Map(
+    deepQueryAll(root, `${FIELD_SELECTOR}, ${CHOICE_BUTTONS}`).map((el, index) => [el, index]),
+  );
+  const position = (c: Candidate) => Math.min(...c.members.map((m) => order.get(m) ?? Infinity));
+  return { fields: fields.sort((a, b) => position(a) - position(b)), unlabeled };
 }
 
 const CONTROLS =
@@ -499,10 +592,46 @@ function blockedFrames(doc: Document, url: string): FormScan['blockedFrames'] {
 export function scanForm(doc: Document, options: ScanOptions = {}): FormScan {
   const url = doc.URL;
   const docs = readableDocuments(doc);
-  // Refs from an earlier scan are replaced, so a ref always means this scan's field.
+  const marked = new Map<string, Set<Element>>();
   for (const d of docs) {
-    for (const el of deepQueryAll(d, `[${REF_ATTRIBUTE}]`)) el.removeAttribute(REF_ATTRIBUTE);
+    for (const el of deepQueryAll(d, `[${REF_ATTRIBUTE}]`)) {
+      const ref = el.getAttribute(REF_ATTRIBUTE) ?? '';
+      marked.set(ref, (marked.get(ref) ?? new Set()).add(el));
+      // Refs are written again below, so a ref always means this scan's field.
+      el.removeAttribute(REF_ATTRIBUTE);
+    }
   }
+  const kept = new Set<string>();
+  let next = 1;
+  if (options.keepRefs) {
+    for (const ref of marked.keys()) {
+      const n = /^f(\d{1,4})$/.exec(ref)?.[1];
+      if (n) next = Math.max(next, Number(n) + 1);
+    }
+  }
+  /** The ref a field had, if exactly its elements carried it; else a new one. */
+  const refFor = (members: Element[]): string => {
+    if (options.keepRefs) {
+      const ref = [...marked.entries()].find(([, els]) => els.has(members[0] as Element))?.[0];
+      const els = ref ? marked.get(ref) : undefined;
+      if (
+        ref &&
+        els &&
+        !kept.has(ref) &&
+        /^f\d{1,4}$/.test(ref) &&
+        els.size === members.length &&
+        members.every((m) => els.has(m))
+      ) {
+        kept.add(ref);
+        return ref;
+      }
+    }
+    // Refs are at most four digits; past that, numbering wraps to a fresh scan's.
+    if (next > 9999) next = 1;
+    let ref = `f${next++}`;
+    while (kept.has(ref)) ref = `f${next++}`;
+    return ref;
+  };
 
   const skipped = { count: 0 };
   const fields: DetectedField[] = [];
@@ -518,11 +647,18 @@ export function scanForm(doc: Document, options: ScanOptions = {}): FormScan {
     // The page's main heading names the job; a form's own first heading is often a section.
     title ||= clean((d.querySelector('h1') ?? root.querySelector('h2'))?.textContent).slice(0, 300);
     captcha ||= deepQueryAll(d, CAPTCHA).length > 0;
-    unsupported.push(...buttonChoiceQuestions(root));
+    const found = candidates(root, skipped);
+    if (found.unlabeled > 0) {
+      unsupported.push(
+        found.unlabeled === 1
+          ? 'An unlabeled question with answer buttons'
+          : `${found.unlabeled} unlabeled questions with answer buttons`,
+      );
+    }
 
-    for (const candidate of collect(root, skipped)) {
+    for (const candidate of found.fields) {
       if (fields.length >= MAX_FIELDS) break;
-      const ref = `f${fields.length + 1}`;
+      const ref = refFor(candidate.members);
       candidate.members.forEach((m) => m.setAttribute(REF_ATTRIBUTE, ref));
       const { el } = candidate;
       const rawLabel = candidate.label;
@@ -591,4 +727,32 @@ export function scanForm(doc: Document, options: ScanOptions = {}): FormScan {
     blockedFrames: blockedFrames(doc, url),
     scannedAt: (options.now?.() ?? new Date()).toISOString(),
   };
+}
+
+/**
+ * What changed since the last scan, without changing anything: visible
+ * fields that carry no ref (questions revealed since), and refs whose field
+ * is gone. Used to tell the user when to scan for new questions.
+ */
+export function formChanges(doc: Document): FormChanges {
+  const docs = readableDocuments(doc);
+  let newFields = 0;
+  const present = new Set<string>();
+  for (const d of docs) {
+    const root = chooseRoot(d);
+    if (!root) continue;
+    for (const candidate of candidates(root, { count: 0 }).fields) {
+      const refs = new Set(candidate.members.map((m) => m.getAttribute(REF_ATTRIBUTE)));
+      const [ref] = refs;
+      if (refs.size === 1 && ref) present.add(ref);
+      else newFields += 1;
+    }
+  }
+  const known = new Set(
+    docs
+      .flatMap((d) => deepQueryAll(d, `[${REF_ATTRIBUTE}]`))
+      .map((el) => el.getAttribute(REF_ATTRIBUTE)),
+  );
+  const removed = [...known].filter((ref) => ref && !present.has(ref)).length;
+  return { newFields: Math.min(newFields, 300), removedFields: Math.min(removed, 300) };
 }

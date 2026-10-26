@@ -43,7 +43,7 @@ const RULES: readonly Rule[] = [
     topic: 'demographic information',
     category: 'sensitive',
     pattern:
-      /\b(gender|sex\b|pronoun|race\b(?! condition)|racial|ethnic(?:ity)?|hispanic|latin[oax]|veteran|military (?:status|service)|disabilit(?:y|ies)|disabled|sexual orientation|lgbt|transgender|religio(?:n|us)|marital|married|pregnan|national origin|nationality|caste|accommodation)/i,
+      /\b(gender|sex\b|male\b|female|non-?binary|pronoun|race\b(?! condition)|racial|ethnic(?:ity)?|hispanic|latin[oax]|veteran|military (?:status|service)|disabilit(?:y|ies)|disabled|sexual orientation|lgbt|transgender|religio(?:n|us)|marital|married|pregnan|national origin|nationality|caste|accommodation)/i,
   },
   {
     topic: 'legal agreement or attestation',

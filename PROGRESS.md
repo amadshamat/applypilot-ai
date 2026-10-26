@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-26 (v0.8.0)_
+_Last updated: 2026-10-26 (v0.9.0)_
 
 ## Current phase
 
@@ -26,10 +26,47 @@ saved automatically, the "All changes saved" indicator worked, and an edited cov
 still there after closing and reopening the extension. The other v0.8.0 checks have not been
 reported (see Not yet verified).
 
+**v0.9.0 (Smarter Application Autofill): implemented and automated-tested, not manually
+verified.** It waits for Muhaid's manual test (`docs/INSTALL-CHROME.md`, section 13). No other
+improvement or phase starts until Muhaid tests and approves it.
+
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
+
+### v0.9.0: Smarter Application Autofill (automated-tested; not manually verified)
+
+- **Newly revealed questions are found.** After every fill the panel scans the page again by
+  itself (reading only) and lists questions the answers revealed. While a scan is on screen
+  it also checks the page every 2.5 seconds, read-only and without injecting anything, and
+  shows "New questions appeared on the page" for questions that load later, or "This tab
+  shows another page now" after the user moves on.
+- **Safe re-scan keeps reviewed answers.** "Scan for new questions" replaces "Scan again": a
+  field still on the page keeps its ref, so typed values and ticks (and unticks) stay with it.
+  A question whose wording changed, or a field copied from another (a cloned block), counts as
+  new. When no reviewed field is left (the next step), the review starts fresh. "Start over"
+  clears the review as before.
+- **New questions wait for review.** Fields found by a re-scan are marked **New** and start
+  unticked, even when the profile has an exact value; nothing new is filled until the user
+  ticks it. Values the page already shows are not sent again.
+- **Yes/No buttons and custom selection controls.** Questions answered with toggle buttons
+  (`aria-pressed`), `role="radio"` buttons outside a radiogroup, or plain Yes/No buttons are
+  now fields (control `button-group`) the user can answer and fill; ApplyPilot clicks only the
+  chosen answer and checks that it stuck. Toolbars, tabs, Next/Submit and dropdown buttons are
+  never treated as answers, and a Yes/No group without a label is only reported. ARIA
+  listboxes, comboboxes and radiogroups work as before.
+- **Sensitive questions stay locked, in both places.** Work authorization, sponsorship,
+  salary, demographics (now also recognised by answers such as Male/Female/Non-binary), consent
+  and other sensitive questions are locked in the review, and the fill step refuses them again
+  from the page's current wording and answers, so a tampered or reworded instruction cannot
+  fill them. The fill step now also refuses pay questions.
+- **Mapping only from verified data.** Revealed fields use the same profile rules. A Yes/No
+  question is answered only when the profile proves Yes (for example "Do you have a public
+  GitHub profile?" with a GitHub link saved, or "Are you currently enrolled…" with a current
+  education entry), and still needs review; ApplyPilot never answers No for the user.
+- **Never submits or advances.** Unchanged: the submit guard, and no click on anything
+  submit-like. The new tests count Next, Submit and form submit events and they stay at 0.
 
 ### v0.8.0: Keep AI draft edits (cover letter autosave tested and approved by Muhaid)
 
@@ -333,7 +370,31 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-26, v0.8.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-26, v0.9.0, local container, Node 22.22, Chromium 141)
+
+v0.9.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
+**650 tests** (extension 204, up from 195; autofill 75, up from 60). `pnpm test:e2e`:
+**25 passed**, screenshot test skipped. New tests, on a new sample form with conditional
+questions (`tests/fixtures/applications/conditional-application.html`):
+
+- Autofill package: toggle and `role=radio` Yes/No buttons read as questions with their
+  answers; sensitive ones locked; Yes proposed only when the profile proves it; the chosen
+  button clicked and shown as already filled afterwards; an ARIA listbox revealed by an answer
+  filled from the profile; tampered, reworded, salary and demographic-answer instructions
+  refused by the fill step; toolbars, tabs, unlabeled and submit buttons ignored; revealed and
+  removed questions counted without filling them, including one that loads later; refs kept on
+  re-scan and new ones numbered after them; cloned refs never reused.
+- Router: re-scan keeps refs; the status check never injects and reports a moved tab or an
+  unreachable page as quiet.
+- Review list: edits, ticks and unticks kept on re-scan; new fields unticked even with an exact
+  profile value; a reworded question is new; values already on the page not sent again.
+- Side panel: fill, automatic re-scan with "3 new questions found", new rows unticked, a
+  second fill of only the newly ticked fields; the later-loading question found by the
+  periodic check and scanned on request.
+- Chromium: the same flow on the sample page, then sensitive questions untouched and no Next,
+  Submit or form submit event. All earlier browser tests still pass.
+
+### v0.8.0 (2026-10-26)
 
 v0.8.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
 **626 tests** (extension 195, up from 181). `pnpm test:e2e`: **24 passed**, screenshot test
@@ -400,6 +461,9 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
+- **All of v0.9.0 in Chrome.** Smarter Application Autofill has passed only the automated
+  tests above; Muhaid has not tested it yet (`docs/INSTALL-CHROME.md`, section 13). Live
+  application sites have not been tried.
 - **The rest of v0.8.0 in Chrome.** Muhaid tested cover letter autosave and reopening the
   extension. Not reported yet: tailored resume and screening answer edits, closing straight
   after typing, a Chrome restart, drafts kept per job, Revert, Generate again with Restore,
@@ -434,7 +498,8 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Smarter Application Autofill (v0.9.0). Phase 6 manual testing is deferred by Muhaid.
+Nothing new. v0.9.0 (Smarter Application Autofill) waits for Muhaid's manual test before
+anything else starts. Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 

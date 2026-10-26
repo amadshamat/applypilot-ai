@@ -57,7 +57,7 @@ test('service worker starts and answers typed messages', async ({ context, exten
   const reply = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'app/ping' }),
   );
-  expect(reply).toEqual({ ok: true, data: { version: '0.8.0' } });
+  expect(reply).toEqual({ ok: true, data: { version: '0.9.0' } });
   const rejected = await panel.evaluate((): Promise<unknown> =>
     chrome.runtime.sendMessage({ type: 'job/submit' }),
   );
@@ -410,12 +410,15 @@ async function openForm(context: BrowserContext, host: string, file: string): Pr
 
 async function scanForm(panel: Page) {
   await panel.getByRole('tab', { name: 'Autofill' }).click();
-  const scan = panel.getByRole('button', { name: /^Scan (this form|again)$/ });
+  // The first scan, or a re-scan that keeps reviewed answers (a new step starts fresh).
+  const scan = panel.getByRole('button', { name: /^Scan (this form|for new questions)$/ }).first();
   await scan.click();
 }
 
-const pageCounter = (page: Page, name: 'submitCount' | 'stepChanges') =>
-  page.evaluate((key) => (window as unknown as Record<string, number>)[key], name);
+const pageCounter = (
+  page: Page,
+  name: 'submitCount' | 'stepChanges' | 'nextCount' | 'formSubmits',
+) => page.evaluate((key) => (window as unknown as Record<string, number>)[key], name);
 
 test('autofill: reviews and fills a plain application form, attaches the resume, never submits', async ({
   context,
@@ -449,6 +452,92 @@ test('autofill: reviews and fills a plain application form, attaches the resume,
   await expect(form.locator('input[name="work_auth"]:checked')).toHaveCount(0);
   await expect(form.locator('#password')).toHaveValue('');
   expect(await pageCounter(form, 'submitCount')).toBe(0);
+});
+
+test('autofill: finds revealed questions, keeps reviewed answers, clicks Yes/No buttons, never advances', async ({
+  context,
+  extensionId,
+}) => {
+  test.setTimeout(60_000);
+  const panel = await openPanel(context, extensionId);
+  await saveResumeProfile(panel);
+  const form = await openForm(context, '127.0.0.1', 'conditional-application.html');
+  await scanForm(panel);
+  await expect(panel.getByText('Apply: Cloud Support Intern')).toBeVisible();
+
+  // Work authorization, sponsorship, salary, gender and consent: locked, no Fill box.
+  const manual = panel.getByRole('region', { name: 'You answer these on the page' });
+  for (const label of [
+    'Are you legally authorized to work in the United States?',
+    'Will you now or in the future require visa sponsorship?',
+    'What are your salary expectations?',
+    'Gender',
+    'I consent to Contoso storing my information for this application.',
+  ]) {
+    await expect(manual.getByText(label, { exact: label === 'Gender' })).toBeVisible();
+  }
+  await expect(manual.getByRole('checkbox')).toHaveCount(0);
+
+  // The resume has a GitHub link, so Yes is proposed but waits for a tick.
+  const github = 'Do you have a public GitHub profile?';
+  const review = panel.getByRole('region', { name: 'Check these' });
+  await expect(review.getByLabel(`Value for ${github}`)).toHaveValue('yes');
+  await expect(review.getByRole('checkbox', { name: `Fill ${github}` })).not.toBeChecked();
+  await review.getByRole('checkbox', { name: `Fill ${github}` }).check();
+  const other = panel.getByRole('region', { name: 'Not recognised or not supported' });
+  await other
+    .getByLabel('Value for Have you used AWS in a project or job?')
+    .selectOption({ label: 'Yes' });
+
+  await panel.getByRole('button', { name: 'Fill 4 approved fields' }).click();
+  await expect(panel.getByRole('status', { name: 'Fill results' })).toContainText(
+    'Filled 4 fields',
+  );
+  await expect(form.locator('[data-question="aws"] [data-value="yes"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(form.locator('input[name="has_github"][value="yes"]')).toBeChecked();
+
+  // The answers revealed three questions: listed as New, none ticked, none filled.
+  await expect(panel.getByText('3 new questions found')).toBeVisible();
+  await expect(panel.locator('[data-testid="autofill-row"][data-new="true"]')).toHaveCount(3);
+  await expect(panel.getByLabel('Value for GitHub URL')).toHaveValue(/github\.com\/jrivera-dev/);
+  await expect(panel.getByRole('checkbox', { name: 'Fill GitHub URL' })).not.toBeChecked();
+  await expect(form.locator('#github')).toHaveValue('');
+  // What was already filled is not sent again.
+  await expect(panel.getByRole('button', { name: /^Fill 0 approved field/ })).toBeDisabled();
+
+  await panel.getByRole('checkbox', { name: 'Fill GitHub URL' }).check();
+  await panel.getByRole('checkbox', { name: 'Fill Highest level of education' }).check();
+  await panel.getByRole('button', { name: 'Fill 2 approved fields' }).click();
+  await expect(form.locator('#github')).toHaveValue(/github\.com\/jrivera-dev/);
+  await expect(form.locator('#degree')).toHaveText("Bachelor's Degree");
+  await expect(form.locator('#aws-project')).toHaveValue('');
+
+  // A question that loads a moment after its answer: the panel notices it.
+  await other
+    .getByLabel('Value for Are you open to working from one of our offices?')
+    .selectOption({ label: 'Yes' });
+  await panel.getByRole('button', { name: 'Fill 1 approved field' }).click();
+  await expect(form.locator('#office')).toBeVisible();
+  const notice = panel
+    .getByRole('status')
+    .filter({ hasText: 'New questions appeared on the page' });
+  await expect(notice).toBeVisible({ timeout: 10_000 });
+  await notice.getByRole('button', { name: 'Scan for new questions' }).click();
+  await expect(panel.getByText('Which team interests you most?')).toBeVisible();
+  await expect(panel.getByRole('checkbox', { name: 'Fill GitHub URL' })).toBeChecked();
+
+  // Nothing sensitive was touched, and the form never advanced or submitted.
+  await expect(form.locator('.choices [aria-checked="true"]')).toHaveCount(0);
+  await expect(form.locator('[aria-labelledby="sponsor-q"] [aria-pressed="true"]')).toHaveCount(0);
+  await expect(form.locator('#salary')).toHaveValue('');
+  await expect(form.locator('#gender')).toHaveText('Select…');
+  await expect(form.locator('input[name="consent"]')).not.toBeChecked();
+  for (const counter of ['nextCount', 'submitCount', 'formSubmits'] as const) {
+    expect(await pageCounter(form, counter)).toBe(0);
+  }
 });
 
 test('autofill: fills one step of a multi-step Workday-style form at a time', async ({
@@ -554,7 +643,7 @@ test('autofill: the downloadable practice form fills and locks the right fields,
     'Gender',
     'Disability status',
   ]) {
-    await expect(manual.getByText(label, { exact: true })).toBeVisible();
+    await expect(manual.getByText(label, { exact: label === 'Gender' })).toBeVisible();
   }
   await expect(manual.getByRole('checkbox')).toHaveCount(0);
   await expect(panel.getByRole('region', { name: 'Open questions' })).toContainText(

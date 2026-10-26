@@ -388,8 +388,9 @@ export function classifyField(field: DetectedField): Classification {
   // must not turn the phone field into an attestation.
   const words = field.label || field.hint;
   const choiceText =
-    ['select', 'radio-group', 'checkbox-group', 'listbox-button'].includes(field.control) &&
-    field.options.length <= 12
+    ['select', 'radio-group', 'checkbox-group', 'listbox-button', 'button-group'].includes(
+      field.control,
+    ) && field.options.length <= 12
       ? field.options.map((o) => o.label).join(' ')
       : '';
 

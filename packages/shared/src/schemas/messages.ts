@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { fillInstructionSchema, fillReportSchema, formScanSchema } from './autofill';
+import {
+  fillInstructionSchema,
+  fillReportSchema,
+  formChangesSchema,
+  formScanSchema,
+  formStatusSchema,
+} from './autofill';
 import { jobExtractionResultSchema } from './job-posting';
 
 /**
@@ -13,7 +19,19 @@ export const backgroundRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('app/ping') }),
   z.object({ type: z.literal('job/extract-active-tab') }),
   z.object({ type: z.literal('job/get-cached'), tabId: z.number().int().nonnegative() }),
-  z.object({ type: z.literal('autofill/scan') }),
+  z.object({
+    type: z.literal('autofill/scan'),
+    /**
+     * Re-scan: fields still on the page keep their ref, so answers the user
+     * approved stay attached to the same field; new fields get new refs.
+     */
+    keepRefs: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal('autofill/status'),
+    /** The address that was scanned. */
+    pageUrl: z.string().max(4000),
+  }),
   z.object({
     type: z.literal('autofill/fill'),
     /** The address that was scanned; filling is refused if the tab moved to another page. */
@@ -33,7 +51,8 @@ export const contentRequestSchema = z.discriminatedUnion('type', [
     /** Read this frame on its own: it is a job details frame inside the page. */
     embedded: z.boolean().optional(),
   }),
-  z.object({ type: z.literal('content/scan-form') }),
+  z.object({ type: z.literal('content/scan-form'), keepRefs: z.boolean().optional() }),
+  z.object({ type: z.literal('content/form-changes') }),
   z.object({
     type: z.literal('content/fill-form'),
     instructions: z.array(fillInstructionSchema).min(1).max(300),
@@ -90,8 +109,10 @@ export const responseSchemas = {
   'content/extract-job': resultSchema(jobExtractionResultSchema),
   'autofill/scan': resultSchema(formScanSchema),
   'autofill/fill': resultSchema(fillReportSchema),
+  'autofill/status': resultSchema(formStatusSchema),
   'content/scan-form': resultSchema(formScanSchema),
   'content/fill-form': resultSchema(fillReportSchema),
+  'content/form-changes': resultSchema(formChangesSchema),
 } as const;
 
 export type MessageType = keyof typeof responseSchemas;
