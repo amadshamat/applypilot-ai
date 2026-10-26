@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-25 (v0.7.0)_
+_Last updated: 2026-10-26 (v0.7.0)_
 
 ## Current phase
 
@@ -14,16 +14,18 @@ Work continues on the extension's local features, which need neither AWS nor the
 server. Cloud sync stays off unless the user sets it up, so it does not affect them. Phase 7
 has not started.
 
-**v0.7.0 (Import data, Delete all and reminder fixes): implemented and automated-tested,
-waiting for Muhaid's manual test in Chrome** (`docs/INSTALL-CHROME.md`, section 11). No further
-improvement starts until Muhaid has tested it.
+**v0.7.0 (Import data, Delete all and reminder fixes): implemented, automated-tested, and
+partly tested by Muhaid in Chrome.** On 2026-10-26 Muhaid imported a backup into a separate
+Chrome profile: the import finished, the profile and the original resume file were restored,
+the Profile tab showed the restored information, and the downloaded resume opened correctly.
+The rest of the v0.7.0 checklist has not been reported yet (see Not yet verified).
 
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
 
-### v0.7.0: Import data and two local fixes (automated-tested; not yet tested by Muhaid)
+### v0.7.0: Import data and two local fixes (automated-tested; import into a new profile tested by Muhaid)
 
 - **Import data** (Settings → Your data): loads a file made by Export data, from 0.7.0 or from
   any earlier version.
@@ -314,7 +316,12 @@ skipped. New Chromium tests:
 - The midnight alarm is set for 00:00:05 local time and the safety alarm runs every 6 hours.
 
 The midnight tests also pass in the UTC, America/Toronto, Europe/Berlin and Asia/Kolkata time
-zones. These are automated results only.
+zones.
+
+**Manual test by Muhaid (2026-10-26, Chrome, v0.7.0):** passed for importing a backup into a
+separate, empty Chrome profile (checklist section 11 C): the import completed and reported the
+restored items, the professional profile appeared in the Profile tab, and the restored resume
+downloaded and opened correctly.
 
 ### v0.6.1
 
@@ -337,9 +344,12 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
-- **v0.7.0 in Chrome by Muhaid** (section 11 of `docs/INSTALL-CHROME.md`): import on Muhaid's
-  own profile, an import of a real 0.6.x export, and the badge changing at midnight. The badge
-  at a real midnight has not been watched; only the alarm's scheduled time is checked.
+- **The rest of v0.7.0 in Chrome.** Muhaid confirmed importing into a separate profile (profile
+  and resume file restored). Not reported yet: whether tracked applications and AI drafts came
+  across, a restart of the new profile, Merge on the populated profile, Replace and Undo,
+  damaged files, Delete all clearing cached analyses, and the badge changing at midnight
+  (sections 11 B and D to G). The badge at a real midnight has only been checked by its
+  scheduled time.
 - **Phase 6 in Chrome.** Muhaid skipped the manual checklist (`docs/INSTALL-CHROME.md`,
   section 10) on 2026-10-25. Sign-in, sync, conflicts and cloud data controls have only been
   checked by automated tests, including the two-browser Playwright test.
@@ -363,7 +373,7 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Nothing: v0.7.0 waits for Muhaid's test. Phase 6 manual testing is deferred by Muhaid.
+Choosing the next local improvement (see Next recommended steps). Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
@@ -451,11 +461,12 @@ Nothing: v0.7.0 waits for Muhaid's test. Phase 6 manual testing is deferred by M
 
 ## Next recommended steps
 
-1. **Muhaid tests v0.7.0** with section 11 of `docs/INSTALL-CHROME.md`. Nothing new starts
-   before that. Remaining local ideas from the review
-   (`/mnt/project-files/notes/review-and-next-steps-0.6.1.md`): keep AI draft edits, autofill
-   follow-ups after a fill, and better two-column PDF parsing. Phase 6 manual testing is
-   deferred; run section 10 of INSTALL-CHROME.md whenever you want to verify cloud sync.
+1. **Next local improvement** (no AWS, no cloud server). Recommended: keep AI draft edits
+   (edits typed into a draft are lost when the panel closes). Other candidates from
+   `/mnt/project-files/notes/review-and-next-steps-0.6.1.md`: autofill follow-ups after a fill
+   (re-scan offer, Yes/No button questions) and better two-column PDF parsing. Phase 6 manual
+   testing is deferred; run section 10 of INSTALL-CHROME.md whenever you want to verify cloud
+   sync.
 2. **Decision for Muhaid:** whether to deploy ApplyPilot Cloud to your own AWS account
    (estimated USD 0.00 to 0.15 per month at personal use; see docs/AWS.md). Not done without
    your explicit approval.
