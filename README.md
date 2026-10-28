@@ -14,7 +14,7 @@ an AWS serverless backend.
 > **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
 > automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
 > CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.9.0
-> (smarter autofill; automated-tested, waiting for manual testing). Phase 5 (tracker) was approved in Chrome;
+> (smarter autofill; approved on the practice form). Phase 5 (tracker) was approved in Chrome;
 > every autofill platform stays **experimental** until checked on a live application. See
 > [PROGRESS.md](PROGRESS.md) for the exact, verified state.
 

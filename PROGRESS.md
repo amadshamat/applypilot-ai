@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-26 (v0.9.0)_
+_Last updated: 2026-10-28 (v0.9.0 approved)_
 
 ## Current phase
 
@@ -26,16 +26,18 @@ saved automatically, the "All changes saved" indicator worked, and an edited cov
 still there after closing and reopening the extension. The other v0.8.0 checks have not been
 reported (see Not yet verified).
 
-**v0.9.0 (Smarter Application Autofill): implemented and automated-tested, not manually
-verified.** It waits for Muhaid's manual test (`docs/INSTALL-CHROME.md`, section 13). No other
-improvement or phase starts until Muhaid tests and approves it.
+**v0.9.0 (Smarter Application Autofill): manually tested and approved by Muhaid on
+2026-10-28** on the conditional practice application: newly revealed fields were detected,
+earlier edited values and selections were kept, newly detected questions started unticked,
+approved Yes/No controls and dropdowns filled correctly, sensitive questions stayed locked, and
+nothing was submitted or advanced. Live application sites have not been tried.
 
 Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22, Phase 2 on
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
 
-### v0.9.0: Smarter Application Autofill (automated-tested; not manually verified)
+### v0.9.0: Smarter Application Autofill (tested and approved by Muhaid on the practice form)
 
 - **Newly revealed questions are found.** After every fill the panel scans the page again by
   itself (reading only) and lists questions the answers revealed. While a scan is on screen
@@ -394,6 +396,11 @@ questions (`tests/fixtures/applications/conditional-application.html`):
 - Chromium: the same flow on the sample page, then sensitive questions untouched and no Next,
   Submit or form submit event. All earlier browser tests still pass.
 
+**Manual test by Muhaid (2026-10-28, Chrome, v0.9.0):** passed and approved on
+`conditional-application.html` (checklist section 13): revealed fields detected, earlier edits
+and selections preserved, new questions unticked, approved Yes/No buttons and dropdowns filled,
+sensitive questions locked, and no submission or advance.
+
 ### v0.8.0 (2026-10-26)
 
 v0.8.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
@@ -461,9 +468,8 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Not yet verified
 
-- **All of v0.9.0 in Chrome.** Smarter Application Autofill has passed only the automated
-  tests above; Muhaid has not tested it yet (`docs/INSTALL-CHROME.md`, section 13). Live
-  application sites have not been tried.
+- **v0.9.0 on live application sites.** Approved on the practice form only; real forms with
+  conditional questions and Yes/No buttons have not been tried.
 - **The rest of v0.8.0 in Chrome.** Muhaid tested cover letter autosave and reopening the
   extension. Not reported yet: tailored resume and screening answer edits, closing straight
   after typing, a Chrome restart, drafts kept per job, Revert, Generate again with Restore,
@@ -498,8 +504,8 @@ screenshot test skipped. These are automated results only. Results recorded for 
 
 ## Under development
 
-Nothing new. v0.9.0 (Smarter Application Autofill) waits for Muhaid's manual test before
-anything else starts. Phase 6 manual testing is deferred by Muhaid.
+Nothing yet. Next focus chosen by Muhaid: two-column PDF resume parsing and preparing the
+project for a GitHub portfolio; the first step waits for his go-ahead. Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
