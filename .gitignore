@@ -16,3 +16,21 @@ test-results/
 
 # CDK output
 cdk.out/
+
+# Secrets and credentials (never commit these)
+*.pem
+*.key
+*.p12
+.aws/
+# Personal data: your own resumes and exported ApplyPilot backups
+my-resumes/
+personal/
+applypilot-backup*.json
+applypilot-export*.json
+# Build and packaging output
+*.bundle
+*.crx
+*.tsbuildinfo
+.turbo/
+.vscode/
+.idea/
