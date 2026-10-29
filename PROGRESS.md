@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-10-28 (v0.9.0 approved)_
+_Last updated: 2026-10-29 (dependency security fix)_
 
 ## Current phase
 
@@ -36,6 +36,42 @@ Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
+
+### Dependency security fix (2026-10-29, automated-tested)
+
+The GitHub Actions `audit` job (`pnpm audit --audit-level high`) failed on the first push with 8
+findings (4 high, 4 moderate), all in `undici` 7.30.0. Its only path is `jsdom > undici`:
+`jsdom` 29.1.1 is a root devDependency used as the Vitest test environment, so `undici` is
+development-only and is not in the built extension (no `undici` or `jsdom` code in
+`apps/extension/dist`). The findings:
+
+| Severity | Advisory            | Issue                                                                |
+| -------- | ------------------- | -------------------------------------------------------------------- |
+| high     | GHSA-xjj6-f33q-929c | DoS via unhandled error on excessive content-encodings               |
+| high     | GHSA-4w7w-5xrc-9h26 | Cache poisoning and cross-user disclosure via cross-origin redirects |
+| high     | GHSA-2m5v-pch6-74hx | TLS certificate validation bypass via dropped tls options in Agent   |
+| high     | GHSA-qrxm-fqhp-jwvm | DoS via TLS 1.2 certificate-changing renegotiation                   |
+| moderate | GHSA-4qv8-2p9j-2685 | DoS via unbounded memory in the EventSource parser                   |
+| moderate | GHSA-f72v-6w45-q472 | Subresource Integrity bypass via non-lowercase algorithm tokens      |
+| moderate | GHSA-9fm3-97px-rjf6 | WebSocket DoS via unbounded automatic PONG buffering                 |
+| moderate | GHSA-55wc-3pg8-jfw6 | DoS via unhandled exception in the decompress interceptor            |
+
+All 8 are patched in `undici` 7.30.1, which `jsdom` 29.1.1 already allows (`^7.25.0`), so the
+fix is a lockfile update only (`pnpm update undici -r --depth Infinity`): no `package.json`
+change and no `pnpm.overrides`. An override was not needed because the parent's range accepts
+the patched version. `jsdom` 30 was not used: it moves to `undici` 8 and needs Node 22.22.2 or
+newer, a larger change than this fix needs.
+
+Results after the fix (local container, Node 22.22, Chromium 141):
+
+- `pnpm audit --audit-level high`: "No known vulnerabilities found" (exit 0), so no high,
+  critical or moderate findings remain.
+- `pnpm verify`: passed (typecheck, lint, format, 650 tests in 60 files, build, bundle check).
+- `pnpm test:coverage` (the CI test step): passed.
+- `pnpm test:e2e` (Chromium): 25 passed, 1 skipped (the screenshot capture test, skipped by
+  design).
+
+The GitHub Actions run after this change is pushed has not been seen yet.
 
 ### v0.9.0: Smarter Application Autofill (tested and approved by Muhaid on the practice form)
 
