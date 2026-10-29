@@ -1,7 +1,7 @@
 {
   "name": "applypilot-ai",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "ApplyPilot AI: a human-in-the-loop job application copilot for Chrome.",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
@@ -22,6 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "pnpm build:e2e && playwright test",
     "build:e2e": "APPLYPILOT_E2E=1 pnpm --filter @applypilot/extension run build",
+    "demo:video": "pnpm build:e2e && DEMO_VIDEO=1 playwright test tests/e2e/demo-video.spec.ts && node scripts/demo/render-demo.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm check:bundle",
     "check:bundle": "node scripts/check-bundle.mjs",
     "cloud:local": "pnpm --filter @applypilot/api run cloud:local"

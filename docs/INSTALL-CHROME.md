@@ -609,6 +609,43 @@ tab and open **Autofill**. Your saved profile is used, so values are yours.
       and Import still work, and your profile, resumes, drafts and tracked applications are
       unchanged after the update.
 
+## 14. v1.0.0 release acceptance checklist
+
+This is the last check before calling v1.0.0 portfolio-ready. Nothing here needs AWS or a paid
+call. **Never submit a real application during this test.**
+
+Before updating, open Settings and click **Export data** to keep a backup file. Then update as
+described in **Updating to a new build** (do not Remove the extension).
+
+### A. Update kept your data
+
+- [ ] A1. The ApplyPilot AI card in `chrome://extensions` shows **1.0.0** and no **Errors**
+      button.
+- [ ] A2. Profile, saved resumes, tracked applications and settings are all still there.
+
+### B. Core features
+
+- [ ] B1. **Job analysis.** Open a job posting, click the toolbar icon, click **Analyze this
+      page**: the job details and a match score with evidence appear.
+- [ ] B2. **Resume tailoring (optional, needs the local API from section 7 in mock mode).** In
+      **Tailor**, generate a tailored resume and a cover letter. Both appear, are editable, and
+      say "Mock draft (free, made offline)".
+- [ ] B3. **Autofill.** On the practice form `conditional-application.html` (served as in
+      section 13), **Scan this form**. Sensitive questions are under **You answer these on the
+      page** with no Fill box. Approve a few fields and fill them: only those fields change.
+- [ ] B4. **Nothing is submitted.** The form never moves to another step or submits on its own.
+- [ ] B5. **Tracker.** Save an analyzed job to the tracker, change its status, add a note. The
+      **Analytics** view counts it, and **CSV** downloads a file that opens in a spreadsheet.
+
+### C. GitHub
+
+- [ ] C1. After pushing v1.0.0, the GitHub Actions run shows green ticks for **verify**,
+      **e2e** and **audit**.
+- [ ] C2. The repository front page shows the README with screenshots, and
+      `docs/demo/applypilot-ai-demo.mp4` opens and plays.
+
+If every box is ticked, v1.0.0 is accepted. Otherwise note which item failed and what you saw.
+
 ## Updating to a new build
 
 Chrome keeps running the files in the folder you loaded, so updating means replacing them. To

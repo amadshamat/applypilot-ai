@@ -34,3 +34,5 @@ applypilot-export*.json
 .turbo/
 .vscode/
 .idea/
+# Demo video frames and output (pnpm demo:video)
+demo-output/

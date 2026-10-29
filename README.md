@@ -2,31 +2,39 @@
 
 **Apply smarter. Apply faster. Stay organized.**
 
-ApplyPilot AI is a Chrome extension (Manifest V3) that acts as a human-in-the-loop job
-application copilot. It reads the job posting you are looking at, explains what it found and
-where each detail came from, and scores it against your own profile with an explainable match
-and truthful resume suggestions. With your consent it drafts a tailored resume, a cover letter
-and screening answers with Claude, checked against your profile so nothing is invented. It
-fills application forms only with values you approve field by field (never submitting), tracks
-your applications, and can optionally sync your profile and tracker between browsers through
-an AWS serverless backend.
+ApplyPilot AI is a Chrome extension (Manifest V3, React, TypeScript) that acts as a
+human-in-the-loop job application copilot. It reads the job posting you are looking at, scores it
+against your profile with an explainable match, drafts a tailored resume, cover letter and
+screening answers with Claude (checked so nothing is invented), fills application forms only
+with values you approve field by field, and tracks your applications. It never submits an
+application, never answers legal or demographic questions for you, and never invents
+qualifications.
 
-> **Project status: Phase 6 (AWS cloud backend and optional sync) implemented and
-> automated-tested, not manually verified or approved.** The AWS infrastructure is defined in
-> CDK and tested with local stand-ins, but **has not been deployed**. Current build: v0.9.0
-> (smarter autofill; approved on the practice form). Phase 5 (tracker) was approved in Chrome;
-> every autofill platform stays **experimental** until checked on a live application. See
-> [PROGRESS.md](PROGRESS.md) for the exact, verified state.
+**Version 1.0.0** is the finished portfolio release. The table under
+[What has been verified](#what-has-been-verified) separates what was tested by hand in Chrome
+from what is automated-tested only or not deployed.
 
-![Side panel analyzing a job posting](docs/screenshots/sidepanel-analysis-light.png)
+**Demo (2 min 19 s, captions, no narration):** [docs/demo/applypilot-ai-demo.mp4](docs/demo/applypilot-ai-demo.mp4).
+It was recorded automatically by Playwright in Chromium with fictional data and the free local
+mock AI, and can be reproduced with `pnpm demo:video` ([how](#demo-video)).
 
-| Resume review                                                                  | Match with your profile                                                         |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| ![Reviewing a parsed resume before saving](docs/screenshots/resume-review.png) | ![Match score with breakdown and suggestions](docs/screenshots/match-light.png) |
+![Assisted autofill: approved answers filled, sensitive questions locked](docs/screenshots/demo-autofill.png)
 
-| AI tailoring (mock mode shown)                                                 | Screening questions                                                        |
+| Job analysis                                                                         | Match with your profile                                                         |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| ![Side panel analyzing a job posting](docs/screenshots/sidepanel-analysis-light.png) | ![Match score with breakdown and suggestions](docs/screenshots/match-light.png) |
+
+| Resume tailoring (mock mode shown)                                             | Screening questions                                                        |
 | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | ![Tailored resume draft with sources](docs/screenshots/ai-tailored-resume.png) | ![Sensitive questions left to the user](docs/screenshots/ai-screening.png) |
+
+| Application tracker                                                           | Analytics                                                                  |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ![Tracked application with status history](docs/screenshots/tracker-card.png) | ![Analytics from your own records](docs/screenshots/tracker-analytics.png) |
+
+| Resume review                                                                  | AI connection (local API)                                         |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| ![Reviewing a parsed resume before saving](docs/screenshots/resume-review.png) | ![Connected to the local API](docs/screenshots/ai-connection.png) |
 
 ## Problem
 
@@ -36,36 +44,53 @@ re-typed, a resume tuned to the role, and a way to remember where everything sta
 without review. ApplyPilot takes the opposite approach: deterministic where possible,
 explainable everywhere, and nothing is submitted or claimed without the user's approval.
 
+## What has been verified
+
+| Area                                                                  | Status                                                                                     |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Job analysis, profile, resume upload and match score (Phases 1 and 2) | Tested by hand in Chrome and approved                                                      |
+| AI resume tailoring, cover letters and screening drafts (Phase 3)     | Tested by hand in Chrome in free mock mode; no paid Claude request has been made           |
+| Assisted autofill, including revealed questions and Yes/No buttons    | Tested by hand in Chrome on the practice forms; **experimental** on live application sites |
+| Application tracker, reminders, analytics and CSV export (Phase 5)    | Tested by hand in Chrome and approved                                                      |
+| Keep AI draft edits (cover letter autosave)                           | Tested by hand in Chrome; other draft checks automated-tested only                         |
+| Data import (into a new Chrome profile)                               | Tested by hand in Chrome; merge, replace and undo automated-tested only                    |
+| Optional cloud sign-in and sync (Phase 6)                             | **Implemented and automated-tested only.** Not manually verified, not approved             |
+| AWS backend (CDK: API Gateway, Lambda, DynamoDB, Cognito)             | **Not deployed.** Checked with synthesized templates, cdk-nag and local stand-ins          |
+| Live job boards (Greenhouse, Indeed) and live application sites       | Indeed was used live during development; other sites tested only against fixtures          |
+| CI on GitHub Actions (verify, Chromium E2E, dependency audit)         | Runs on every push                                                                         |
+
+The full record, with dates and the exact checks, is in [PROGRESS.md](PROGRESS.md).
+
 ## Features
 
-| Feature                                                                                                                  | Status                     |
-| ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| MV3 extension with React side panel, six-section navigation, light/dark themes                                           | Done                       |
-| Settings page (theme, AI-processing consent, match weights) with validation                                              | Done                       |
-| Local data export, import (preview, merge or replace, undo) and deletion                                                 | Done                       |
-| Typed, runtime-validated messaging between side panel, service worker and page                                           | Done                       |
-| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence          | Done                       |
-| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)                   | Done                       |
-| Profile editor (education, experience, skills, certifications, projects, preferences) stored locally                     | Done                       |
-| Resume upload (PDF, DOCX) parsed on-device, reviewed and corrected before saving, with version history                   | Done                       |
-| Explainable 0–100 match score with evidence for every matched skill, gaps, and items to check yourself                   | Done                       |
-| Truthful resume suggestions (never invent skills, numbers or experience)                                                 | Done                       |
-| Local ApplyPilot API that holds the Claude key server-side, with a free offline mock mode                                | Done                       |
-| AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)           | Done                       |
-| Edits to AI drafts saved automatically per job, with Revert to generated text and no silent overwrite                    | Done                       |
-| Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                          | Done                       |
-| Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI                      | Done                       |
-| Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits                       | Done (experimental)        |
-| Revealed follow-up questions found after a fill; re-scan keeps reviewed answers; new questions wait for a tick           | Done (experimental)        |
-| Yes/No button questions (toggle and role=radio buttons) answered and clicked only when you approve them                  | Done (experimental)        |
-| Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms                      | Experimental               |
-| Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer                | Done                       |
-| Optional AI field matching (labels only, no profile data) and AI drafts for open questions                               | Done                       |
-| Application tracker: statuses with history, notes, filters, search, duplicate detection, local storage                   | Done                       |
-| Follow-up reminders (toolbar badge and due list) and analytics from your own records                                     | Done                       |
-| CSV export of tracked applications, safe to open in spreadsheets                                                         | Done                       |
-| Optional account (Cognito hosted sign-in, PKCE) and cloud sync with conflict handling, backups and cloud export/deletion | Done (local; not deployed) |
-| AWS backend in CDK: API Gateway, Lambda, DynamoDB, Cognito, CloudWatch, Secrets Manager, optional WAF                    | Done (not deployed)        |
+| Feature                                                                                                                  | Status                              |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| MV3 extension with React side panel, six-section navigation, light/dark themes                                           | Done                                |
+| Settings page (theme, AI-processing consent, match weights) with validation                                              | Done                                |
+| Local data export, import (preview, merge or replace, undo) and deletion                                                 | Done                                |
+| Typed, runtime-validated messaging between side panel, service worker and page                                           | Done                                |
+| Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic page analysis, per-field source and confidence          | Done                                |
+| Platform detection for Lever, Workday, SmartRecruiters, Ashby (generic extraction only, flagged in UI)                   | Done                                |
+| Profile editor (education, experience, skills, certifications, projects, preferences) stored locally                     | Done                                |
+| Resume upload (PDF, DOCX) parsed on-device, reviewed and corrected before saving, with version history                   | Done                                |
+| Explainable 0–100 match score with evidence for every matched skill, gaps, and items to check yourself                   | Done                                |
+| Truthful resume suggestions (never invent skills, numbers or experience)                                                 | Done                                |
+| Local ApplyPilot API that holds the Claude key server-side, with a free offline mock mode                                | Done                                |
+| AI resume tailoring, cover letters and screening answer drafts (Claude, structured outputs, versioned prompts)           | Done                                |
+| Edits to AI drafts saved automatically per job, with Revert to generated text and no silent overwrite                    | Done                                |
+| Grounding checks on every AI draft: untraceable content removed, new numbers and skills flagged                          | Done                                |
+| Sensitive screening questions (legal, eligibility, demographic, pay, availability) never sent to AI                      | Done                                |
+| Assisted autofill: scan, review with source and confidence, approve per field, fill; never submits                       | Done (experimental)                 |
+| Revealed follow-up questions found after a fill; re-scan keeps reviewed answers; new questions wait for a tick           | Done (experimental)                 |
+| Yes/No button questions (toggle and role=radio buttons) answered and clicked only when you approve them                  | Done (experimental)                 |
+| Autofill platforms: Indeed Apply, Greenhouse, Lever, Workday, Ashby, SmartRecruiters, generic forms                      | Experimental                        |
+| Sensitive application questions (authorization, demographics, pay, consent) locked for the user to answer                | Done                                |
+| Optional AI field matching (labels only, no profile data) and AI drafts for open questions                               | Done                                |
+| Application tracker: statuses with history, notes, filters, search, duplicate detection, local storage                   | Done                                |
+| Follow-up reminders (toolbar badge and due list) and analytics from your own records                                     | Done                                |
+| CSV export of tracked applications, safe to open in spreadsheets                                                         | Done                                |
+| Optional account (Cognito hosted sign-in, PKCE) and cloud sync with conflict handling, backups and cloud export/deletion | Automated-tested only; not deployed |
+| AWS backend in CDK: API Gateway, Lambda, DynamoDB, Cognito, CloudWatch, Secrets Manager, optional WAF                    | Not deployed                        |
 
 ## Technology
 
@@ -175,15 +200,6 @@ In the extension, open Settings > **Cloud sync (optional)** > **Use local test s
 second Chrome profile and sign in with the same account to see records sync. Deploying the real
 backend to your own AWS account is described in [docs/AWS.md](docs/AWS.md).
 
-### Demo
-
-Serve the fixtures with `node tests/e2e/fixture-server.mjs` and open
-`http://127.0.0.1:4173/jobs/json-ld-cloud-intern.html` or
-`http://127.0.0.1:4173/jobs/generic-devops-role.html`, then analyze them from the side panel.
-The sample application forms are under `http://127.0.0.1:4173/applications/` (for example
-`generic-application.html` or `workday-application.html`); open one, click the toolbar icon,
-and use the **Autofill** tab.
-
 ## Environment variables
 
 The extension needs none. The local API reads `services/api/.env` (created by `pnpm api:setup`,
@@ -219,15 +235,38 @@ pnpm test            # unit + integration (Vitest, jsdom)
 pnpm test:coverage   # with V8 coverage
 pnpm test:e2e        # builds the e2e variant and runs Playwright in Chromium
 pnpm verify          # typecheck, lint, format check, tests, production build, bundle secret check
+pnpm audit --audit-level high
 ```
+
+Results for v1.0.0 (2026-10-29, Linux, Node 22, Chromium 141):
+
+| Check                                            | Result                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| `pnpm verify`                                    | Passed: 650 unit and integration tests in 60 files                  |
+| `pnpm test:e2e` (real Chromium, built extension) | 25 passed, 2 skipped (screenshot and demo recorders, run on demand) |
+| `pnpm audit --audit-level high`                  | No known vulnerabilities found                                      |
+| Bundle secret check                              | No API keys or direct Claude calls in the built extension           |
 
 The e2e build is identical to the release build except that it is granted host access to
 `http://127.0.0.1`, standing in for the toolbar click that automation cannot perform. Playwright
 also starts the real local API in mock mode, so the AI flow is tested end to end without an API
 key or any cost. The Claude provider is tested by running the real SDK against a local fake of
-the Messages API. If your
-Playwright version does not match an installed Chromium, set `CHROMIUM_PATH` to a Chromium
-binary.
+the Messages API. If your Playwright version does not match an installed Chromium, set
+`CHROMIUM_PATH` to a Chromium binary.
+
+## Demo video
+
+`pnpm demo:video` rebuilds the e2e extension, drives it through the whole flow in Chromium with
+fictional data (`tests/e2e/demo-video.spec.ts`), captures the job page and the side panel
+through the Chrome DevTools screencast, and renders `demo-output/applypilot-ai-demo.mp4` with
+captions (`scripts/demo/render-demo.mjs`). It needs `ffmpeg` with libx264 on the PATH (macOS:
+`brew install ffmpeg`). Everything runs locally against the mock AI provider, so it costs
+nothing.
+
+Try the same pages yourself: serve the fixtures with `node tests/e2e/fixture-server.mjs`, open
+`http://127.0.0.1:4173/jobs/json-ld-cloud-intern.html` and analyze it from the side panel, or
+open a sample application form under `http://127.0.0.1:4173/applications/` (for example
+`conditional-application.html`), click the toolbar icon, and use the **Autofill** tab.
 
 ## Security and privacy
 
@@ -279,7 +318,7 @@ not a hiring prediction.
 ## Known limitations
 
 - Scanned (image-only) PDFs cannot be read (no OCR); two-column PDF layouts may mix lines, which
-  you can fix on the review screen; `.doc` files and non-English section headings are not
+  you can fix on the review screen (better column handling is planned after v1.0.0); `.doc` files and non-English section headings are not
   supported.
 - Only Greenhouse boards and Indeed (search results with a selected job, and job pages) have
   dedicated adapters. Lever, Workday, SmartRecruiters and Ashby pages are detected but use
@@ -314,10 +353,12 @@ not a hiring prediction.
   ApplyPilot Cloud is deployed to AWS. Resume files are never synced. See
   [docs/AWS.md](docs/AWS.md#known-limitations).
 
-## Roadmap
+## After v1.0.0
 
-Phase 7 (accessibility, performance and Chrome Web Store preparation) and the optional AWS
-deployment are listed in [PROGRESS.md](PROGRESS.md#next-recommended-steps).
+v1.0.0 is feature-complete for the portfolio. Possible next steps, none started: better
+two-column PDF parsing, deploying ApplyPilot Cloud to AWS (needs approval and has a small
+monthly cost), and Chrome Web Store preparation. See
+[PROGRESS.md](PROGRESS.md#next-recommended-steps).
 
 ## Interview notes
 

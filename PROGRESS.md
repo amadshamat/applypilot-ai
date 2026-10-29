@@ -1,8 +1,14 @@
 # Progress
 
-_Last updated: 2026-10-29 (dependency security fix)_
+_Last updated: 2026-10-29 (v1.0.0 release candidate)_
 
 ## Current phase
+
+**v1.0.0 release candidate (2026-10-29): automated checks passed, waiting for Muhaid's
+acceptance checklist** (`docs/INSTALL-CHROME.md`, section 14) and a green GitHub Actions run.
+v1.0.0 adds no features: it is v0.9.0 plus the dependency security fix, a final review, the
+README, an automated demo video and the version number. Development phases are finished; the
+statuses below are unchanged by the release.
 
 **Phase 6 (AWS cloud backend, optional sign-in and sync): implemented and automated-tested,
 not manually verified or approved.** On 2026-10-25 Muhaid installed v0.6.0 and chose to skip
@@ -36,6 +42,27 @@ Phase 5 was approved on 2026-10-22, Phase 4 on 2026-10-22, Phase 3 on 2026-10-22
 2026-10-14. Phase 1 and the v0.1.1 Indeed fix were confirmed earlier.
 
 ## Completed
+
+### v1.0.0: portfolio release (2026-10-29, automated-tested; manual acceptance pending)
+
+- **Final review.** The security-relevant paths were re-read: the background accepts messages
+  only from the extension's own pages and validates every message and page reply; content
+  scripts accept only this extension; fills are refused when the tab shows another page; the
+  local API binds to 127.0.0.1, checks the Host header, extension origins and a constant-time
+  token; job HTML is parsed in inert documents; CSV cells that start like formulas are
+  escaped; the bundle check blocks API keys. No bug was found that breaks a core feature or
+  security, so no code was changed.
+- **Version 1.0.0** in the extension manifest and the root package.
+- **README** rewritten for the portfolio: verified versus automated-only versus not deployed,
+  screenshots of autofill and the tracker, test results, and the demo.
+- **Demo video** `docs/demo/applypilot-ai-demo.mp4` (2 min 19 s, 1280x720, captions, no audio),
+  recorded automatically: `pnpm demo:video` runs `tests/e2e/demo-video.spec.ts` (skipped unless
+  `DEMO_VIDEO=1`) in Chromium with fictional data and the mock AI, captures the job page and
+  the side panel through the DevTools screencast, and renders with ffmpeg
+  (`scripts/demo/render-demo.mjs`).
+- **Release acceptance checklist** added as `docs/INSTALL-CHROME.md` section 14.
+
+Results (local container, Node 22.22, Chromium 141): see Test results below.
 
 ### Dependency security fix (2026-10-29, automated-tested)
 
@@ -408,7 +435,15 @@ the reported values on the new fixture.
 | Job extraction: JSON-LD, Greenhouse and Indeed adapters, generic analysis, per-field source and confidence | `extract.test.ts`, `indeed.test.ts`, `indeed-selection.test.ts` |
 | CI workflow                                                                                                | `.github/workflows/ci.yml` (written, **not yet run on GitHub**) |
 
-## Test results (2026-10-26, v0.9.0, local container, Node 22.22, Chromium 141)
+## Test results (2026-10-29, v1.0.0, local container, Node 22.22, Chromium 141)
+
+v1.0.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
+**650 tests** in 60 files; `pnpm test:coverage` passes; `pnpm test:e2e`: **25 passed, 2
+skipped** (the screenshot and demo-video recorders, which run only on request);
+`pnpm audit --audit-level high`: "No known vulnerabilities found". `pnpm demo:video` recorded
+and rendered the demo successfully. Not yet seen: the GitHub Actions run for v1.0.0.
+
+### v0.9.0 (2026-10-26)
 
 v0.9.0: `pnpm verify` (typecheck, lint, format check, tests, build, bundle check) passes with
 **650 tests** (extension 204, up from 195; autofill 75, up from 60). `pnpm test:e2e`:
@@ -536,12 +571,14 @@ screenshot test skipped. These are automated results only. Results recorded for 
 - Real-world resumes. The parser is tested on a generated PDF and DOCX and on varied text
   layouts. Two-column PDFs, tables and image-only (scanned) PDFs are known weak spots (see below).
 - The real side panel container (e2e opens `sidepanel.html` as a tab).
-- The GitHub Actions workflow (no repository yet).
+- The GitHub Actions run for v1.0.0. The first push (v0.9.0) passed verify and e2e and failed
+  the audit, which the dependency fix resolves locally.
 
 ## Under development
 
-Nothing yet. Next focus chosen by Muhaid: two-column PDF resume parsing and preparing the
-project for a GitHub portfolio; the first step waits for his go-ahead. Phase 6 manual testing is deferred by Muhaid.
+Nothing. Muhaid finished development with v1.0.0 (no new features or phases). Two-column PDF
+parsing was built separately as v0.10.0 but is not part of v1.0.0 because it has not been
+manually tested. Phase 6 manual testing is deferred by Muhaid.
 
 ## Known bugs and limitations
 
